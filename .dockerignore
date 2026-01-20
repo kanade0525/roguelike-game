@@ -1,0 +1,40 @@
+# 依存関係
+node_modules
+.pnpm-store
+
+# ビルド出力
+.output
+.nuxt
+dist
+
+# 環境設定
+.env
+.env.*
+!.env.example
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git
+.gitignore
+
+# ログ
+*.log
+npm-debug.log*
+
+# テスト
+coverage
+.nyc_output
+
+# ドキュメント
+docs
+*.md
+!README.md

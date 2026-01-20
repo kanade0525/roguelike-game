@@ -1,0 +1,41 @@
+{
+  "screenSize": {
+    "width": 480,
+    "height": 720
+  },
+  "tileSize": 32,
+  "debugConfig": {
+    "showFOV": false,
+    "showGrid": false
+  },
+  "playerConfig": {
+    "maxHealth": 100,
+    "attack": 10,
+    "defense": 5,
+    "viewRange": 6
+  },
+  "enemyTypes": {
+    "slime": {
+      "maxHealth": 20,
+      "attack": 5,
+      "exp": 10
+    },
+    "goblin": {
+      "maxHealth": 30,
+      "attack": 8,
+      "exp": 20
+    }
+  },
+  "itemTypes": {
+    "healingGrass": {
+      "healAmount": 30
+    },
+    "antidoteGrass": {
+      "curePoison": true
+    }
+  },
+  "dungeonConfig": {
+    "floorsTotal": 10,
+    "enemiesPerFloor": [3, 4, 5, 6, 7, 8, 9, 10, 12, 15]
+  }
+}
