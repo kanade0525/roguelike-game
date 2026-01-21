@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=DotGothic16&family=Press+Start+2P&display=swap');
+
 * {
   margin: 0;
   padding: 0;
@@ -13,9 +15,28 @@ body {
   touch-action: none;
   -webkit-user-select: none;
   user-select: none;
+  font-family: 'DotGothic16', 'Press Start 2P', cursive;
 }
 
 #__nuxt {
   width: 100%;
   height: 100%;
+}
+
+/* NES.css カスタマイズ */
+.nes-btn {
+  font-family: 'DotGothic16', 'Press Start 2P', cursive;
+}
+
+.nes-container {
+  background-color: #212529;
+}
+
+.nes-container.is-dark {
+  background-color: #1a1a2e;
+  color: #fff;
+}
+
+.nes-container.is-dark::after {
+  background-color: #1a1a2e;
 }

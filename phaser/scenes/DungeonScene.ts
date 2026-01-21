@@ -26,6 +26,7 @@ export class DungeonScene extends Phaser.Scene {
     this.entityGraphics = this.add.graphics()
     this.drawScene()
     this.setupInput()
+    this.setupTouchInput()
 
     // UIシーンを並行起動
     this.scene.launch('UIScene')
@@ -215,6 +216,34 @@ export class DungeonScene extends Phaser.Scene {
       if (this.map[newY][newX] === 2) {
         console.log('階段に到達!')
       }
+    }
+  }
+
+  private setupTouchInput() {
+    // UISceneからの移動イベントを受け取る
+    this.events.on('playerMove', (dx: number, dy: number) => {
+      this.tryMove(dx, dy)
+    })
+
+    // UISceneからのアクションイベントを受け取る
+    this.events.on('playerAction', (action: string) => {
+      this.handleAction(action)
+    })
+  }
+
+  private handleAction(action: string) {
+    const uiScene = this.scene.get('UIScene') as unknown as {
+      addMessage: (msg: string) => void
+    }
+
+    switch (action) {
+      case 'menu':
+        uiScene.addMessage('メニューを開いた（未実装）')
+        break
+      case 'wait':
+        uiScene.addMessage('その場で待機した')
+        // TODO: ターン経過処理
+        break
     }
   }
 }

@@ -21,6 +21,9 @@ export default defineNuxtConfig({
         },
         { name: 'description', content: '不思議のダンジョン風ローグライクゲーム' },
       ],
+      link: [
+        { rel: 'stylesheet', href: 'https://unpkg.com/nes.css@2.3.0/css/nes.min.css' },
+      ],
     },
   },
 
