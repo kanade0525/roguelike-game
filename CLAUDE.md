@@ -17,22 +17,33 @@ npm install
 npm run dev       # 開発サーバー起動（ポート3000、Docker経由は4000）
 npm run build     # 本番ビルド
 npm run generate  # 静的サイト生成
-npm run lint      # ESLint実行
+npm run lint      # ESLint + Markdownlint 実行
+npm run lint:fix  # 自動修正付きリント
 npm run format    # Prettierでフォーマット
 ```
+
+## 開発フロー
+
+1. コードを書く
+2. `npm run lint:fix` でリントエラーを自動修正
+3. `npm run format` でフォーマット
+4. コミット前に `npm run lint` でエラーがないことを確認
+
+リンターは ESLint（TypeScript/Vue）と Markdownlint（Markdown）の両方を実行する。
+コミット前には必ずリントを通すこと。
 
 ## アーキテクチャ
 
 ### ディレクトリ構成と責務
 
-| ディレクトリ | 責務 | Phaser依存 |
-|-------------|------|-----------|
-| `game/` | 純粋なゲームロジック・計算 | ❌ なし |
-| `stores/` | Pinia状態管理 | ❌ なし |
-| `composables/` | ロジック橋渡し | ❌ なし |
-| `phaser/` | 描画のみ | ✅ あり |
-| `components/` | Vue UI | ❌ なし |
-| `pages/` | 画面ルーティング | ❌ なし |
+| ディレクトリ   | 責務                       | Phaser依存 |
+| -------------- | -------------------------- | ---------- |
+| `game/`        | 純粋なゲームロジック・計算 | ❌ なし    |
+| `stores/`      | Pinia状態管理              | ❌ なし    |
+| `composables/` | ロジック橋渡し             | ❌ なし    |
+| `phaser/`      | 描画のみ                   | ✅ あり    |
+| `components/`  | Vue UI                     | ❌ なし    |
+| `pages/`       | 画面ルーティング           | ❌ なし    |
 
 ### 設計原則（必ず守ること）
 
@@ -54,6 +65,7 @@ npm run format    # Prettierでフォーマット
 ### 設定ファイル
 
 ゲームパラメータは `game/data/gameConfig.json` に集約：
+
 - 画面サイズ、タイルサイズ
 - プレイヤーステータス（HP、攻撃力、防御力）
 - 敵種類ごとのパラメータ
@@ -89,14 +101,14 @@ npm run format    # Prettierでフォーマット
 
 ### スコープを限定した指示例
 
-```
+```text
 「game/systems/CombatSystem.tsにダメージ計算ロジックを実装して。
 Phaserは使わず、純粋なTypeScriptで。
 入力: attacker, defender
 出力: ダメージ値」
 ```
 
-```
+```text
 「stores/gameStore.tsにプレイヤー移動のactionを追加して。
 移動可能かどうかのチェックはgame/systems/を呼び出す形で」
 ```

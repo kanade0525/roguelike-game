@@ -9,8 +9,8 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
+    "lint": "eslint . && markdownlint '**/*.md' --ignore node_modules",
+    "lint:fix": "eslint . --fix && markdownlint '**/*.md' --ignore node_modules --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
@@ -25,6 +25,7 @@
   },
   "devDependencies": {
     "@nuxt/eslint": "^1.0.0",
+    "markdownlint-cli": "^0.47.0",
     "prettier": "^3.5.0",
     "typescript": "^5.7.0",
     "vue-tsc": "^3.2.2"

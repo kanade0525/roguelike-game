@@ -23,14 +23,14 @@
 
 ### 採用構成: Nuxt 3 + Phaser 3
 
-| レイヤー | 技術 | 理由 |
-|---------|------|------|
-| フレームワーク | Nuxt 3 | 慣れている、Pinia統合、開発効率 |
-| ゲーム描画 | Phaser 3 | 情報多い、音声等すぐ使える |
-| 状態管理 | Pinia | 状態の一元管理、カオス防止 |
-| ダンジョン生成 | rot.js | FOV、パス探索、将来のランダム生成 |
-| 言語 | TypeScript | 型安全性 |
-| PWA | @vite-pwa/nuxt | オフライン対応 |
+| レイヤー       | 技術           | 理由                              |
+| -------------- | -------------- | --------------------------------- |
+| フレームワーク | Nuxt 3         | 慣れている、Pinia統合、開発効率   |
+| ゲーム描画     | Phaser 3       | 情報多い、音声等すぐ使える        |
+| 状態管理       | Pinia          | 状態の一元管理、カオス防止        |
+| ダンジョン生成 | rot.js         | FOV、パス探索、将来のランダム生成 |
+| 言語           | TypeScript     | 型安全性                          |
+| PWA            | @vite-pwa/nuxt | オフライン対応                    |
 
 ### 選定理由
 
@@ -45,7 +45,7 @@
 
 ### ディレクトリ構成
 
-```
+```text
 roguelike/
 ├── composables/              # ビジネスロジック（再利用可能）
 │   ├── useGameState.ts       # ゲーム状態管理
@@ -88,13 +88,13 @@ roguelike/
 
 ### 分離ルール
 
-| 層 | 責務 | Phaser依存 |
-|----|------|-----------|
-| `game/` | 計算・ロジック | ❌ なし |
-| `stores/` | 状態保持 | ❌ なし |
-| `composables/` | ロジック橋渡し | ❌ なし |
-| `phaser/` | 描画のみ | ✅ あり |
-| `components/` | Vue UI | ❌ なし |
+| 層             | 責務           | Phaser依存 |
+| -------------- | -------------- | ---------- |
+| `game/`        | 計算・ロジック | ❌ なし    |
+| `stores/`      | 状態保持       | ❌ なし    |
+| `composables/` | ロジック橋渡し | ❌ なし    |
+| `phaser/`      | 描画のみ       | ✅ あり    |
+| `components/`  | Vue UI         | ❌ なし    |
 
 ### 設計原則
 
@@ -141,35 +141,35 @@ roguelike/
 
 #### タイル種類
 
-| タイル | 説明 |
-|--------|------|
-| 床 | 移動可能 |
-| 壁 | 移動不可 |
-| 階段 | 次の階へ |
-| アイテム | 拾える |
+| タイル   | 説明     |
+| -------- | -------- |
+| 床       | 移動可能 |
+| 壁       | 移動不可 |
+| 階段     | 次の階へ |
+| アイテム | 拾える   |
 
 ### 4.3 キャラクター
 
 #### プレイヤー
 
 | パラメータ | 初期値 |
-|------------|--------|
-| HP | 100 |
-| 攻撃力 | 10 |
-| 防御力 | 5 |
+| ---------- | ------ |
+| HP         | 100    |
+| 攻撃力     | 10     |
+| 防御力     | 5      |
 
 #### 敵（プロトタイプは1-2種類）
 
-| 名前 | HP | 攻撃力 | 行動パターン |
-|------|-----|--------|--------------|
-| スライム | 20 | 5 | 隣接時攻撃 |
-| ゴブリン | 30 | 8 | 追跡して攻撃 |
+| 名前     | HP  | 攻撃力 | 行動パターン |
+| -------- | --- | ------ | ------------ |
+| スライム | 20  | 5      | 隣接時攻撃   |
+| ゴブリン | 30  | 8      | 追跡して攻撃 |
 
 ### 4.4 アイテム（プロトタイプは最小限）
 
-| アイテム | 効果 |
-|----------|------|
-| 回復草 | HP +30 |
+| アイテム | 効果         |
+| -------- | ------------ |
+| 回復草   | HP +30       |
 | 毒消し草 | 状態異常回復 |
 
 ### 4.5 操作方法（スマホ）
@@ -182,7 +182,7 @@ roguelike/
 
 #### UI配置
 
-```
+```text
 ┌─────────────────────────┐
 │      ゲーム画面          │
 │                         │
@@ -219,13 +219,14 @@ roguelike/
 ```
 
 Phaserで一括読み込み：
+
 ```typescript
 this.load.pack('assets', 'assets/asset-pack.json')
 ```
 
 ### 5.2 アセットディレクトリ構成
 
-```
+```text
 public/assets/
 ├── asset-pack.json           # アセット定義
 ├── sprites/
@@ -264,19 +265,19 @@ public/assets/
 
 ### 5.3 必要アセット一覧（最小構成）
 
-| カテゴリ | 数量 | 内容 | サイズ |
-|----------|------|------|--------|
-| フォント | 1 | ピクセルフォント | - |
-| タイルセット | 1 | 床・壁・階段を1枚に | 32x32/タイル |
-| プレイヤー | 4枚 | 上下左右 各1枚 | 32x32 |
-| 敵（スライム） | 2枚 | 待機・攻撃 | 32x32 |
-| 敵（ゴブリン） | 2枚 | 待機・攻撃 | 32x32 |
-| アイテム | 4枚 | 回復草、毒消し草、巻物、食料 | 32x32 |
-| UI | 5枚 | HPバー、方向パッド、ボタン | 各種 |
-| 効果音 | 6個 | 攻撃、被ダメ、回復、階段、拾う、死亡 | - |
-| BGM | 1曲 | ダンジョン用ループ | - |
+| カテゴリ       | 数量 | 内容                                 | サイズ       |
+| -------------- | ---- | ------------------------------------ | ------------ |
+| フォント       | 1    | ピクセルフォント                     | -            |
+| タイルセット   | 1    | 床・壁・階段を1枚に                  | 32x32/タイル |
+| プレイヤー     | 4枚  | 上下左右 各1枚                       | 32x32        |
+| 敵（スライム） | 2枚  | 待機・攻撃                           | 32x32        |
+| 敵（ゴブリン） | 2枚  | 待機・攻撃                           | 32x32        |
+| アイテム       | 4枚  | 回復草、毒消し草、巻物、食料         | 32x32        |
+| UI             | 5枚  | HPバー、方向パッド、ボタン           | 各種         |
+| 効果音         | 6個  | 攻撃、被ダメ、回復、階段、拾う、死亡 | -            |
+| BGM            | 1曲  | ダンジョン用ループ                   | -            |
 
-**合計: 約25ファイル**
+合計: 約25ファイル
 
 ### 5.4 仮素材での開発
 
@@ -297,7 +298,7 @@ public/assets/
 
 #### プロンプト例
 
-```
+```text
 8-bit pixel art, RPG character, warrior with axe,
 front view, transparent background, sprite sheet style,
 32x32 pixels, NES color palette
@@ -311,12 +312,13 @@ front view, transparent background, sprite sheet style,
 
 ### 5.6 音声
 
-| 種類 | 数量 | 内容 |
-|------|------|------|
-| BGM | 1-2曲 | ダンジョン、タイトル |
-| SE | 6個 | 攻撃、被ダメージ、回復、階段、アイテム拾う、死亡 |
+| 種類 | 数量  | 内容                                             |
+| ---- | ----- | ------------------------------------------------ |
+| BGM  | 1-2曲 | ダンジョン、タイトル                             |
+| SE   | 6個   | 攻撃、被ダメージ、回復、階段、アイテム拾う、死亡 |
 
 フリー素材サイト:
+
 - [魔王魂](https://maou.audio/)
 - [効果音ラボ](https://soundeffect-lab.info/)
 
@@ -326,17 +328,17 @@ front view, transparent background, sprite sheet style,
 
 ### 6.1 画面一覧
 
-| 画面 | 説明 |
-|------|------|
-| タイトル | ゲーム開始、続きから |
-| ダンジョン | メインゲーム画面 |
-| インベントリ | アイテム管理 |
-| ゲームオーバー | 死亡時 |
-| クリア | 最終階クリア時 |
+| 画面           | 説明                 |
+| -------------- | -------------------- |
+| タイトル       | ゲーム開始、続きから |
+| ダンジョン     | メインゲーム画面     |
+| インベントリ   | アイテム管理         |
+| ゲームオーバー | 死亡時               |
+| クリア         | 最終階クリア時       |
 
 ### 6.2 画面遷移
 
-```
+```text
 タイトル
   ├→ ダンジョン ←→ インベントリ
   │      ├→ ゲームオーバー → タイトル
@@ -353,19 +355,19 @@ front view, transparent background, sprite sheet style,
 ```typescript
 interface SaveData {
   player: {
-    hp: number;
-    maxHp: number;
-    attack: number;
-    defense: number;
-    position: { x: number; y: number };
-    inventory: Item[];
-  };
+    hp: number
+    maxHp: number
+    attack: number
+    defense: number
+    position: { x: number; y: number }
+    inventory: Item[]
+  }
   dungeon: {
-    floor: number;
-    map: number[][];
-    enemies: Enemy[];
-    items: Item[];
-  };
+    floor: number
+    map: number[][]
+    enemies: Enemy[]
+    items: Item[]
+  }
 }
 ```
 
@@ -432,14 +434,14 @@ interface SaveData {
 
 ### スコープを限定した指示例
 
-```
+```text
 「game/systems/CombatSystem.tsにダメージ計算ロジックを実装して。
 Phaserは使わず、純粋なTypeScriptで。
 入力: attacker, defender
 出力: ダメージ値」
 ```
 
-```
+```text
 「stores/gameStore.tsにプレイヤー移動のactionを追加して。
 移動可能かどうかのチェックはgame/systems/MovementSystem.tsを呼び出す形で」
 ```
@@ -459,30 +461,30 @@ Phaserは使わず、純粋なTypeScriptで。
 
 既存の2Dアクションゲームのアセット構成：
 
-| カテゴリ | 数量 | 内容 |
-|----------|------|------|
-| フォント | 1 | ピクセルアート用フォント |
-| タイルマップ | 1 | Tiled JSON形式 |
-| タイルセット | 1 | 地形画像 |
-| 背景 | 2 | 視差スクロール用 |
-| キャラクター | 20 | プレイヤー8種×2フレーム、敵4種×2フレーム |
-| 装飾 | 9 | 木、岩、茂みなど |
-| エフェクト | 2 | ダスト、特殊効果 |
-| 効果音 | 10 | アクション音 |
-| BGM | 1 | ループ音楽 |
+| カテゴリ     | 数量 | 内容                                     |
+| ------------ | ---- | ---------------------------------------- |
+| フォント     | 1    | ピクセルアート用フォント                 |
+| タイルマップ | 1    | Tiled JSON形式                           |
+| タイルセット | 1    | 地形画像                                 |
+| 背景         | 2    | 視差スクロール用                         |
+| キャラクター | 20   | プレイヤー8種×2フレーム、敵4種×2フレーム |
+| 装飾         | 9    | 木、岩、茂みなど                         |
+| エフェクト   | 2    | ダスト、特殊効果                         |
+| 効果音       | 10   | アクション音                             |
+| BGM          | 1    | ループ音楽                               |
 
 **ローグライク用に必要なアセット（最小構成）:**
 
-| カテゴリ | 数量 | 内容 |
-|----------|------|------|
-| フォント | 1 | ピクセルアート用 |
-| タイルセット | 1 | 床、壁、階段（32x32推奨） |
-| プレイヤー | 4-8 | 4方向×待機/移動 |
-| 敵 | 2-4 | 種類×2フレーム |
-| アイテム | 4-6 | 草、巻物など |
-| UI | 5 | HPバー、ボタン、フレーム |
-| 効果音 | 6 | 攻撃、ダメージ、回復、階段、アイテム、死亡 |
-| BGM | 1-2 | ダンジョン、タイトル |
+| カテゴリ     | 数量 | 内容                                       |
+| ------------ | ---- | ------------------------------------------ |
+| フォント     | 1    | ピクセルアート用                           |
+| タイルセット | 1    | 床、壁、階段（32x32推奨）                  |
+| プレイヤー   | 4-8  | 4方向×待機/移動                            |
+| 敵           | 2-4  | 種類×2フレーム                             |
+| アイテム     | 4-6  | 草、巻物など                               |
+| UI           | 5    | HPバー、ボタン、フレーム                   |
+| 効果音       | 6    | 攻撃、ダメージ、回復、階段、アイテム、死亡 |
+| BGM          | 1-2  | ダンジョン、タイトル                       |
 
 ### 10.2 設定ファイル設計（参考）
 
@@ -541,19 +543,19 @@ Phaserは使わず、純粋なTypeScriptで。
 
 ```typescript
 // 既存プロジェクトのSoundNinja.jsより
-aiState: "patrol" | "chase" | "attack"
+aiState: 'patrol' | 'chase' | 'attack'
 
-switch(this.aiState) {
-  case "patrol":
+switch (this.aiState) {
+  case 'patrol':
     // 一定範囲を往復
     if (distanceToPlayer <= detectionRange) {
-      this.aiState = "chase"
+      this.aiState = 'chase'
     }
     break
-  case "chase":
+  case 'chase':
     // プレイヤーを追跡
     if (distanceToPlayer <= attackRange) {
-      this.aiState = "attack"
+      this.aiState = 'attack'
     }
     break
 }
@@ -603,14 +605,14 @@ class Level1Scene extends BaseLevelScene {
 
 ### 10.4 ローグライクへの適用
 
-| 既存パターン | ローグライクでの活用 |
-|--------------|---------------------|
-| 状態機械（敵AI） | ターン制AI（待機→移動→攻撃） |
+| 既存パターン           | ローグライクでの活用           |
+| ---------------------- | ------------------------------ |
+| 状態機械（敵AI）       | ターン制AI（待機→移動→攻撃）   |
 | ダメージフィードバック | ダメージ数字、効果音、画面効果 |
-| UIシーン分離 | HP、インベントリ、ミニマップ |
-| 基底クラス継承 | 敵種類の量産、ダンジョン層生成 |
-| gameConfig.json | 敵パラメータ、難易度調整 |
-| asset-pack.json | アセット一括管理、動的ロード |
+| UIシーン分離           | HP、インベントリ、ミニマップ   |
+| 基底クラス継承         | 敵種類の量産、ダンジョン層生成 |
+| gameConfig.json        | 敵パラメータ、難易度調整       |
+| asset-pack.json        | アセット一括管理、動的ロード   |
 
 ---
 
@@ -642,7 +644,7 @@ frontend:
 
 #### 環境変数
 
-```
+```text
 NODE_VERSION=18
 NUXT_PUBLIC_AD_CLIENT=ca-pub-xxxxxxxxxx
 ```
@@ -667,12 +669,12 @@ NUXT_PUBLIC_AD_CLIENT=ca-pub-xxxxxxxxxx
 
 ### 12.1 広告配置方針
 
-| 配置場所 | 広告タイプ | タイミング |
-|----------|-----------|-----------|
-| タイトル画面 | バナー広告 | 常時表示 |
-| ゲームオーバー | インタースティシャル | 死亡時 |
-| 階層クリア | リワード広告（任意） | クリア時に報酬と引き換え |
-| インベントリ | バナー広告（小） | 開いている間 |
+| 配置場所       | 広告タイプ           | タイミング               |
+| -------------- | -------------------- | ------------------------ |
+| タイトル画面   | バナー広告           | 常時表示                 |
+| ゲームオーバー | インタースティシャル | 死亡時                   |
+| 階層クリア     | リワード広告（任意） | クリア時に報酬と引き換え |
+| インベントリ   | バナー広告（小）     | 開いている間             |
 
 ### 12.2 Google AdSense / AdMob
 
@@ -688,11 +690,11 @@ export default defineNuxtConfig({
           src: 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js',
           async: true,
           crossorigin: 'anonymous',
-          'data-ad-client': 'ca-pub-xxxxxxxxxx'
-        }
-      ]
-    }
-  }
+          'data-ad-client': 'ca-pub-xxxxxxxxxx',
+        },
+      ],
+    },
+  },
 })
 ```
 
@@ -701,22 +703,24 @@ export default defineNuxtConfig({
 ```vue
 <!-- components/AdBanner.client.vue -->
 <template>
-  <ins class="adsbygoogle"
-       style="display:block"
-       :data-ad-client="adClient"
-       :data-ad-slot="adSlot"
-       data-ad-format="auto"
-       data-full-width-responsive="true">
+  <ins
+    class="adsbygoogle"
+    style="display:block"
+    :data-ad-client="adClient"
+    :data-ad-slot="adSlot"
+    data-ad-format="auto"
+    data-full-width-responsive="true"
+  >
   </ins>
 </template>
 
 <script setup>
-const adClient = useRuntimeConfig().public.adClient
-const props = defineProps(['adSlot'])
+  const adClient = useRuntimeConfig().public.adClient
+  const props = defineProps(['adSlot'])
 
-onMounted(() => {
-  (window.adsbygoogle = window.adsbygoogle || []).push({})
-})
+  onMounted(() => {
+    ;(window.adsbygoogle = window.adsbygoogle || []).push({})
+  })
 </script>
 ```
 
@@ -737,10 +741,7 @@ export const useRewardAd = () => {
   const grantReward = () => {
     // 報酬付与（HP回復、アイテムなど）
     const gameStore = useGameStore()
-    gameStore.player.hp = Math.min(
-      gameStore.player.hp + 30,
-      gameStore.player.maxHp
-    )
+    gameStore.player.hp = Math.min(gameStore.player.hp + 30, gameStore.player.maxHp)
   }
 
   return { showRewardAd, grantReward }
@@ -764,13 +765,13 @@ export const useRewardAd = () => {
 
 ## 13. 決定事項まとめ
 
-| 項目 | 決定 |
-|------|------|
-| 技術スタック | Nuxt 3 + Phaser 3 + Pinia + rot.js |
-| ダンジョン | 固定マップで開始 |
-| アセット | 仮素材で進める、後でStable Diffusion |
-| アーキテクチャ | ロジック/描画分離、Pinia一元管理 |
-| 設計パターン | 状態機械、ダメージフィードバック、UI分離、基底クラス継承 |
-| 設定ファイル | gameConfig.jsonでパラメータ外部化 |
-| デプロイ | AWS Amplify（GitHub連携） |
-| 収益化 | Google AdSense / AdMob（バナー、インタースティシャル、リワード） |
+| 項目           | 決定                                                             |
+| -------------- | ---------------------------------------------------------------- |
+| 技術スタック   | Nuxt 3 + Phaser 3 + Pinia + rot.js                               |
+| ダンジョン     | 固定マップで開始                                                 |
+| アセット       | 仮素材で進める、後でStable Diffusion                             |
+| アーキテクチャ | ロジック/描画分離、Pinia一元管理                                 |
+| 設計パターン   | 状態機械、ダメージフィードバック、UI分離、基底クラス継承         |
+| 設定ファイル   | gameConfig.jsonでパラメータ外部化                                |
+| デプロイ       | AWS Amplify（GitHub連携）                                        |
+| 収益化         | Google AdSense / AdMob（バナー、インタースティシャル、リワード） |

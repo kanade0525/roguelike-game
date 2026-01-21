@@ -13,7 +13,10 @@ export interface EnemyData {
   aiState: AIState
 }
 
-export const ENEMY_DEFINITIONS: Record<EnemyType, Omit<EnemyData, 'id' | 'position' | 'aiState'>> = {
+export const ENEMY_DEFINITIONS: Record<
+  EnemyType,
+  Omit<EnemyData, 'id' | 'position' | 'aiState'>
+> = {
   slime: {
     type: 'slime',
     hp: 20,

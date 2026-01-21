@@ -122,11 +122,21 @@ export class DungeonScene extends Phaser.Scene {
 
     // 壁の前面（見える部分）
     this.mapGraphics.fillStyle(0x2a3a4a)
-    this.mapGraphics.fillRect(x, y - this.wallHeight + this.tileHeight - 1, this.tileWidth - 1, this.wallHeight)
+    this.mapGraphics.fillRect(
+      x,
+      y - this.wallHeight + this.tileHeight - 1,
+      this.tileWidth - 1,
+      this.wallHeight
+    )
 
     // 壁の輪郭
     this.mapGraphics.lineStyle(1, 0x1a2a3a, 0.8)
-    this.mapGraphics.strokeRect(x, y - this.wallHeight, this.tileWidth - 1, this.tileHeight - 1 + this.wallHeight)
+    this.mapGraphics.strokeRect(
+      x,
+      y - this.wallHeight,
+      this.tileWidth - 1,
+      this.tileHeight - 1 + this.wallHeight
+    )
   }
 
   private drawPlayer(tileX: number, tileY: number) {

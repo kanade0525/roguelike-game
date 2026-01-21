@@ -6,7 +6,7 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "4000:3000"
+      - '4000:3000'
     volumes:
       # ソースコードをマウント（ホットリロード用）
       - .:/app

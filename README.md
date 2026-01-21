@@ -18,7 +18,7 @@
 docker-compose up
 ```
 
-http://localhost:4000 でアクセス
+<http://localhost:4000> でアクセス
 
 ### ローカル
 
@@ -29,7 +29,7 @@ npm run dev
 
 ## ディレクトリ構成
 
-```
+```text
 ├── game/           # 純粋なゲームロジック（Phaser非依存）
 │   ├── entities/   # Player, Enemy
 │   ├── systems/    # TurnManager, CombatSystem
@@ -50,13 +50,13 @@ npm run dev
 
 ## コマンド
 
-| コマンド | 説明 |
-|----------|------|
-| `npm run dev` | 開発サーバー起動 |
-| `npm run build` | 本番ビルド |
-| `npm run generate` | 静的サイト生成 |
-| `npm run lint` | ESLint実行 |
-| `npm run format` | Prettierでフォーマット |
+| コマンド           | 説明                   |
+| ------------------ | ---------------------- |
+| `npm run dev`      | 開発サーバー起動       |
+| `npm run build`    | 本番ビルド             |
+| `npm run generate` | 静的サイト生成         |
+| `npm run lint`     | ESLint実行             |
+| `npm run format`   | Prettierでフォーマット |
 
 ## デプロイ
 
