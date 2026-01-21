@@ -3,9 +3,7 @@ export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
   devtools: { enabled: true },
 
-  modules: [
-    '@pinia/nuxt',
-  ],
+  modules: ['@pinia/nuxt', '@nuxt/eslint'],
 
   typescript: {
     strict: true,
@@ -17,7 +15,10 @@ export default defineNuxtConfig({
       title: 'ローグライクゲーム',
       meta: [
         { charset: 'utf-8' },
-        { name: 'viewport', content: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no' },
+        {
+          name: 'viewport',
+          content: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no',
+        },
         { name: 'description', content: '不思議のダンジョン風ローグライクゲーム' },
       ],
     },
