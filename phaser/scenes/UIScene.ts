@@ -14,13 +14,8 @@ export class UIScene extends Phaser.Scene {
   private messages: string[] = []
   private maxVisibleMessages = 4
 
-  // 仮想方向パッド
-  private dpadGraphics!: Phaser.GameObjects.Graphics
-  private dpadButtons: Phaser.GameObjects.Arc[] = []
-
-  // アクションボタン
-  private menuButton!: Phaser.GameObjects.Container
-  private waitButton!: Phaser.GameObjects.Container
+  // コントローラー
+  private controllerBg!: Phaser.GameObjects.Graphics
 
   constructor() {
     super({ key: 'UIScene' })
@@ -29,8 +24,7 @@ export class UIScene extends Phaser.Scene {
   create() {
     this.createStatusBar()
     this.createMessageLog()
-    this.createDPad()
-    this.createActionButtons()
+    this.createController()
 
     // 初期メッセージ
     this.addMessage('ダンジョンに足を踏み入れた！')
@@ -52,38 +46,30 @@ export class UIScene extends Phaser.Scene {
     }
 
     // 階層表示
-    this.floorText = this.add.text(20, 16, '1F', {
-      ...textStyle,
-      color: '#ffcc00',
-    })
+    this.floorText = this.add.text(20, 16, '1F', textStyle)
 
     // レベル表示
     this.levelText = this.add.text(80, 16, 'Lv: 1', textStyle)
 
     // HP表示
-    this.hpText = this.add.text(180, 16, 'HP: 100/100', {
-      ...textStyle,
-      color: '#66ff66',
-    })
+    this.hpText = this.add.text(180, 16, 'HP: 100/100', textStyle)
 
     // 満腹度表示
-    this.satiationText = this.add.text(340, 16, '腹: 100', {
-      ...textStyle,
-      color: '#ffaa66',
-    })
+    this.satiationText = this.add.text(340, 16, '腹: 100', textStyle)
   }
 
   private createMessageLog() {
-    // メッセージログ背景
+    // メッセージログ背景（コントローラーの上）
     this.messageBg = this.add.graphics()
-    this.messageBg.fillStyle(0x1a1a2e, 0.85)
-    this.messageBg.fillRoundedRect(8, 620, 464, 92, 4)
+    this.messageBg.fillStyle(0x1a1a2e, 0.9)
+    this.messageBg.fillRoundedRect(8, 430, 464, 50, 4)
     this.messageBg.lineStyle(2, 0x3a3a5e, 1)
-    this.messageBg.strokeRoundedRect(8, 620, 464, 92, 4)
+    this.messageBg.strokeRoundedRect(8, 430, 464, 50, 4)
 
-    // メッセージテキスト（4行分）
+    // メッセージテキスト（2行分に縮小）
+    this.maxVisibleMessages = 2
     for (let i = 0; i < this.maxVisibleMessages; i++) {
-      const text = this.add.text(16, 628 + i * 20, '', {
+      const text = this.add.text(16, 438 + i * 20, '', {
         fontSize: '14px',
         color: '#ffffff',
         fontFamily: 'monospace',
@@ -119,14 +105,6 @@ export class UIScene extends Phaser.Scene {
 
   updateHP(current: number, max: number) {
     this.hpText.setText(`HP: ${current}/${max}`)
-    // HPが低いと赤く
-    if (current / max < 0.3) {
-      this.hpText.setColor('#ff4444')
-    } else if (current / max < 0.6) {
-      this.hpText.setColor('#ffaa44')
-    } else {
-      this.hpText.setColor('#66ff66')
-    }
   }
 
   updateFloor(floor: number) {
@@ -139,150 +117,194 @@ export class UIScene extends Phaser.Scene {
 
   updateSatiation(current: number, max: number) {
     this.satiationText.setText(`腹: ${current}`)
-    // 満腹度が低いと赤く
-    if (current / max < 0.2) {
-      this.satiationText.setColor('#ff4444')
-    } else if (current / max < 0.5) {
-      this.satiationText.setColor('#ffaa44')
-    } else {
-      this.satiationText.setColor('#ffaa66')
-    }
   }
 
-  private createDPad() {
-    const centerX = 100
-    const centerY = 520
-    const buttonRadius = 28
-    const distance = 45
+  private createController() {
+    const screenWidth = 480
+    const controllerY = 488
+    const controllerHeight = 232
 
-    this.dpadGraphics = this.add.graphics()
+    // コントローラー背景
+    this.controllerBg = this.add.graphics()
+    this.controllerBg.fillStyle(0x2a2a3e, 1)
+    this.controllerBg.fillRect(0, controllerY, screenWidth, controllerHeight)
 
-    // D-Pad背景（円形）
-    this.dpadGraphics.fillStyle(0x1a1a2e, 0.8)
-    this.dpadGraphics.fillCircle(centerX, centerY, 80)
-    this.dpadGraphics.lineStyle(2, 0x3a3a5e, 1)
-    this.dpadGraphics.strokeCircle(centerX, centerY, 80)
+    // L/Rボタン（上部）
+    this.createLRButtons(controllerY + 20)
 
-    // 方向ボタンの定義（8方向）
+    // 8方向キー（左）
+    this.createDPad(100, controllerY + 120)
+
+    // A/Bボタン（右）
+    this.createABButtons(380, controllerY + 120)
+
+    // SELECT/STARTボタン（中央下部）
+    this.createSelectStartButtons(controllerY + 205)
+  }
+
+  private createDPad(centerX: number, centerY: number) {
+    const btnSize = 36
+    const gap = 2
+    const graphics = this.add.graphics()
+
+    // 8方向の矢印ボタン（3x3グリッド、中央は空き）
     const directions = [
-      { dx: 0, dy: -1, x: centerX, y: centerY - distance, label: '▲' }, // 上
-      { dx: 0, dy: 1, x: centerX, y: centerY + distance, label: '▼' }, // 下
-      { dx: -1, dy: 0, x: centerX - distance, y: centerY, label: '◀' }, // 左
-      { dx: 1, dy: 0, x: centerX + distance, y: centerY, label: '▶' }, // 右
-      { dx: -1, dy: -1, x: centerX - distance * 0.7, y: centerY - distance * 0.7, label: '◤' }, // 左上
-      { dx: 1, dy: -1, x: centerX + distance * 0.7, y: centerY - distance * 0.7, label: '◥' }, // 右上
-      { dx: -1, dy: 1, x: centerX - distance * 0.7, y: centerY + distance * 0.7, label: '◣' }, // 左下
-      { dx: 1, dy: 1, x: centerX + distance * 0.7, y: centerY + distance * 0.7, label: '◢' }, // 右下
+      { dx: -1, dy: -1, col: 0, row: 0, arrow: '↖' },
+      { dx: 0, dy: -1, col: 1, row: 0, arrow: '↑' },
+      { dx: 1, dy: -1, col: 2, row: 0, arrow: '↗' },
+      { dx: -1, dy: 0, col: 0, row: 1, arrow: '←' },
+      { dx: 1, dy: 0, col: 2, row: 1, arrow: '→' },
+      { dx: -1, dy: 1, col: 0, row: 2, arrow: '↙' },
+      { dx: 0, dy: 1, col: 1, row: 2, arrow: '↓' },
+      { dx: 1, dy: 1, col: 2, row: 2, arrow: '↘' },
     ]
 
-    directions.forEach((dir, index) => {
-      // 斜め方向は小さめ
-      const radius = index < 4 ? buttonRadius : buttonRadius * 0.7
+    const gridSize = btnSize * 3 + gap * 2
+    const startX = centerX - gridSize / 2
+    const startY = centerY - gridSize / 2
 
-      const button = this.add.circle(dir.x, dir.y, radius, 0x3a5a7a, 0.9)
-      button.setStrokeStyle(2, 0x5a8aaa)
-      button.setInteractive({ useHandCursor: true })
+    directions.forEach((dir) => {
+      const x = startX + dir.col * (btnSize + gap)
+      const y = startY + dir.row * (btnSize + gap)
 
-      // ボタンラベル
-      const labelSize = index < 4 ? '18px' : '12px'
-      this.add
-        .text(dir.x, dir.y, dir.label, {
-          fontSize: labelSize,
-          color: '#ffffff',
-          fontFamily: 'sans-serif',
-        })
-        .setOrigin(0.5)
+      // ボタン背景
+      graphics.fillStyle(0x4a4a5a, 1)
+      graphics.fillRoundedRect(x, y, btnSize, btnSize, 6)
+      graphics.lineStyle(1, 0x5a5a6a, 1)
+      graphics.strokeRoundedRect(x, y, btnSize, btnSize, 6)
 
-      // タッチイベント
-      button.on('pointerdown', () => {
-        button.setFillStyle(0x5a8aaa, 1)
+      // 当たり判定
+      const btn = this.add.rectangle(x + btnSize / 2, y + btnSize / 2, btnSize, btnSize, 0x000000, 0)
+      btn.setInteractive({ useHandCursor: true })
+
+      // 矢印テキスト
+      this.add.text(x + btnSize / 2, y + btnSize / 2, dir.arrow, {
+        fontSize: '20px',
+        color: '#cccccc',
+      }).setOrigin(0.5)
+
+      btn.on('pointerdown', () => {
         this.emitMove(dir.dx, dir.dy)
       })
-
-      button.on('pointerup', () => {
-        button.setFillStyle(0x3a5a7a, 0.9)
-      })
-
-      button.on('pointerout', () => {
-        button.setFillStyle(0x3a5a7a, 0.9)
-      })
-
-      this.dpadButtons.push(button)
     })
+
+    // 中央の装飾
+    const cx = startX + btnSize + gap
+    const cy = startY + btnSize + gap
+    graphics.fillStyle(0x3a3a4a, 1)
+    graphics.fillRoundedRect(cx, cy, btnSize, btnSize, 6)
   }
 
-  private createActionButtons() {
-    const buttonY = 520
+  private createABButtons(centerX: number, centerY: number) {
+    const radius = 30
 
-    // メニューボタン
-    this.menuButton = this.createButton(320, buttonY, 'メニュー', () => {
-      this.emitAction('menu')
+    // Aボタン（右上）
+    const btnA = this.add.circle(centerX + 28, centerY - 24, radius, 0x5a5a7a)
+    btnA.setStrokeStyle(2, 0x7a7a9a)
+    btnA.setInteractive({ useHandCursor: true })
+    this.add.text(centerX + 28, centerY - 24, 'A', {
+      fontSize: '20px',
+      color: '#dddddd',
+      fontStyle: 'bold',
+    }).setOrigin(0.5)
+
+    btnA.on('pointerdown', () => {
+      btnA.setFillStyle(0x7a7a9a)
+      this.emitAction('confirm')
     })
+    btnA.on('pointerup', () => btnA.setFillStyle(0x5a5a7a))
+    btnA.on('pointerout', () => btnA.setFillStyle(0x5a5a7a))
 
-    // 待機ボタン
-    this.waitButton = this.createButton(410, buttonY, '待機', () => {
+    // Bボタン（左下）
+    const btnB = this.add.circle(centerX - 28, centerY + 24, radius, 0x5a5a7a)
+    btnB.setStrokeStyle(2, 0x7a7a9a)
+    btnB.setInteractive({ useHandCursor: true })
+    this.add.text(centerX - 28, centerY + 24, 'B', {
+      fontSize: '20px',
+      color: '#dddddd',
+      fontStyle: 'bold',
+    }).setOrigin(0.5)
+
+    btnB.on('pointerdown', () => {
+      btnB.setFillStyle(0x7a7a9a)
       this.emitAction('wait')
     })
+    btnB.on('pointerup', () => btnB.setFillStyle(0x5a5a7a))
+    btnB.on('pointerout', () => btnB.setFillStyle(0x5a5a7a))
   }
 
-  private createButton(
-    x: number,
-    y: number,
-    label: string,
-    callback: () => void
-  ): Phaser.GameObjects.Container {
-    const container = this.add.container(x, y)
+  private createLRButtons(y: number) {
+    const graphics = this.add.graphics()
+    const btnWidth = 70
+    const btnHeight = 26
 
-    // ボタン背景
-    const bg = this.add.graphics()
-    bg.fillStyle(0x3a5a7a, 0.9)
-    bg.fillRoundedRect(-40, -25, 80, 50, 8)
-    bg.lineStyle(2, 0x5a8aaa, 1)
-    bg.strokeRoundedRect(-40, -25, 80, 50, 8)
+    // Lボタン
+    graphics.fillStyle(0x4a4a5a, 1)
+    graphics.fillRoundedRect(15, y - btnHeight / 2, btnWidth, btnHeight, 4)
+    graphics.lineStyle(1, 0x5a5a6a, 1)
+    graphics.strokeRoundedRect(15, y - btnHeight / 2, btnWidth, btnHeight, 4)
 
-    // ボタンテキスト
-    const text = this.add
-      .text(0, 0, label, {
-        fontSize: '16px',
-        color: '#ffffff',
-        fontFamily: 'monospace',
-        fontStyle: 'bold',
-      })
-      .setOrigin(0.5)
+    const btnL = this.add.rectangle(15 + btnWidth / 2, y, btnWidth, btnHeight, 0x000000, 0)
+    btnL.setInteractive({ useHandCursor: true })
+    this.add.text(15 + btnWidth / 2, y, 'L', {
+      fontSize: '14px',
+      color: '#aaaaaa',
+      fontStyle: 'bold',
+    }).setOrigin(0.5)
 
-    container.add([bg, text])
+    btnL.on('pointerdown', () => this.emitAction('prevItem'))
 
-    // インタラクティブ領域
-    const hitArea = this.add.rectangle(0, 0, 80, 50, 0x000000, 0)
-    hitArea.setInteractive({ useHandCursor: true })
-    container.add(hitArea)
+    // Rボタン
+    const rX = 480 - 15 - btnWidth
+    graphics.fillStyle(0x4a4a5a, 1)
+    graphics.fillRoundedRect(rX, y - btnHeight / 2, btnWidth, btnHeight, 4)
+    graphics.lineStyle(1, 0x5a5a6a, 1)
+    graphics.strokeRoundedRect(rX, y - btnHeight / 2, btnWidth, btnHeight, 4)
 
-    hitArea.on('pointerdown', () => {
-      bg.clear()
-      bg.fillStyle(0x5a8aaa, 1)
-      bg.fillRoundedRect(-40, -25, 80, 50, 8)
-      bg.lineStyle(2, 0x7abacc, 1)
-      bg.strokeRoundedRect(-40, -25, 80, 50, 8)
-      callback()
-    })
+    const btnR = this.add.rectangle(rX + btnWidth / 2, y, btnWidth, btnHeight, 0x000000, 0)
+    btnR.setInteractive({ useHandCursor: true })
+    this.add.text(rX + btnWidth / 2, y, 'R', {
+      fontSize: '14px',
+      color: '#aaaaaa',
+      fontStyle: 'bold',
+    }).setOrigin(0.5)
 
-    hitArea.on('pointerup', () => {
-      bg.clear()
-      bg.fillStyle(0x3a5a7a, 0.9)
-      bg.fillRoundedRect(-40, -25, 80, 50, 8)
-      bg.lineStyle(2, 0x5a8aaa, 1)
-      bg.strokeRoundedRect(-40, -25, 80, 50, 8)
-    })
+    btnR.on('pointerdown', () => this.emitAction('nextItem'))
+  }
 
-    hitArea.on('pointerout', () => {
-      bg.clear()
-      bg.fillStyle(0x3a5a7a, 0.9)
-      bg.fillRoundedRect(-40, -25, 80, 50, 8)
-      bg.lineStyle(2, 0x5a8aaa, 1)
-      bg.strokeRoundedRect(-40, -25, 80, 50, 8)
-    })
+  private createSelectStartButtons(y: number) {
+    const graphics = this.add.graphics()
+    const btnWidth = 55
+    const btnHeight = 18
+    const gap = 10
+    const centerX = 240
 
-    return container
+    // SELECTボタン
+    const selectX = centerX - gap / 2 - btnWidth
+    graphics.fillStyle(0x3a3a4a, 1)
+    graphics.fillRoundedRect(selectX, y - btnHeight / 2, btnWidth, btnHeight, 9)
+
+    const btnSelect = this.add.rectangle(selectX + btnWidth / 2, y, btnWidth, btnHeight, 0x000000, 0)
+    btnSelect.setInteractive({ useHandCursor: true })
+    this.add.text(selectX + btnWidth / 2, y, 'SELECT', {
+      fontSize: '9px',
+      color: '#888888',
+    }).setOrigin(0.5)
+
+    btnSelect.on('pointerdown', () => this.emitAction('inventory'))
+
+    // STARTボタン
+    const startX = centerX + gap / 2
+    graphics.fillRoundedRect(startX, y - btnHeight / 2, btnWidth, btnHeight, 9)
+
+    const btnStart = this.add.rectangle(startX + btnWidth / 2, y, btnWidth, btnHeight, 0x000000, 0)
+    btnStart.setInteractive({ useHandCursor: true })
+    this.add.text(startX + btnWidth / 2, y, 'START', {
+      fontSize: '9px',
+      color: '#888888',
+    }).setOrigin(0.5)
+
+    btnStart.on('pointerdown', () => this.emitAction('menu'))
   }
 
   private emitMove(dx: number, dy: number) {
