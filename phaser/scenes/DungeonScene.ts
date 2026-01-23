@@ -5,18 +5,23 @@ export class DungeonScene extends Phaser.Scene {
   private viewTilesX = 10
   private viewTilesY = 6
 
-  // タイルサイズ（動的に計算）
+  // タイルサイズ（16x16を拡大表示）
+  private baseTileSize = 16
+  private tileScale = 3 // 16x3 = 48px
   private tileWidth = 0
   private tileHeight = 0
-  private wallHeight = 0
 
-  // マップサイズ（ビューポートより大きい）
-  private mapWidth = 30
-  private mapHeight = 30
+  // マップサイズ
+  private mapWidth = 3
+  private mapHeight = 3
   private map: number[][] = []
-  private playerPos = { x: 5, y: 5 }
-  private mapGraphics!: Phaser.GameObjects.Graphics
-  private entityGraphics!: Phaser.GameObjects.Graphics
+  private playerPos = { x: 0, y: 0 }
+
+  // スプライトコンテナ
+  private floorContainer!: Phaser.GameObjects.Container
+  private wallContainer!: Phaser.GameObjects.Container
+  private entityContainer!: Phaser.GameObjects.Container
+  private playerSprite!: Phaser.GameObjects.Sprite
 
   // マップ描画の開始位置
   private offsetX = 0
@@ -32,17 +37,79 @@ export class DungeonScene extends Phaser.Scene {
     super({ key: 'DungeonScene' })
   }
 
+  preload() {
+    // 床タイル
+    this.load.image('floor_1', '/assets/tiles/floor_1.png')
+    this.load.image('floor_2', '/assets/tiles/floor_2.png')
+    this.load.image('floor_3', '/assets/tiles/floor_3.png')
+    this.load.image('floor_stairs', '/assets/tiles/floor_stairs.png')
+
+    // 壁タイル
+    this.load.image('wall_mid', '/assets/tiles/wall_mid.png') // 壁前面（レンガ）
+    this.load.image('wall_left', '/assets/tiles/wall_left.png') // 壁左側面
+    this.load.image('wall_right', '/assets/tiles/wall_right.png') // 壁右側面
+    this.load.image('wall_top_mid', '/assets/tiles/wall_top_mid.png') // 壁上端ライン
+    this.load.image('wall_top_left', '/assets/tiles/wall_top_left.png') // 壁上端左角
+    this.load.image('wall_top_right', '/assets/tiles/wall_top_right.png') // 壁上端右角
+    // 外側コーナー（床の外側の角）
+    this.load.image('wall_outer_front_left', '/assets/tiles/wall_outer_front_left.png')
+    this.load.image('wall_outer_front_right', '/assets/tiles/wall_outer_front_right.png')
+    this.load.image('wall_outer_mid_left', '/assets/tiles/wall_outer_mid_left.png')
+    this.load.image('wall_outer_mid_right', '/assets/tiles/wall_outer_mid_right.png')
+    this.load.image('wall_outer_top_left', '/assets/tiles/wall_outer_top_left.png')
+    this.load.image('wall_outer_top_right', '/assets/tiles/wall_outer_top_right.png')
+    // 内側コーナー
+    this.load.image('wall_edge_bottom_left', '/assets/tiles/wall_edge_bottom_left.png')
+    this.load.image('wall_edge_bottom_right', '/assets/tiles/wall_edge_bottom_right.png')
+    this.load.image('wall_edge_top_left', '/assets/tiles/wall_edge_top_left.png')
+    this.load.image('wall_edge_top_right', '/assets/tiles/wall_edge_top_right.png')
+    // 南側の壁用
+    this.load.image('wall_edge_left', '/assets/tiles/wall_edge_left.png')
+    this.load.image('wall_edge_right', '/assets/tiles/wall_edge_right.png')
+
+    // プレイヤースプライト（個別フレーム）
+    this.load.image('knight_f0', '/assets/tiles/knight_m_idle_anim_f0.png')
+    this.load.image('knight_f1', '/assets/tiles/knight_m_idle_anim_f1.png')
+    this.load.image('knight_f2', '/assets/tiles/knight_m_idle_anim_f2.png')
+    this.load.image('knight_f3', '/assets/tiles/knight_m_idle_anim_f3.png')
+  }
+
   create() {
     this.calculateTileSize()
     this.createMap()
-    this.mapGraphics = this.add.graphics()
-    this.entityGraphics = this.add.graphics()
+
+    // コンテナ作成（描画順序制御用）
+    this.floorContainer = this.add.container(0, 0)
+    this.wallContainer = this.add.container(0, 0)
+    this.entityContainer = this.add.container(0, 0)
+
+    // プレイヤーアニメーション作成
+    this.createAnimations()
+
     this.drawScene()
+    this.drawDebugGrid()
     this.setupInput()
     this.setupTouchInput()
 
     // UIシーンを並行起動
     this.scene.launch('UIScene')
+  }
+
+  private createAnimations() {
+    // アイドルアニメーション
+    if (!this.anims.exists('knight_idle_anim')) {
+      this.anims.create({
+        key: 'knight_idle_anim',
+        frames: [
+          { key: 'knight_f0' },
+          { key: 'knight_f1' },
+          { key: 'knight_f2' },
+          { key: 'knight_f3' },
+        ],
+        frameRate: 6,
+        repeat: -1,
+      })
+    }
   }
 
   private calculateTileSize() {
@@ -53,86 +120,179 @@ export class DungeonScene extends Phaser.Scene {
     // ゲームエリアの高さ（ステータスバー下〜メッセージログ上）
     const gameAreaHeight = this.gameAreaBottom - this.gameAreaTop
 
-    // 正方形タイル：横幅を基準にサイズを計算（10タイルが収まるように）
-    const tileSize = Math.floor(this.screenWidth / this.viewTilesX)
-    this.tileWidth = tileSize
-    this.tileHeight = tileSize
+    // タイルサイズを計算（横幅基準でスケール調整）
+    this.tileScale = Math.floor(this.screenWidth / this.viewTilesX / this.baseTileSize)
+    this.tileWidth = this.baseTileSize * this.tileScale
+    this.tileHeight = this.baseTileSize * this.tileScale
 
-    // 壁の高さはタイルの半分
-    this.wallHeight = Math.floor(tileSize * 0.5)
-
-    // オフセットを計算（中央揃え）
-    this.offsetX = Math.floor((this.screenWidth - this.viewTilesX * this.tileWidth) / 2)
-    this.offsetY = this.gameAreaTop + Math.floor((gameAreaHeight - this.viewTilesY * this.tileHeight) / 2)
+    // オフセットを計算（マップを中央揃え）
+    this.offsetX = Math.floor((this.screenWidth - this.mapWidth * this.tileWidth) / 2)
+    this.offsetY = this.gameAreaTop + Math.floor((gameAreaHeight - this.mapHeight * this.tileHeight) / 2)
   }
 
   private createMap() {
-    // 仮の固定マップ（0: 床, 1: 壁, 2: 階段）
+    // 2x2マップ: 全て床
     for (let y = 0; y < this.mapHeight; y++) {
       this.map[y] = []
       for (let x = 0; x < this.mapWidth; x++) {
-        // 外周は壁
-        if (x === 0 || x === this.mapWidth - 1 || y === 0 || y === this.mapHeight - 1) {
-          this.map[y][x] = 1
-        } else {
-          this.map[y][x] = 0
-        }
+        this.map[y][x] = 0 // 全て床
       }
     }
-    // 階段を配置
-    this.map[20][20] = 2
-
-    // いくつかの内部壁を追加（検証用に複数配置）
-    this.map[4][4] = 1
-    this.map[4][5] = 1
-    this.map[7][8] = 1
-    this.map[8][8] = 1
-    this.map[10][10] = 1
-    this.map[10][11] = 1
-    this.map[10][12] = 1
-    this.map[15][5] = 1
-    this.map[15][6] = 1
-    this.map[15][7] = 1
-    this.map[15][8] = 1
   }
 
   private drawScene() {
-    this.mapGraphics.clear()
-    this.entityGraphics.clear()
+    // コンテナをクリア
+    this.floorContainer.removeAll(true)
+    this.wallContainer.removeAll(true)
+    this.entityContainer.removeAll(true)
 
-    // ビューポートの範囲を計算（プレイヤー中心）
-    const halfViewX = Math.floor(this.viewTilesX / 2)
-    const halfViewY = Math.floor(this.viewTilesY / 2)
-    const startX = this.playerPos.x - halfViewX
-    const startY = this.playerPos.y - halfViewY
-    const endX = startX + this.viewTilesX
-    const endY = startY + this.viewTilesY
+    // マップ全体を描画
+    const startX = 0
+    const startY = 0
+    const endX = this.mapWidth
+    const endY = this.mapHeight
 
-    // 床を先に全部描画
+    // 全タイルをスキャンして描画
     for (let y = startY; y < endY; y++) {
       for (let x = startX; x < endX; x++) {
         if (x < 0 || x >= this.mapWidth || y < 0 || y >= this.mapHeight) continue
         const tile = this.map[y][x]
+
         if (tile === 0 || tile === 2) {
+          // 床タイルを描画
           this.drawFloorTile(x, y, startX, startY, tile === 2)
+          // 縁タイルを重ねて描画
+          this.drawBorderOverlay(x, y, startX, startY)
         }
       }
     }
 
-    // 壁とエンティティを描画順序を考慮して描画（奥から手前へ）
-    for (let y = startY; y < endY; y++) {
-      for (let x = startX; x < endX; x++) {
-        if (x < 0 || x >= this.mapWidth || y < 0 || y >= this.mapHeight) continue
+    // プレイヤーを描画
+    if (
+      this.playerPos.y >= startY &&
+      this.playerPos.y < endY &&
+      this.playerPos.x >= startX &&
+      this.playerPos.x < endX
+    ) {
+      this.drawPlayer(this.playerPos.x, this.playerPos.y, startX, startY)
+    }
+  }
 
-        // プレイヤーをこの位置で描画
-        if (this.playerPos.x === x && this.playerPos.y === y) {
-          this.drawPlayer(x, y, startX, startY)
-        }
 
-        // 壁を描画
-        if (this.map[y][x] === 1) {
-          this.drawWallTile(x, y, startX, startY)
-        }
+  // タイルが床かどうか判定（範囲外は壁扱い）
+  private isFloor(x: number, y: number): boolean {
+    if (x < 0 || x >= this.mapWidth || y < 0 || y >= this.mapHeight) {
+      return false
+    }
+    return this.map[y][x] === 0 || this.map[y][x] === 2
+  }
+
+  // 縁タイルを床の上に重ねて描画（オートタイル方式）
+  private drawBorderOverlay(tileX: number, tileY: number, viewStartX: number, viewStartY: number) {
+    const screenTileX = tileX - viewStartX
+    const screenTileY = tileY - viewStartY
+    const x = this.offsetX + screenTileX * this.tileWidth
+    const y = this.offsetY + screenTileY * this.tileHeight
+
+    const addOverlay = (texture: string, offsetX: number, offsetY: number) => {
+      const img = this.add.image(x + offsetX, y + offsetY, texture)
+      img.setOrigin(0, 0)
+      img.setScale(this.tileScale)
+      this.wallContainer.add(img)
+    }
+
+    // 隣接タイルの状態を取得
+    const hasFloorN = this.isFloor(tileX, tileY - 1) // 北
+    const hasFloorS = this.isFloor(tileX, tileY + 1) // 南
+    const hasFloorW = this.isFloor(tileX - 1, tileY) // 西
+    const hasFloorE = this.isFloor(tileX + 1, tileY) // 東
+
+    // 北に壁がある場合（床に縁 + 外側に壁）
+    if (!hasFloorN) {
+      addOverlay('wall_top_mid', 0, -this.tileHeight * 2)
+      addOverlay('wall_mid', 0, -this.tileHeight * 3)
+      addOverlay('wall_mid', 0, -this.tileHeight) // b0に壁を追加
+      // 西にも壁がある場合、a0とb0の間に縁を追加
+      if (!hasFloorW) {
+        addOverlay('wall_outer_mid_right', 0, -this.tileHeight)
+      }
+      // 東にも壁がある場合、d0とe0の間に縁を追加
+      if (!hasFloorE) {
+        addOverlay('wall_outer_mid_left', 0, -this.tileHeight)
+      }
+    }
+
+    // 南に壁がある場合（床に縁 + 外側に壁）
+    if (!hasFloorS) {
+      addOverlay('wall_top_mid', 0, 0)
+      addOverlay('wall_mid', 0, this.tileHeight)
+    }
+
+    // 西に壁がある場合（床に縁）
+    if (!hasFloorW) {
+      addOverlay('wall_outer_mid_right', 0, 0)
+    }
+
+    // 東に壁がある場合（床に縁）
+    if (!hasFloorE) {
+      addOverlay('wall_outer_mid_left', 0, 0)
+    }
+
+    // 角の処理（北西）
+    if (!hasFloorN && !hasFloorW) {
+      addOverlay('wall_top_left', 0, -this.tileHeight * 2)
+      addOverlay('wall_left', 0, -this.tileHeight * 3)
+      addOverlay('wall_outer_mid_right', 0, -this.tileHeight * 3)
+      addOverlay('wall_outer_top_right', 0, -this.tileHeight * 3)
+    }
+
+    // 角の処理（北東）
+    if (!hasFloorN && !hasFloorE) {
+      addOverlay('wall_top_right', 0, -this.tileHeight * 2)
+      addOverlay('wall_right', 0, -this.tileHeight * 3)
+      addOverlay('wall_outer_mid_left', 0, -this.tileHeight * 3)
+      addOverlay('wall_outer_top_left', 0, -this.tileHeight * 3)
+    }
+
+    // 角の処理（南西）
+    if (!hasFloorS && !hasFloorW) {
+      addOverlay('wall_top_left', 0, 0)
+      addOverlay('wall_outer_front_right', 0, this.tileHeight)
+    }
+
+    // 角の処理（南東）
+    if (!hasFloorS && !hasFloorE) {
+      addOverlay('wall_top_right', 0, 0)
+      addOverlay('wall_outer_front_left', 0, this.tileHeight)
+    }
+  }
+
+  private drawDebugGrid() {
+    const cols = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
+
+    // 5x5グリッド（外周の壁エリアも含む）
+    // y: -1, 0, 1, 2, 3 → 表示上は 0, 1, 2, 3, 4
+    for (let y = -1; y < this.mapHeight + 1; y++) {
+      for (let x = -1; x < this.mapWidth + 1; x++) {
+        const screenX = this.offsetX + x * this.tileWidth + this.tileWidth / 2
+        const screenY = this.offsetY + y * this.tileHeight + this.tileHeight / 2
+
+        // 座標ラベル (a0, b0, ... a1, b1, ... a4, b4, ...)
+        const colLabel = cols[x + 1] || '?' // -1 → a, 0 → b, 1 → c, 2 → d, 3 → e
+        const label = `${colLabel}${y + 1}`
+
+        // 床エリアは黄色、外周は赤色
+        const isFloorArea = x >= 0 && x < this.mapWidth && y >= 0 && y < this.mapHeight
+        const color = isFloorArea ? '#ffff00' : '#ff6666'
+
+        const text = this.add.text(screenX, screenY, label, {
+          fontSize: '12px',
+          color: color,
+          backgroundColor: '#000000aa',
+          padding: { x: 2, y: 2 },
+        })
+        text.setOrigin(0.5, 0.5)
+        text.setDepth(1000) // 最前面に表示
       }
     }
   }
@@ -140,92 +300,38 @@ export class DungeonScene extends Phaser.Scene {
   private drawFloorTile(tileX: number, tileY: number, viewStartX: number, viewStartY: number, isStairs: boolean) {
     const screenTileX = tileX - viewStartX
     const screenTileY = tileY - viewStartY
-    const x = this.offsetX + screenTileX * this.tileWidth
-    const y = this.offsetY + screenTileY * this.tileHeight
+    const x = this.offsetX + screenTileX * this.tileWidth + this.tileWidth / 2
+    const y = this.offsetY + screenTileY * this.tileHeight + this.tileHeight / 2
 
-    // 床の色（市松模様）
-    const isLight = (tileX + tileY) % 2 === 0
+    // テクスチャを選択
+    let textureKey: string
     if (isStairs) {
-      this.mapGraphics.fillStyle(0x4a90a4)
+      textureKey = 'floor_stairs'
     } else {
-      this.mapGraphics.fillStyle(isLight ? 0x2a6a6a : 0x1a5a5a)
+      // 市松模様風にバリエーションを使い分け
+      const variant = ((tileX + tileY) % 3) + 1
+      textureKey = `floor_${variant}`
     }
 
-    // 正方形タイル
-    this.mapGraphics.fillRect(x, y, this.tileWidth - 1, this.tileHeight - 1)
-
-    // グリッド線
-    this.mapGraphics.lineStyle(1, 0x0a3a3a, 0.5)
-    this.mapGraphics.strokeRect(x, y, this.tileWidth - 1, this.tileHeight - 1)
-
-    if (isStairs) {
-      // 階段の模様
-      this.mapGraphics.lineStyle(1, 0x3a7084, 0.8)
-      const step = Math.max(3, Math.floor(this.tileHeight / 4))
-      for (let i = 2; i < this.tileHeight - 2; i += step) {
-        this.mapGraphics.lineBetween(x + 4, y + i, x + this.tileWidth - 5, y + i)
-      }
-    }
+    const tile = this.add.image(x, y, textureKey)
+    tile.setScale(this.tileScale)
+    this.floorContainer.add(tile)
   }
 
-  private drawWallTile(tileX: number, tileY: number, viewStartX: number, viewStartY: number) {
-    const screenTileX = tileX - viewStartX
-    const screenTileY = tileY - viewStartY
-    const x = this.offsetX + screenTileX * this.tileWidth
-    const y = this.offsetY + screenTileY * this.tileHeight
-
-    // 壁の上面
-    this.mapGraphics.fillStyle(0x3a4a5a)
-    this.mapGraphics.fillRect(x, y - this.wallHeight, this.tileWidth - 1, this.tileHeight - 1)
-
-    // 壁の前面（見える部分）
-    this.mapGraphics.fillStyle(0x2a3a4a)
-    this.mapGraphics.fillRect(
-      x,
-      y - this.wallHeight + this.tileHeight - 1,
-      this.tileWidth - 1,
-      this.wallHeight
-    )
-
-    // 壁の輪郭
-    this.mapGraphics.lineStyle(1, 0x1a2a3a, 0.8)
-    this.mapGraphics.strokeRect(
-      x,
-      y - this.wallHeight,
-      this.tileWidth - 1,
-      this.tileHeight - 1 + this.wallHeight
-    )
-  }
 
   private drawPlayer(tileX: number, tileY: number, viewStartX: number, viewStartY: number) {
     const screenTileX = tileX - viewStartX
     const screenTileY = tileY - viewStartY
     const x = this.offsetX + screenTileX * this.tileWidth + this.tileWidth / 2
-    const y = this.offsetY + screenTileY * this.tileHeight + this.tileHeight / 2
+    // キャラクターの足元をタイルの下端に合わせる
+    const y = this.offsetY + (screenTileY + 1) * this.tileHeight
 
-    // プレイヤーサイズをタイルサイズに比例させる
-    const scale = Math.min(this.tileWidth, this.tileHeight * 2) / 48
-
-    // 影
-    this.entityGraphics.fillStyle(0x000000, 0.3)
-    this.entityGraphics.fillEllipse(x, y + 2 * scale, 16 * scale, 6 * scale)
-
-    // 体（青い服）
-    this.entityGraphics.fillStyle(0x4169e1)
-    this.entityGraphics.fillRect(x - 6 * scale, y - 16 * scale, 12 * scale, 18 * scale)
-
-    // 頭
-    this.entityGraphics.fillStyle(0xffdbac)
-    this.entityGraphics.fillCircle(x, y - 22 * scale, 6 * scale)
-
-    // 髪
-    this.entityGraphics.fillStyle(0x4a3728)
-    this.entityGraphics.fillEllipse(x, y - 26 * scale, 6 * scale, 3 * scale)
-
-    // 目
-    this.entityGraphics.fillStyle(0x000000)
-    this.entityGraphics.fillCircle(x - 2 * scale, y - 22 * scale, 1 * scale)
-    this.entityGraphics.fillCircle(x + 2 * scale, y - 22 * scale, 1 * scale)
+    // プレイヤースプライト作成
+    this.playerSprite = this.add.sprite(x, y, 'knight_f0')
+    this.playerSprite.setScale(this.tileScale)
+    this.playerSprite.setOrigin(0.5, 1) // 足元を原点に
+    this.playerSprite.play('knight_idle_anim')
+    this.entityContainer.add(this.playerSprite)
   }
 
   private setupInput() {
