@@ -14,7 +14,8 @@
       "Bash(npm run format:*)",
       "Bash(npm run lint:fix:*)",
       "Bash(npm run build:*)",
-      "Bash(xargs rm:*)"
+      "Bash(xargs rm:*)",
+      "Bash(git checkout:*)"
     ]
   }
 }

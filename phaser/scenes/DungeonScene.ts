@@ -63,6 +63,14 @@ export class DungeonScene extends Phaser.Scene {
     this.load.image('wall_edge_bottom_right', '/assets/tiles/wall_edge_bottom_right.png')
     this.load.image('wall_edge_top_left', '/assets/tiles/wall_edge_top_left.png')
     this.load.image('wall_edge_top_right', '/assets/tiles/wall_edge_top_right.png')
+
+    this.load.image('wall_edge_tshape_bottom_left', '/assets/tiles/wall_edge_tshape_bottom_left.png')
+    this.load.image('wall_edge_tshape_bottom_right', '/assets/tiles/wall_edge_tshape_bottom_right.png')
+    this.load.image('wall_edge_tshape_top_left', '/assets/tiles/wall_edge_tshape_top_left.png')
+    this.load.image('wall_edge_tshape_top_right', '/assets/tiles/wall_edge_tshape_top_right.png')
+    this.load.image('wall_edge_tshape_left', '/assets/tiles/wall_edge_tshape_left.png')
+    this.load.image('wall_edge_tshape_right', '/assets/tiles/wall_edge_tshape_right.png')
+
     // 南側の壁用
     this.load.image('wall_edge_left', '/assets/tiles/wall_edge_left.png')
     this.load.image('wall_edge_right', '/assets/tiles/wall_edge_right.png')
@@ -162,7 +170,7 @@ export class DungeonScene extends Phaser.Scene {
           // 床タイルを描画
           this.drawFloorTile(x, y, startX, startY, tile === 2)
           // 縁タイルを重ねて描画
-          this.drawBorderOverlay(x, y, startX, startY)
+          this.drawBorderOverlay(x, y)
         }
       }
     }
@@ -187,103 +195,99 @@ export class DungeonScene extends Phaser.Scene {
     return this.map[y][x] === 0 || this.map[y][x] === 2
   }
 
-  // 縁タイルを床の上に重ねて描画（オートタイル方式）
-  private drawBorderOverlay(tileX: number, tileY: number, viewStartX: number, viewStartY: number) {
-    const screenTileX = tileX - viewStartX
-    const screenTileY = tileY - viewStartY
-    const x = this.offsetX + screenTileX * this.tileWidth
-    const y = this.offsetY + screenTileY * this.tileHeight
-
-    const addOverlay = (texture: string, offsetX: number, offsetY: number) => {
-      const img = this.add.image(x + offsetX, y + offsetY, texture)
-      img.setOrigin(0, 0)
-      img.setScale(this.tileScale)
-      this.wallContainer.add(img)
+  // グリッド座標でタイルを配置（描画範囲チェック付き）
+  // gridX: -2=外周, -1=a列, 0=b列, 1=c列, 2=d列, 3=e列, 4=外周
+  // gridY: -2=外周, -1=0行, 0=1行, 1=2行, 2=3行, 3=4行, 4=外周
+  private addTileAtGrid(texture: string, gridX: number, gridY: number) {
+    // 描画範囲チェック: 外周含む7x7（gridX: -2〜4, gridY: -2〜4）
+    if (gridX < -2 || gridX > this.mapWidth + 1 || gridY < -2 || gridY > this.mapHeight + 1) {
+      return // 範囲外は描画しない
     }
+    const x = this.offsetX + gridX * this.tileWidth
+    const y = this.offsetY + gridY * this.tileHeight
+    const img = this.add.image(x, y, texture)
+    img.setOrigin(0, 0)
+    img.setScale(this.tileScale)
+    this.wallContainer.add(img)
+  }
 
+  // 縁タイルを床の上に重ねて描画（グリッド座標ベース）
+  private drawBorderOverlay(tileX: number, tileY: number) {
     // 隣接タイルの状態を取得
     const hasFloorN = this.isFloor(tileX, tileY - 1) // 北
     const hasFloorS = this.isFloor(tileX, tileY + 1) // 南
     const hasFloorW = this.isFloor(tileX - 1, tileY) // 西
     const hasFloorE = this.isFloor(tileX + 1, tileY) // 東
 
-    // 北に壁がある場合（床に縁 + 外側に壁）
+    // 北に壁がある場合 → 1つ上のグリッド（tileY - 1）に壁を配置
     if (!hasFloorN) {
-      addOverlay('wall_top_mid', 0, -this.tileHeight * 2)
-      addOverlay('wall_mid', 0, -this.tileHeight * 3)
-      addOverlay('wall_mid', 0, -this.tileHeight) // b0に壁を追加
-      // 西にも壁がある場合、a0とb0の間に縁を追加
-      if (!hasFloorW) {
-        addOverlay('wall_outer_mid_right', 0, -this.tileHeight)
-      }
-      // 東にも壁がある場合、d0とe0の間に縁を追加
-      if (!hasFloorE) {
-        addOverlay('wall_outer_mid_left', 0, -this.tileHeight)
-      }
+      this.addTileAtGrid('wall_mid', tileX, tileY -1) // 壁本体
+      this.addTileAtGrid('wall_top_mid', tileX, tileY -2) // 縁（壁の上端）
     }
 
-    // 南に壁がある場合（床に縁 + 外側に壁）
+    // 南に壁がある場合 → 1つ下のグリッド（tileY + 1）に壁を配置
     if (!hasFloorS) {
-      addOverlay('wall_top_mid', 0, 0)
-      addOverlay('wall_mid', 0, this.tileHeight)
+      this.addTileAtGrid('wall_mid', tileX, tileY + 1) // 壁本体
+      this.addTileAtGrid('wall_top_mid', tileX, tileY) // 縁（床の下端）
     }
 
-    // 西に壁がある場合（床に縁）
+    // 西に壁がある場合 → 現在のグリッドに縁を配置
     if (!hasFloorW) {
-      addOverlay('wall_outer_mid_right', 0, 0)
+      this.addTileAtGrid('wall_outer_mid_right', tileX, tileY)
     }
 
-    // 東に壁がある場合（床に縁）
+    // 東に壁がある場合 → 現在のグリッドに縁を配置
     if (!hasFloorE) {
-      addOverlay('wall_outer_mid_left', 0, 0)
+      this.addTileAtGrid('wall_outer_mid_left', tileX, tileY)
     }
 
     // 角の処理（北西）
     if (!hasFloorN && !hasFloorW) {
-      addOverlay('wall_top_left', 0, -this.tileHeight * 2)
-      addOverlay('wall_left', 0, -this.tileHeight * 3)
-      addOverlay('wall_outer_mid_right', 0, -this.tileHeight * 3)
-      addOverlay('wall_outer_top_right', 0, -this.tileHeight * 3)
+      this.addTileAtGrid('wall_top_left', tileX, tileY - 2) // 角の縁
+      this.addTileAtGrid('wall_edge_tshape_left', tileX, tileY - 1) // 北側壁の左縁
     }
 
     // 角の処理（北東）
     if (!hasFloorN && !hasFloorE) {
-      addOverlay('wall_top_right', 0, -this.tileHeight * 2)
-      addOverlay('wall_right', 0, -this.tileHeight * 3)
-      addOverlay('wall_outer_mid_left', 0, -this.tileHeight * 3)
-      addOverlay('wall_outer_top_left', 0, -this.tileHeight * 3)
+      this.addTileAtGrid('wall_top_right', tileX, tileY - 2) // 角の縁
+      this.addTileAtGrid('wall_edge_tshape_right', tileX, tileY - 1) // 北側壁の右縁
     }
 
     // 角の処理（南西）
     if (!hasFloorS && !hasFloorW) {
-      addOverlay('wall_top_left', 0, 0)
-      addOverlay('wall_outer_front_right', 0, this.tileHeight)
+      this.addTileAtGrid('wall_edge_tshape_bottom_left', tileX, tileY) // 角の縁
     }
 
     // 角の処理（南東）
     if (!hasFloorS && !hasFloorE) {
-      addOverlay('wall_top_right', 0, 0)
-      addOverlay('wall_outer_front_left', 0, this.tileHeight)
+      this.addTileAtGrid('wall_edge_tshape_bottom_right', tileX, tileY) // 角の縁
     }
   }
 
   private drawDebugGrid() {
-    const cols = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
-
-    // 5x5グリッド（外周の壁エリアも含む）
-    // y: -1, 0, 1, 2, 3 → 表示上は 0, 1, 2, 3, 4
-    for (let y = -1; y < this.mapHeight + 1; y++) {
-      for (let x = -1; x < this.mapWidth + 1; x++) {
+    // 7x7グリッド（外周の外側も含む）
+    // x: -2〜4, y: -2〜4
+    // 列名: -, a, b, c, d, e, +
+    // 行名: -1, 0, 1, 2, 3, 4, 5
+    for (let y = -2; y < this.mapHeight + 2; y++) {
+      for (let x = -2; x < this.mapWidth + 2; x++) {
         const screenX = this.offsetX + x * this.tileWidth + this.tileWidth / 2
         const screenY = this.offsetY + y * this.tileHeight + this.tileHeight / 2
 
-        // 座標ラベル (a0, b0, ... a1, b1, ... a4, b4, ...)
-        const colLabel = cols[x + 1] || '?' // -1 → a, 0 → b, 1 → c, 2 → d, 3 → e
+        // 座標ラベル
+        const colLabels = ['-', 'a', 'b', 'c', 'd', 'e', '+']
+        const colLabel = colLabels[x + 2] || '?'
         const label = `${colLabel}${y + 1}`
 
-        // 床エリアは黄色、外周は赤色
+        // 床エリアは黄色、壁エリアは赤色、外周は灰色
         const isFloorArea = x >= 0 && x < this.mapWidth && y >= 0 && y < this.mapHeight
-        const color = isFloorArea ? '#ffff00' : '#ff6666'
+        const isWallArea = x >= -1 && x <= this.mapWidth && y >= -1 && y <= this.mapHeight
+        let color = '#666666' // 外周（灰色）
+        if (isFloorArea) {
+          color = '#ffff00' // 床（黄色）
+        } else if (isWallArea) {
+          color = '#ff6666' // 壁（赤色）
+        }
 
         const text = this.add.text(screenX, screenY, label, {
           fontSize: '12px',
