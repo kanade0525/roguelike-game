@@ -139,13 +139,12 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private createMap() {
-    // 2x2マップ: 全て床
-    for (let y = 0; y < this.mapHeight; y++) {
-      this.map[y] = []
-      for (let x = 0; x < this.mapWidth; x++) {
-        this.map[y][x] = 0 // 全て床
-      }
-    }
+    // 3x3マップ: 全て床
+    this.map = [
+      [0, 0, 0],
+      [0, 0, 0],
+      [0, 0, 0],
+    ]
   }
 
   private drawScene() {
@@ -211,56 +210,90 @@ export class DungeonScene extends Phaser.Scene {
     this.wallContainer.add(img)
   }
 
-  // 縁タイルを床の上に重ねて描画（グリッド座標ベース）
+  // 4方向ビットマスクを計算
+  // N=1, E=2, S=4, W=8
+  private getBitmask4(tileX: number, tileY: number): number {
+    let mask = 0
+    if (this.isFloor(tileX, tileY - 1)) mask |= 1 // N
+    if (this.isFloor(tileX + 1, tileY)) mask |= 2 // E
+    if (this.isFloor(tileX, tileY + 1)) mask |= 4 // S
+    if (this.isFloor(tileX - 1, tileY)) mask |= 8 // W
+    return mask
+  }
+
+  // 縁タイルを床の上に重ねて描画（隣接判定 + オーバーレイ方式）
   private drawBorderOverlay(tileX: number, tileY: number) {
-    // 隣接タイルの状態を取得
-    const hasFloorN = this.isFloor(tileX, tileY - 1) // 北
-    const hasFloorS = this.isFloor(tileX, tileY + 1) // 南
-    const hasFloorW = this.isFloor(tileX - 1, tileY) // 西
-    const hasFloorE = this.isFloor(tileX + 1, tileY) // 東
+    const mask = this.getBitmask4(tileX, tileY)
 
-    // 北に壁がある場合 → 1つ上のグリッド（tileY - 1）に壁を配置
-    if (!hasFloorN) {
-      this.addTileAtGrid('wall_mid', tileX, tileY -1) // 壁本体
-      this.addTileAtGrid('wall_top_mid', tileX, tileY -2) // 縁（壁の上端）
+    // N=1, E=2, S=4, W=8
+    const hasN = (mask & 1) !== 0
+    const hasE = (mask & 2) !== 0
+    const hasS = (mask & 4) !== 0
+    const hasW = (mask & 8) !== 0
+
+    // === 直線部分 ===
+    // 北に壁
+    if (!hasN) {
+      this.addTileAtGrid('wall_mid', tileX, tileY - 1)
+      this.addTileAtGrid('wall_top_mid', tileX, tileY - 2)
+    }
+    // 南に壁
+    if (!hasS) {
+      this.addTileAtGrid('wall_mid', tileX, tileY + 1)
+      this.addTileAtGrid('wall_top_mid', tileX, tileY)
+    }
+    // 西に壁
+    if (!hasW) {
+      this.addTileAtGrid('wall_outer_mid_left', tileX -1, tileY)
+    }
+    // 東に壁
+    if (!hasE) {
+      this.addTileAtGrid('wall_outer_mid_right', tileX + 1, tileY)
     }
 
-    // 南に壁がある場合 → 1つ下のグリッド（tileY + 1）に壁を配置
-    if (!hasFloorS) {
-      this.addTileAtGrid('wall_mid', tileX, tileY + 1) // 壁本体
-      this.addTileAtGrid('wall_top_mid', tileX, tileY) // 縁（床の下端）
+    // === 外側角（凸角）===
+    // 北西: 北も西も壁
+    if (!hasN && !hasW) {
+      this.addTileAtGrid('wall_outer_top_left', tileX - 1, tileY - 2) // a-1
+      this.addTileAtGrid('wall_top_left', tileX, tileY - 2)
+      this.addTileAtGrid('wall_outer_mid_left', tileX - 1, tileY - 1) // a0
+    }
+    // 北東: 北も東も壁
+    if (!hasN && !hasE) {
+      this.addTileAtGrid('wall_outer_top_right', tileX + 1, tileY - 2) // e-1
+      this.addTileAtGrid('wall_top_right', tileX, tileY - 2)
+      this.addTileAtGrid('wall_outer_mid_right', tileX + 1, tileY - 1) // e0
+    }
+    // 南西: 南も西も壁
+    if (!hasS && !hasW) {
+      this.addTileAtGrid('wall_outer_front_left', tileX - 1, tileY + 1)
+    }
+    // 南東: 南も東も壁
+    if (!hasS && !hasE) {
+      this.addTileAtGrid('wall_outer_front_right', tileX + 1, tileY + 1)
     }
 
-    // 西に壁がある場合 → 現在のグリッドに縁を配置
-    if (!hasFloorW) {
-      this.addTileAtGrid('wall_outer_mid_right', tileX, tileY)
-    }
+    // === 内側角（凹角）===
+    const hasNW = this.isFloor(tileX - 1, tileY - 1)
+    const hasNE = this.isFloor(tileX + 1, tileY - 1)
+    const hasSW = this.isFloor(tileX - 1, tileY + 1)
+    const hasSE = this.isFloor(tileX + 1, tileY + 1)
 
-    // 東に壁がある場合 → 現在のグリッドに縁を配置
-    if (!hasFloorE) {
-      this.addTileAtGrid('wall_outer_mid_left', tileX, tileY)
+    // 北西が壁で、北と西は床
+    if (!hasNW && hasN && hasW) {
+      this.addTileAtGrid('wall_edge_top_right', tileX - 1, tileY - 1)
     }
-
-    // 角の処理（北西）
-    if (!hasFloorN && !hasFloorW) {
-      this.addTileAtGrid('wall_top_left', tileX, tileY - 2) // 角の縁
-      this.addTileAtGrid('wall_edge_tshape_left', tileX, tileY - 1) // 北側壁の左縁
+    // 北東が壁で、北と東は床
+    if (!hasNE && hasN && hasE) {
+      this.addTileAtGrid('wall_edge_top_left', tileX + 1, tileY - 1)
     }
-
-    // 角の処理（北東）
-    if (!hasFloorN && !hasFloorE) {
-      this.addTileAtGrid('wall_top_right', tileX, tileY - 2) // 角の縁
-      this.addTileAtGrid('wall_edge_tshape_right', tileX, tileY - 1) // 北側壁の右縁
+    // 南西が壁で、南と西は床
+    if (!hasSW && hasS && hasW) {
+      this.addTileAtGrid('wall_edge_bottom_right', tileX - 1, tileY + 1)
     }
-
-    // 角の処理（南西）
-    if (!hasFloorS && !hasFloorW) {
-      this.addTileAtGrid('wall_edge_tshape_bottom_left', tileX, tileY) // 角の縁
-    }
-
-    // 角の処理（南東）
-    if (!hasFloorS && !hasFloorE) {
-      this.addTileAtGrid('wall_edge_tshape_bottom_right', tileX, tileY) // 角の縁
+    // 南東が壁で、南と東は床
+    if (!hasSE && hasS && hasE) {
+      this.addTileAtGrid('wall_edge_bottom_left', tileX + 1, tileY + 1)
     }
   }
 
@@ -327,12 +360,12 @@ export class DungeonScene extends Phaser.Scene {
     const screenTileX = tileX - viewStartX
     const screenTileY = tileY - viewStartY
     const x = this.offsetX + screenTileX * this.tileWidth + this.tileWidth / 2
-    // キャラクターの足元をタイルの下端に合わせる
-    const y = this.offsetY + (screenTileY + 1) * this.tileHeight
+    // キャラクターの足元をタイルの中央下寄りに配置
+    const y = this.offsetY + screenTileY * this.tileHeight + this.tileHeight * 0.8
 
     // プレイヤースプライト作成
     this.playerSprite = this.add.sprite(x, y, 'knight_f0')
-    this.playerSprite.setScale(this.tileScale)
+    this.playerSprite.setScale(this.tileScale * 0.8)
     this.playerSprite.setOrigin(0.5, 1) // 足元を原点に
     this.playerSprite.play('knight_idle_anim')
     this.entityContainer.add(this.playerSprite)
