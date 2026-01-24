@@ -2,18 +2,18 @@ import Phaser from 'phaser'
 
 export class DungeonScene extends Phaser.Scene {
   // 表示するタイル数（ビューポート）
-  private viewTilesX = 10
-  private viewTilesY = 6
+  private viewTilesX = 7
+  private viewTilesY = 5
 
   // タイルサイズ（16x16を拡大表示）
   private baseTileSize = 16
-  private tileScale = 3 // 16x3 = 48px
+  private tileScale = 4 // 16x4 = 64px
   private tileWidth = 0
   private tileHeight = 0
 
-  // マップサイズ
-  private mapWidth = 3
-  private mapHeight = 3
+  // マップサイズ（ビューポートより大きくできる）
+  private mapWidth = 15
+  private mapHeight = 12
   private map: number[][] = []
   private playerPos = { x: 0, y: 0 }
 
@@ -26,6 +26,10 @@ export class DungeonScene extends Phaser.Scene {
   // マップ描画の開始位置
   private offsetX = 0
   private offsetY = 0
+
+  // ビューポートの開始位置（スクロール用）
+  private viewStartX = 0
+  private viewStartY = 0
 
   // 画面サイズ
   private screenWidth = 0
@@ -61,6 +65,8 @@ export class DungeonScene extends Phaser.Scene {
     // 内側コーナー
     this.load.image('wall_edge_bottom_left', '/assets/tiles/wall_edge_bottom_left.png')
     this.load.image('wall_edge_bottom_right', '/assets/tiles/wall_edge_bottom_right.png')
+    this.load.image('wall_edge_mid_left', '/assets/tiles/wall_edge_mid_left.png')
+    this.load.image('wall_edge_mid_right', '/assets/tiles/wall_edge_mid_right.png')
     this.load.image('wall_edge_top_left', '/assets/tiles/wall_edge_top_left.png')
     this.load.image('wall_edge_top_right', '/assets/tiles/wall_edge_top_right.png')
 
@@ -133,18 +139,25 @@ export class DungeonScene extends Phaser.Scene {
     this.tileWidth = this.baseTileSize * this.tileScale
     this.tileHeight = this.baseTileSize * this.tileScale
 
-    // オフセットを計算（マップを中央揃え）
-    this.offsetX = Math.floor((this.screenWidth - this.mapWidth * this.tileWidth) / 2)
-    this.offsetY = this.gameAreaTop + Math.floor((gameAreaHeight - this.mapHeight * this.tileHeight) / 2)
+    // オフセットを計算（ビューポートを中央揃え）
+    this.offsetX = Math.floor((this.screenWidth - this.viewTilesX * this.tileWidth) / 2)
+    this.offsetY = this.gameAreaTop + Math.floor((gameAreaHeight - this.viewTilesY * this.tileHeight) / 2)
   }
 
   private createMap() {
-    // 3x3マップ: 全て床
+    // 十字型マップ: 0=床, 1=壁, 2=階段
     this.map = [
-      [0, 0, 0],
-      [0, 0, 0],
-      [0, 0, 0],
+      [1, 1, 0, 0, 0, 1, 1],
+      [1, 1, 0, 0, 0, 1, 1],
+      [0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0, 0],
+      [1, 1, 0, 0, 0, 1, 1],
+      [1, 1, 0, 0, 2, 1, 1],
     ]
+    this.mapWidth = 7
+    this.mapHeight = 7
+    this.playerPos = { x: 3, y: 3 }
   }
 
   private drawScene() {
@@ -153,36 +166,31 @@ export class DungeonScene extends Phaser.Scene {
     this.wallContainer.removeAll(true)
     this.entityContainer.removeAll(true)
 
-    // マップ全体を描画
-    const startX = 0
-    const startY = 0
-    const endX = this.mapWidth
-    const endY = this.mapHeight
+    // プレイヤーを中心にビューポートを計算
+    const halfViewX = Math.floor(this.viewTilesX / 2)
+    const halfViewY = Math.floor(this.viewTilesY / 2)
+    this.viewStartX = this.playerPos.x - halfViewX
+    this.viewStartY = this.playerPos.y - halfViewY
+    const endX = this.viewStartX + this.viewTilesX
+    const endY = this.viewStartY + this.viewTilesY
 
-    // 全タイルをスキャンして描画
-    for (let y = startY; y < endY; y++) {
-      for (let x = startX; x < endX; x++) {
+    // ビューポート内のタイルを描画
+    for (let y = this.viewStartY; y < endY; y++) {
+      for (let x = this.viewStartX; x < endX; x++) {
         if (x < 0 || x >= this.mapWidth || y < 0 || y >= this.mapHeight) continue
         const tile = this.map[y][x]
 
         if (tile === 0 || tile === 2) {
           // 床タイルを描画
-          this.drawFloorTile(x, y, startX, startY, tile === 2)
+          this.drawFloorTile(x, y, this.viewStartX, this.viewStartY, tile === 2)
           // 縁タイルを重ねて描画
           this.drawBorderOverlay(x, y)
         }
       }
     }
 
-    // プレイヤーを描画
-    if (
-      this.playerPos.y >= startY &&
-      this.playerPos.y < endY &&
-      this.playerPos.x >= startX &&
-      this.playerPos.x < endX
-    ) {
-      this.drawPlayer(this.playerPos.x, this.playerPos.y, startX, startY)
-    }
+    // プレイヤーを描画（常に画面中央）
+    this.drawPlayer(this.playerPos.x, this.playerPos.y, this.viewStartX, this.viewStartY)
   }
 
 
@@ -194,16 +202,19 @@ export class DungeonScene extends Phaser.Scene {
     return this.map[y][x] === 0 || this.map[y][x] === 2
   }
 
-  // グリッド座標でタイルを配置（描画範囲チェック付き）
-  // gridX: -2=外周, -1=a列, 0=b列, 1=c列, 2=d列, 3=e列, 4=外周
-  // gridY: -2=外周, -1=0行, 0=1行, 1=2行, 2=3行, 3=4行, 4=外周
+  // グリッド座標でタイルを配置（ビューポート相対）
   private addTileAtGrid(texture: string, gridX: number, gridY: number) {
-    // 描画範囲チェック: 外周含む7x7（gridX: -2〜4, gridY: -2〜4）
-    if (gridX < -2 || gridX > this.mapWidth + 1 || gridY < -2 || gridY > this.mapHeight + 1) {
-      return // 範囲外は描画しない
+    // ビューポート相対座標に変換
+    const screenX = gridX - this.viewStartX
+    const screenY = gridY - this.viewStartY
+
+    // 描画範囲チェック（ビューポート外は描画しない）
+    if (screenX < -2 || screenX > this.viewTilesX + 1 || screenY < -2 || screenY > this.viewTilesY + 1) {
+      return
     }
-    const x = this.offsetX + gridX * this.tileWidth
-    const y = this.offsetY + gridY * this.tileHeight
+
+    const x = this.offsetX + screenX * this.tileWidth
+    const y = this.offsetY + screenY * this.tileHeight
     const img = this.add.image(x, y, texture)
     img.setOrigin(0, 0)
     img.setScale(this.tileScale)
@@ -274,27 +285,30 @@ export class DungeonScene extends Phaser.Scene {
     }
 
     // === 内側角（凹角）===
+    // L字型の内側角のみ処理（孤立した斜め壁は無視）
+    // 条件: 斜めが壁 AND 隣接2方向が両方床
     const hasNW = this.isFloor(tileX - 1, tileY - 1)
     const hasNE = this.isFloor(tileX + 1, tileY - 1)
     const hasSW = this.isFloor(tileX - 1, tileY + 1)
     const hasSE = this.isFloor(tileX + 1, tileY + 1)
 
-    // 北西が壁で、北と西は床
+    // 北西の内側角: 北西が壁、北が床、西が床（L字型の内側）
     if (!hasNW && hasN && hasW) {
-      this.addTileAtGrid('wall_edge_top_right', tileX - 1, tileY - 1)
+      // this.addTileAtGrid('wall_edge_top_right', tileX - 1, tileY - 1)
     }
-    // 北東が壁で、北と東は床
+    // 北東の内側角: 北東が壁、北が床、東が床（L字型の内側）
     if (!hasNE && hasN && hasE) {
-      this.addTileAtGrid('wall_edge_top_left', tileX + 1, tileY - 1)
+      // this.addTileAtGrid('wall_edge_top_left', tileX + 1, tileY - 1)
     }
-    // 南西が壁で、南と西は床
+    // 南西の内側角: 南西が壁、南が床、西が床（L字型の内側）
     if (!hasSW && hasS && hasW) {
-      this.addTileAtGrid('wall_edge_bottom_right', tileX - 1, tileY + 1)
+      // this.addTileAtGrid('wall_edge_bottom_right', tileX - 1, tileY + 1)
     }
-    // 南東が壁で、南と東は床
+    // 南東の内側角: 南東が壁、南が床、東が床（L字型の内側）
     if (!hasSE && hasS && hasE) {
-      this.addTileAtGrid('wall_edge_bottom_left', tileX + 1, tileY + 1)
+      // this.addTileAtGrid('wall_edge_bottom_left', tileX + 1, tileY + 1)
     }
+
   }
 
   private drawDebugGrid() {
