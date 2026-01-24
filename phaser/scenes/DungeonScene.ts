@@ -21,7 +21,9 @@ export class DungeonScene extends Phaser.Scene {
   private floorContainer!: Phaser.GameObjects.Container
   private wallContainer!: Phaser.GameObjects.Container
   private entityContainer!: Phaser.GameObjects.Container
+  private debugContainer!: Phaser.GameObjects.Container
   private playerSprite!: Phaser.GameObjects.Sprite
+  private debugGridVisible = false
 
   // マップ描画の開始位置
   private offsetX = 0
@@ -96,6 +98,15 @@ export class DungeonScene extends Phaser.Scene {
     this.floorContainer = this.add.container(0, 0)
     this.wallContainer = this.add.container(0, 0)
     this.entityContainer = this.add.container(0, 0)
+    this.debugContainer = this.add.container(0, 0)
+    this.debugContainer.setVisible(this.debugGridVisible)
+
+    // グローバルからアクセス可能にする（コンソールからtoggleDebugGrid()で切り替え）
+    ;(window as unknown as { toggleDebugGrid: () => void }).toggleDebugGrid = () => {
+      this.debugGridVisible = !this.debugGridVisible
+      this.debugContainer.setVisible(this.debugGridVisible)
+      console.log(`Debug grid: ${this.debugGridVisible ? 'ON' : 'OFF'}`)
+    }
 
     // プレイヤーアニメーション作成
     this.createAnimations()
@@ -191,6 +202,11 @@ export class DungeonScene extends Phaser.Scene {
 
     // プレイヤーを描画（常に画面中央）
     this.drawPlayer(this.playerPos.x, this.playerPos.y, this.viewStartX, this.viewStartY)
+
+    // デバッググリッドを更新
+    if (this.debugGridVisible) {
+      this.drawDebugGrid()
+    }
   }
 
 
@@ -312,38 +328,38 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private drawDebugGrid() {
-    // 7x7グリッド（外周の外側も含む）
-    // x: -2〜4, y: -2〜4
-    // 列名: -, a, b, c, d, e, +
-    // 行名: -1, 0, 1, 2, 3, 4, 5
-    for (let y = -2; y < this.mapHeight + 2; y++) {
-      for (let x = -2; x < this.mapWidth + 2; x++) {
-        const screenX = this.offsetX + x * this.tileWidth + this.tileWidth / 2
-        const screenY = this.offsetY + y * this.tileHeight + this.tileHeight / 2
+    this.debugContainer.removeAll(true)
 
-        // 座標ラベル
-        const colLabels = ['-', 'a', 'b', 'c', 'd', 'e', '+']
-        const colLabel = colLabels[x + 2] || '?'
-        const label = `${colLabel}${y + 1}`
+    // ビューポート範囲のデバッググリッドを描画
+    for (let y = this.viewStartY - 2; y < this.viewStartY + this.viewTilesY + 2; y++) {
+      for (let x = this.viewStartX - 2; x < this.viewStartX + this.viewTilesX + 2; x++) {
+        const screenX = x - this.viewStartX
+        const screenY = y - this.viewStartY
+        const pixelX = this.offsetX + screenX * this.tileWidth + this.tileWidth / 2
+        const pixelY = this.offsetY + screenY * this.tileHeight + this.tileHeight / 2
 
-        // 床エリアは黄色、壁エリアは赤色、外周は灰色
-        const isFloorArea = x >= 0 && x < this.mapWidth && y >= 0 && y < this.mapHeight
-        const isWallArea = x >= -1 && x <= this.mapWidth && y >= -1 && y <= this.mapHeight
-        let color = '#666666' // 外周（灰色）
+        // 座標ラベル（マップ座標を表示）
+        const label = `${x},${y}`
+
+        // 床エリアは黄色、壁エリアは赤色、範囲外は灰色
+        const isFloorArea = x >= 0 && x < this.mapWidth && y >= 0 && y < this.mapHeight && this.isFloor(x, y)
+        const isInMap = x >= 0 && x < this.mapWidth && y >= 0 && y < this.mapHeight
+        let color = '#666666' // 範囲外（灰色）
         if (isFloorArea) {
           color = '#ffff00' // 床（黄色）
-        } else if (isWallArea) {
+        } else if (isInMap) {
           color = '#ff6666' // 壁（赤色）
         }
 
-        const text = this.add.text(screenX, screenY, label, {
-          fontSize: '12px',
+        const text = this.add.text(pixelX, pixelY, label, {
+          fontSize: '10px',
           color: color,
           backgroundColor: '#000000aa',
           padding: { x: 2, y: 2 },
         })
         text.setOrigin(0.5, 0.5)
-        text.setDepth(1000) // 最前面に表示
+        text.setDepth(1000)
+        this.debugContainer.add(text)
       }
     }
   }
