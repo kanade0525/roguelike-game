@@ -22,12 +22,10 @@ export class DungeonScene extends Phaser.Scene {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private gameLoop: any = null
 
-  // スプライトコンテナ
-  private floorContainer!: Phaser.GameObjects.Container
-  private wallContainer!: Phaser.GameObjects.Container
+  // 描画コンテナ
+  private tileContainer!: Phaser.GameObjects.Container
   private entityContainer!: Phaser.GameObjects.Container
   private debugContainer!: Phaser.GameObjects.Container
-  private playerSprite!: Phaser.GameObjects.Sprite
   private debugGridVisible = false
 
   // マップ描画の開始位置
@@ -44,55 +42,19 @@ export class DungeonScene extends Phaser.Scene {
   private gameAreaTop = 50 // ステータスバー下
   private gameAreaBottom = 430 // メッセージログ上
 
+  // プロトタイプ配色
+  private readonly COLOR_FLOOR = 0x333333
+  private readonly COLOR_WALL = 0x888888
+  private readonly COLOR_STAIRS = 0xccaa00
+  private readonly COLOR_PLAYER = 0x4444ff
+  private readonly COLOR_ENEMY = 0xff4444
+
   constructor() {
     super({ key: 'DungeonScene' })
   }
 
   preload() {
-    // 床タイル
-    this.load.image('floor_1', '/assets/tiles/floor_1.png')
-    this.load.image('floor_2', '/assets/tiles/floor_2.png')
-    this.load.image('floor_3', '/assets/tiles/floor_3.png')
-    this.load.image('floor_stairs', '/assets/tiles/floor_stairs.png')
-
-    // 壁タイル
-    this.load.image('wall_mid', '/assets/tiles/wall_mid.png') // 壁前面（レンガ）
-    this.load.image('wall_left', '/assets/tiles/wall_left.png') // 壁左側面
-    this.load.image('wall_right', '/assets/tiles/wall_right.png') // 壁右側面
-    this.load.image('wall_top_mid', '/assets/tiles/wall_top_mid.png') // 壁上端ライン
-    this.load.image('wall_top_left', '/assets/tiles/wall_top_left.png') // 壁上端左角
-    this.load.image('wall_top_right', '/assets/tiles/wall_top_right.png') // 壁上端右角
-    // 外側コーナー（床の外側の角）
-    this.load.image('wall_outer_front_left', '/assets/tiles/wall_outer_front_left.png')
-    this.load.image('wall_outer_front_right', '/assets/tiles/wall_outer_front_right.png')
-    this.load.image('wall_outer_mid_left', '/assets/tiles/wall_outer_mid_left.png')
-    this.load.image('wall_outer_mid_right', '/assets/tiles/wall_outer_mid_right.png')
-    this.load.image('wall_outer_top_left', '/assets/tiles/wall_outer_top_left.png')
-    this.load.image('wall_outer_top_right', '/assets/tiles/wall_outer_top_right.png')
-    // 内側コーナー
-    this.load.image('wall_edge_bottom_left', '/assets/tiles/wall_edge_bottom_left.png')
-    this.load.image('wall_edge_bottom_right', '/assets/tiles/wall_edge_bottom_right.png')
-    this.load.image('wall_edge_mid_left', '/assets/tiles/wall_edge_mid_left.png')
-    this.load.image('wall_edge_mid_right', '/assets/tiles/wall_edge_mid_right.png')
-    this.load.image('wall_edge_top_left', '/assets/tiles/wall_edge_top_left.png')
-    this.load.image('wall_edge_top_right', '/assets/tiles/wall_edge_top_right.png')
-
-    this.load.image('wall_edge_tshape_bottom_left', '/assets/tiles/wall_edge_tshape_bottom_left.png')
-    this.load.image('wall_edge_tshape_bottom_right', '/assets/tiles/wall_edge_tshape_bottom_right.png')
-    this.load.image('wall_edge_tshape_top_left', '/assets/tiles/wall_edge_tshape_top_left.png')
-    this.load.image('wall_edge_tshape_top_right', '/assets/tiles/wall_edge_tshape_top_right.png')
-    this.load.image('wall_edge_tshape_left', '/assets/tiles/wall_edge_tshape_left.png')
-    this.load.image('wall_edge_tshape_right', '/assets/tiles/wall_edge_tshape_right.png')
-
-    // 南側の壁用
-    this.load.image('wall_edge_left', '/assets/tiles/wall_edge_left.png')
-    this.load.image('wall_edge_right', '/assets/tiles/wall_edge_right.png')
-
-    // プレイヤースプライト（個別フレーム）
-    this.load.image('knight_f0', '/assets/tiles/knight_m_idle_anim_f0.png')
-    this.load.image('knight_f1', '/assets/tiles/knight_m_idle_anim_f1.png')
-    this.load.image('knight_f2', '/assets/tiles/knight_m_idle_anim_f2.png')
-    this.load.image('knight_f3', '/assets/tiles/knight_m_idle_anim_f3.png')
+    // プロトタイプモード: アセット不要
   }
 
   create() {
@@ -108,8 +70,7 @@ export class DungeonScene extends Phaser.Scene {
     this.gameStore.addEnemy({ id: 'slime-1', type: 'slime', x: 5, y: 4 })
 
     // コンテナ作成（描画順序制御用）
-    this.floorContainer = this.add.container(0, 0)
-    this.wallContainer = this.add.container(0, 0)
+    this.tileContainer = this.add.container(0, 0)
     this.entityContainer = this.add.container(0, 0)
     this.debugContainer = this.add.container(0, 0)
     this.debugContainer.setVisible(this.debugGridVisible)
@@ -121,9 +82,6 @@ export class DungeonScene extends Phaser.Scene {
       console.log(`Debug grid: ${this.debugGridVisible ? 'ON' : 'OFF'}`)
     }
 
-    // プレイヤーアニメーション作成
-    this.createAnimations()
-
     this.drawScene()
     this.drawDebugGrid()
     this.setupInput()
@@ -131,38 +89,6 @@ export class DungeonScene extends Phaser.Scene {
 
     // UIシーンを並行起動
     this.scene.launch('UIScene')
-  }
-
-  private createAnimations() {
-    // プレイヤーアイドルアニメーション
-    if (!this.anims.exists('knight_idle_anim')) {
-      this.anims.create({
-        key: 'knight_idle_anim',
-        frames: [
-          { key: 'knight_f0' },
-          { key: 'knight_f1' },
-          { key: 'knight_f2' },
-          { key: 'knight_f3' },
-        ],
-        frameRate: 6,
-        repeat: -1,
-      })
-    }
-
-    // 敵アイドルアニメーション（女騎士スプライトを赤tintで流用）
-    if (!this.anims.exists('enemy_idle_anim')) {
-      this.anims.create({
-        key: 'enemy_idle_anim',
-        frames: [
-          { key: 'knight_f0' },
-          { key: 'knight_f1' },
-          { key: 'knight_f2' },
-          { key: 'knight_f3' },
-        ],
-        frameRate: 6,
-        repeat: -1,
-      })
-    }
   }
 
   private calculateTileSize() {
@@ -200,8 +126,7 @@ export class DungeonScene extends Phaser.Scene {
 
   private drawScene() {
     // コンテナをクリア
-    this.floorContainer.removeAll(true)
-    this.wallContainer.removeAll(true)
+    this.tileContainer.removeAll(true)
     this.entityContainer.removeAll(true)
 
     // プレイヤーを中心にビューポートを計算
@@ -213,18 +138,10 @@ export class DungeonScene extends Phaser.Scene {
     const endX = this.viewStartX + this.viewTilesX
     const endY = this.viewStartY + this.viewTilesY
 
-    // ビューポート内のタイルを描画
+    // ビューポート内の全タイルを描画
     for (let y = this.viewStartY; y < endY; y++) {
       for (let x = this.viewStartX; x < endX; x++) {
-        if (x < 0 || x >= this.mapWidth || y < 0 || y >= this.mapHeight) continue
-        const tile = this.map[y][x]
-
-        if (tile === 0 || tile === 2) {
-          // 床タイルを描画
-          this.drawFloorTile(x, y, this.viewStartX, this.viewStartY, tile === 2)
-          // 縁タイルを重ねて描画
-          this.drawBorderOverlay(x, y)
-        }
+        this.drawTile(x, y)
       }
     }
 
@@ -232,7 +149,7 @@ export class DungeonScene extends Phaser.Scene {
     this.drawEnemies(this.viewStartX, this.viewStartY, endX, endY)
 
     // プレイヤーを描画（常に画面中央）
-    this.drawPlayer(playerPos.x, playerPos.y, this.viewStartX, this.viewStartY)
+    this.drawPlayer(playerPos.x, playerPos.y)
 
     // デバッググリッドを更新
     if (this.debugGridVisible) {
@@ -240,6 +157,24 @@ export class DungeonScene extends Phaser.Scene {
     }
   }
 
+  private drawTile(tileX: number, tileY: number) {
+    const screenX = tileX - this.viewStartX
+    const screenY = tileY - this.viewStartY
+    const x = this.offsetX + screenX * this.tileWidth + this.tileWidth / 2
+    const y = this.offsetY + screenY * this.tileHeight + this.tileHeight / 2
+
+    // タイル種別に応じた色を決定
+    let color = this.COLOR_WALL // 範囲外は壁色
+    if (tileX >= 0 && tileX < this.mapWidth && tileY >= 0 && tileY < this.mapHeight) {
+      const tile = this.map[tileY][tileX]
+      if (tile === 0) color = this.COLOR_FLOOR
+      else if (tile === 2) color = this.COLOR_STAIRS
+      else color = this.COLOR_WALL
+    }
+
+    const rect = this.add.rectangle(x, y, this.tileWidth, this.tileHeight, color)
+    this.tileContainer.add(rect)
+  }
 
   // タイルが床かどうか判定（範囲外は壁扱い）
   private isFloor(x: number, y: number): boolean {
@@ -247,115 +182,6 @@ export class DungeonScene extends Phaser.Scene {
       return false
     }
     return this.map[y][x] === 0 || this.map[y][x] === 2
-  }
-
-  // グリッド座標でタイルを配置（ビューポート相対）
-  private addTileAtGrid(texture: string, gridX: number, gridY: number) {
-    // ビューポート相対座標に変換
-    const screenX = gridX - this.viewStartX
-    const screenY = gridY - this.viewStartY
-
-    // 描画範囲チェック（ビューポート外は描画しない）
-    if (screenX < -2 || screenX > this.viewTilesX + 1 || screenY < -2 || screenY > this.viewTilesY + 1) {
-      return
-    }
-
-    const x = this.offsetX + screenX * this.tileWidth
-    const y = this.offsetY + screenY * this.tileHeight
-    const img = this.add.image(x, y, texture)
-    img.setOrigin(0, 0)
-    img.setScale(this.tileScale)
-    this.wallContainer.add(img)
-  }
-
-  // 4方向ビットマスクを計算
-  // N=1, E=2, S=4, W=8
-  private getBitmask4(tileX: number, tileY: number): number {
-    let mask = 0
-    if (this.isFloor(tileX, tileY - 1)) mask |= 1 // N
-    if (this.isFloor(tileX + 1, tileY)) mask |= 2 // E
-    if (this.isFloor(tileX, tileY + 1)) mask |= 4 // S
-    if (this.isFloor(tileX - 1, tileY)) mask |= 8 // W
-    return mask
-  }
-
-  // 縁タイルを床の上に重ねて描画（隣接判定 + オーバーレイ方式）
-  private drawBorderOverlay(tileX: number, tileY: number) {
-    const mask = this.getBitmask4(tileX, tileY)
-
-    // N=1, E=2, S=4, W=8
-    const hasN = (mask & 1) !== 0
-    const hasE = (mask & 2) !== 0
-    const hasS = (mask & 4) !== 0
-    const hasW = (mask & 8) !== 0
-
-    // === 直線部分 ===
-    // 北に壁
-    if (!hasN) {
-      this.addTileAtGrid('wall_mid', tileX, tileY - 1)
-      this.addTileAtGrid('wall_top_mid', tileX, tileY - 2)
-    }
-    // 南に壁
-    if (!hasS) {
-      this.addTileAtGrid('wall_mid', tileX, tileY + 1)
-      this.addTileAtGrid('wall_top_mid', tileX, tileY)
-    }
-    // 西に壁
-    if (!hasW) {
-      this.addTileAtGrid('wall_outer_mid_left', tileX -1, tileY)
-    }
-    // 東に壁
-    if (!hasE) {
-      this.addTileAtGrid('wall_outer_mid_right', tileX + 1, tileY)
-    }
-
-    // === 外側角（凸角）===
-    // 北西: 北も西も壁
-    if (!hasN && !hasW) {
-      this.addTileAtGrid('wall_outer_top_left', tileX - 1, tileY - 2) // a-1
-      this.addTileAtGrid('wall_top_left', tileX, tileY - 2)
-      this.addTileAtGrid('wall_outer_mid_left', tileX - 1, tileY - 1) // a0
-    }
-    // 北東: 北も東も壁
-    if (!hasN && !hasE) {
-      this.addTileAtGrid('wall_outer_top_right', tileX + 1, tileY - 2) // e-1
-      this.addTileAtGrid('wall_top_right', tileX, tileY - 2)
-      this.addTileAtGrid('wall_outer_mid_right', tileX + 1, tileY - 1) // e0
-    }
-    // 南西: 南も西も壁
-    if (!hasS && !hasW) {
-      this.addTileAtGrid('wall_outer_front_left', tileX - 1, tileY + 1)
-    }
-    // 南東: 南も東も壁
-    if (!hasS && !hasE) {
-      this.addTileAtGrid('wall_outer_front_right', tileX + 1, tileY + 1)
-    }
-
-    // === 内側角（凹角）===
-    // L字型の内側角のみ処理（孤立した斜め壁は無視）
-    // 条件: 斜めが壁 AND 隣接2方向が両方床
-    const hasNW = this.isFloor(tileX - 1, tileY - 1)
-    const hasNE = this.isFloor(tileX + 1, tileY - 1)
-    const hasSW = this.isFloor(tileX - 1, tileY + 1)
-    const hasSE = this.isFloor(tileX + 1, tileY + 1)
-
-    // 北西の内側角: 北西が壁、北が床、西が床（L字型の内側）
-    if (!hasNW && hasN && hasW) {
-      // this.addTileAtGrid('wall_edge_top_right', tileX - 1, tileY - 1)
-    }
-    // 北東の内側角: 北東が壁、北が床、東が床（L字型の内側）
-    if (!hasNE && hasN && hasE) {
-      // this.addTileAtGrid('wall_edge_top_left', tileX + 1, tileY - 1)
-    }
-    // 南西の内側角: 南西が壁、南が床、西が床（L字型の内側）
-    if (!hasSW && hasS && hasW) {
-      // this.addTileAtGrid('wall_edge_bottom_right', tileX - 1, tileY + 1)
-    }
-    // 南東の内側角: 南東が壁、南が床、東が床（L字型の内側）
-    if (!hasSE && hasS && hasE) {
-      // this.addTileAtGrid('wall_edge_bottom_left', tileX + 1, tileY + 1)
-    }
-
   }
 
   private drawDebugGrid() {
@@ -395,28 +221,6 @@ export class DungeonScene extends Phaser.Scene {
     }
   }
 
-  private drawFloorTile(tileX: number, tileY: number, viewStartX: number, viewStartY: number, isStairs: boolean) {
-    const screenTileX = tileX - viewStartX
-    const screenTileY = tileY - viewStartY
-    const x = this.offsetX + screenTileX * this.tileWidth + this.tileWidth / 2
-    const y = this.offsetY + screenTileY * this.tileHeight + this.tileHeight / 2
-
-    // テクスチャを選択
-    let textureKey: string
-    if (isStairs) {
-      textureKey = 'floor_stairs'
-    } else {
-      // 市松模様風にバリエーションを使い分け
-      const variant = ((tileX + tileY) % 3) + 1
-      textureKey = `floor_${variant}`
-    }
-
-    const tile = this.add.image(x, y, textureKey)
-    tile.setScale(this.tileScale)
-    this.floorContainer.add(tile)
-  }
-
-
   private drawEnemies(viewStartX: number, viewStartY: number, endX: number, endY: number) {
     for (const enemy of this.gameStore.enemies) {
       // ビューポート外はスキップ
@@ -425,30 +229,21 @@ export class DungeonScene extends Phaser.Scene {
       const screenTileX = enemy.x - viewStartX
       const screenTileY = enemy.y - viewStartY
       const x = this.offsetX + screenTileX * this.tileWidth + this.tileWidth / 2
-      const y = this.offsetY + screenTileY * this.tileHeight + this.tileHeight * 0.8
+      const y = this.offsetY + screenTileY * this.tileHeight + this.tileHeight / 2
 
-      const sprite = this.add.sprite(x, y, 'knight_f0')
-      sprite.setScale(this.tileScale * 0.8)
-      sprite.setOrigin(0.5, 1)
-      sprite.setTint(0xff4444) // 赤tintで敵を区別
-      sprite.play('enemy_idle_anim')
-      this.entityContainer.add(sprite)
+      const rect = this.add.rectangle(x, y, this.tileWidth * 0.7, this.tileHeight * 0.7, this.COLOR_ENEMY)
+      this.entityContainer.add(rect)
     }
   }
 
-  private drawPlayer(tileX: number, tileY: number, viewStartX: number, viewStartY: number) {
-    const screenTileX = tileX - viewStartX
-    const screenTileY = tileY - viewStartY
+  private drawPlayer(tileX: number, tileY: number) {
+    const screenTileX = tileX - this.viewStartX
+    const screenTileY = tileY - this.viewStartY
     const x = this.offsetX + screenTileX * this.tileWidth + this.tileWidth / 2
-    // キャラクターの足元をタイルの中央下寄りに配置
-    const y = this.offsetY + screenTileY * this.tileHeight + this.tileHeight * 0.8
+    const y = this.offsetY + screenTileY * this.tileHeight + this.tileHeight / 2
 
-    // プレイヤースプライト作成
-    this.playerSprite = this.add.sprite(x, y, 'knight_f0')
-    this.playerSprite.setScale(this.tileScale * 0.8)
-    this.playerSprite.setOrigin(0.5, 1) // 足元を原点に
-    this.playerSprite.play('knight_idle_anim')
-    this.entityContainer.add(this.playerSprite)
+    const rect = this.add.rectangle(x, y, this.tileWidth * 0.7, this.tileHeight * 0.7, this.COLOR_PLAYER)
+    this.entityContainer.add(rect)
   }
 
   private setupInput() {
