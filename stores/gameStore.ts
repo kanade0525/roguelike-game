@@ -19,6 +19,18 @@ interface EnemyState {
   y: number
 }
 
+interface FloorItem {
+  id: string
+  itemId: string
+  x: number
+  y: number
+}
+
+interface InventoryItem {
+  itemId: string
+  name: string
+}
+
 interface DungeonState {
   floor: number
 }
@@ -27,6 +39,8 @@ interface GameState {
   player: PlayerState
   dungeon: DungeonState
   enemies: EnemyState[]
+  floorItems: FloorItem[]
+  inventory: InventoryItem[]
   turn: number
   messageLog: string[]
 }
@@ -48,6 +62,8 @@ export const useGameStore = defineStore('game', {
       floor: 1,
     },
     enemies: [],
+    floorItems: [],
+    inventory: [],
     turn: 0,
     messageLog: [],
   }),
@@ -110,6 +126,22 @@ export const useGameStore = defineStore('game', {
 
     clearEnemies() {
       this.enemies = []
+    },
+
+    addFloorItem(item: FloorItem) {
+      this.floorItems.push(item)
+    },
+
+    removeFloorItem(id: string) {
+      this.floorItems = this.floorItems.filter((i) => i.id !== id)
+    },
+
+    addToInventory(item: InventoryItem) {
+      this.inventory.push(item)
+    },
+
+    clearFloorItems() {
+      this.floorItems = []
     },
 
     decreaseSatiation(amount: number) {

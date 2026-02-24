@@ -48,6 +48,7 @@ export class DungeonScene extends Phaser.Scene {
   private readonly COLOR_STAIRS = 0xccaa00
   private readonly COLOR_PLAYER = 0x4444ff
   private readonly COLOR_ENEMY = 0xff4444
+  private readonly COLOR_ITEM = 0x44cc44
 
   constructor() {
     super({ key: 'DungeonScene' })
@@ -68,6 +69,7 @@ export class DungeonScene extends Phaser.Scene {
     // プレイヤー初期位置を store に設定、敵を配置
     this.gameLoop.initFloor({ x: 3, y: 3 })
     this.gameStore.addEnemy({ id: 'slime-1', type: 'slime', x: 5, y: 4 })
+    this.gameStore.addFloorItem({ id: 'item-1', itemId: 'sword', x: 4, y: 2 })
 
     // コンテナ作成（描画順序制御用）
     this.tileContainer = this.add.container(0, 0)
@@ -145,6 +147,9 @@ export class DungeonScene extends Phaser.Scene {
       }
     }
 
+    // アイテムを描画（ビューポート内のみ）
+    this.drawItems(this.viewStartX, this.viewStartY, endX, endY)
+
     // 敵を描画（ビューポート内のみ）
     this.drawEnemies(this.viewStartX, this.viewStartY, endX, endY)
 
@@ -218,6 +223,20 @@ export class DungeonScene extends Phaser.Scene {
         text.setDepth(1000)
         this.debugContainer.add(text)
       }
+    }
+  }
+
+  private drawItems(viewStartX: number, viewStartY: number, endX: number, endY: number) {
+    for (const item of this.gameStore.floorItems) {
+      if (item.x < viewStartX || item.x >= endX || item.y < viewStartY || item.y >= endY) continue
+
+      const screenTileX = item.x - viewStartX
+      const screenTileY = item.y - viewStartY
+      const x = this.offsetX + screenTileX * this.tileWidth + this.tileWidth / 2
+      const y = this.offsetY + screenTileY * this.tileHeight + this.tileHeight / 2
+
+      const rect = this.add.rectangle(x, y, this.tileWidth * 0.4, this.tileHeight * 0.4, this.COLOR_ITEM)
+      this.entityContainer.add(rect)
     }
   }
 

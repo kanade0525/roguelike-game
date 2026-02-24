@@ -1,6 +1,7 @@
 import { useGameStore } from '~/stores/gameStore'
 import { TurnManager } from '~/game/systems/TurnManager'
 import { randomMove } from '~/game/systems/EnemyAI'
+import { ITEMS } from '~/game/data/items'
 
 const turnManager = new TurnManager()
 
@@ -55,6 +56,15 @@ export function useGameLoop() {
     // 移動
     store.setPlayerPosition(newX, newY)
 
+    // アイテム拾得チェック
+    const item = store.floorItems.find((i) => i.x === newX && i.y === newY)
+    if (item) {
+      const def = ITEMS[item.itemId]
+      store.addToInventory({ itemId: item.itemId, name: def.name })
+      store.removeFloorItem(item.id)
+      messages.push(`${def.name}を拾った！`)
+    }
+
     // 階段チェック
     if (map[newY][newX] === 2) {
       messages.push('階段を見つけた！')
@@ -88,6 +98,7 @@ export function useGameLoop() {
   function initFloor(playerPos: { x: number; y: number }) {
     store.setPlayerPosition(playerPos.x, playerPos.y)
     store.clearEnemies()
+    store.clearFloorItems()
     turnManager.reset()
   }
 
