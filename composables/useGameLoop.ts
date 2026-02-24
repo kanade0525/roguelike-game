@@ -47,6 +47,11 @@ export function useGameLoop() {
       return null
     }
 
+    // 敵チェック
+    if (store.enemies.some((e) => e.x === newX && e.y === newY)) {
+      return null
+    }
+
     // 移動
     store.setPlayerPosition(newX, newY)
 
