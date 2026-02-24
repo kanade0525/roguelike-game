@@ -23,14 +23,15 @@
 
 ### 採用構成: Nuxt 3 + Phaser 3
 
-| レイヤー       | 技術           | 理由                              |
-| -------------- | -------------- | --------------------------------- |
-| フレームワーク | Nuxt 3         | 慣れている、Pinia統合、開発効率   |
-| ゲーム描画     | Phaser 3       | 情報多い、音声等すぐ使える        |
-| 状態管理       | Pinia          | 状態の一元管理、カオス防止        |
-| ダンジョン生成 | rot.js         | FOV、パス探索、将来のランダム生成 |
-| 言語           | TypeScript     | 型安全性                          |
-| PWA            | @vite-pwa/nuxt | オフライン対応                    |
+| レイヤー | 技術 | 理由 |
+| --- | --- | --- |
+| フレームワーク | Nuxt 3 | 慣れている、Pinia統合、開発効率 |
+| ゲーム描画 | Phaser 3 | 情報多い、音声等すぐ使える |
+| 状態管理 | Pinia | 状態の一元管理、カオス防止 |
+| ダンジョン生成 | rot.js | FOV、パス探索、将来のランダム生成（導入済み・未使用） |
+| 言語 | TypeScript | 型安全性 |
+| UI装飾 | NES.css | タイトル画面のレトロUI |
+| PWA | @vite-pwa/nuxt | オフライン対応（未導入） |
 
 ### 選定理由
 
@@ -47,44 +48,37 @@
 
 ```text
 roguelike/
-├── composables/              # ビジネスロジック（再利用可能）
-│   ├── useGameState.ts       # ゲーム状態管理
-│   ├── useTurnSystem.ts      # ターン制ロジック
-│   ├── useCombat.ts          # 戦闘計算
-│   └── useInventory.ts       # アイテム管理
-│
 ├── stores/                   # Pinia（状態の単一ソース）
 │   └── gameStore.ts          # 全ゲーム状態を一元管理
 │
 ├── game/                     # 純粋なゲームロジック（Phaser非依存）
 │   ├── entities/
 │   │   ├── Player.ts         # プレイヤーデータ・ロジック
-│   │   ├── Enemy.ts          # 敵データ・ロジック
-│   │   └── Item.ts           # アイテムデータ
+│   │   └── Enemy.ts          # 敵データ・ロジック・定義
 │   ├── systems/
 │   │   ├── TurnManager.ts    # ターン処理
-│   │   ├── CombatSystem.ts   # ダメージ計算
-│   │   └── AISystem.ts       # 敵AI
+│   │   └── CombatSystem.ts   # ダメージ計算
 │   └── data/
-│       ├── maps/             # マップデータ（JSON）
-│       └── enemies.ts        # 敵定義
+│       └── gameConfig.json   # ゲーム設定パラメータ
 │
-├── phaser/                   # Phaser描画層のみ
-│   ├── scenes/
-│   │   ├── DungeonScene.ts   # ダンジョン描画
-│   │   └── UIScene.ts        # HUD描画
-│   └── sprites/
-│       └── CharacterSprite.ts # スプライト管理
+├── phaser/                   # Phaser描画層
+│   └── scenes/
+│       ├── DungeonScene.ts   # ダンジョン描画・入力処理
+│       └── UIScene.ts        # HUD・コントローラー描画
 │
-├── components/               # Vue UI（メニュー等）
-│   ├── GameCanvas.client.vue # Phaser埋め込み
-│   ├── Inventory.vue         # インベントリUI
-│   └── TouchControls.vue     # タッチ操作
+├── components/               # Vue UI
+│   └── GameCanvas.client.vue # Phaser埋め込み
 │
 └── pages/
     ├── index.vue             # タイトル
     └── game.vue              # ゲーム画面
 ```
+
+> **未作成ファイル（今後実装予定）:**
+> `composables/`（useGameState, useTurnSystem, useCombat, useInventory）、
+> `game/entities/Item.ts`、`game/systems/AISystem.ts`、`game/data/maps/`、
+> `phaser/sprites/CharacterSprite.ts`、
+> `components/Inventory.vue`、`components/TouchControls.vue`
 
 ### 分離ルール
 
@@ -96,12 +90,39 @@ roguelike/
 | `phaser/`      | 描画のみ       | ✅ あり    |
 | `components/`  | Vue UI         | ❌ なし    |
 
+### データフロー
+
+```mermaid
+graph LR
+    subgraph Phaser依存なし
+        game["game/<br/>純粋ロジック"]
+        stores["stores/<br/>Pinia"]
+        composables["composables/<br/>橋渡し"]
+    end
+    subgraph Phaser依存
+        phaser["phaser/<br/>描画専用"]
+    end
+    subgraph Vue
+        components["components/<br/>Vue UI"]
+    end
+
+    composables -->|呼出| game
+    composables -->|操作| stores
+    game -->|計算結果| stores
+    stores -->|状態監視| phaser
+    stores -->|状態参照| components
+```
+
 ### 設計原則
 
 1. **game/は純粋なTypeScript** - Phaserを一切使わない、テスト可能
-2. **Pinia一元管理** - 状態がどこにあるか常に明確
+2. **Pinia一元管理** - 状態変更は必ず`stores/gameStore.ts`経由
 3. **Phaserは描画専用** - storeを監視して描画するだけ
-4. **composablesで再利用** - `useCombat()`などロジックを使い回し
+4. **1ファイル1責務** - 機能を分散させない
+
+> **現状の課題:** DungeonScene.tsがプレイヤー位置を直接管理しており、
+> Pinia storeと未連携。UIScene.tsのステータス更新メソッドもstore未監視。
+> 原則2・3の完全適用は今後の課題。
 
 ---
 
@@ -111,12 +132,18 @@ roguelike/
 
 #### ターン制
 
-- プレイヤーが行動 → 敵が行動 → ターン終了
 - 1ターン = 1行動（移動、攻撃、アイテム使用など）
+
+```mermaid
+graph LR
+    A["プレイヤー行動<br/>移動/攻撃/アイテム"] --> B[敵行動]
+    B --> C[ターン終了]
+    C --> A
+```
 
 #### 移動
 
-- 4方向移動（上下左右）
+- 8方向移動（上下左右＋斜め）
 - グリッドベース（タイル単位）
 
 #### 視界
@@ -126,9 +153,9 @@ roguelike/
 
 #### 描画方式
 
-- **クォータービュー**（斜め見下ろし視点）
-- タイルは正方形グリッドだがY方向が圧縮されて表示（幅:高さ = 2:1）
-- 壁は立体的に高さを持って描画
+- **トップダウン＋立体壁**（見下ろし視点、壁に高さ表現あり）
+- タイルは正方形グリッド（16×16ベース、4倍拡大で64×64表示）
+- 壁はビットマスク判定で前面・側面・上端を描画し立体感を表現
 - 参考: 不思議のダンジョンシリーズ（トルネコ、シレン等）
 
 ### 4.2 ダンジョン
@@ -172,27 +199,36 @@ roguelike/
 | 回復草   | HP +30       |
 | 毒消し草 | 状態異常回復 |
 
-### 4.5 操作方法（スマホ）
+### 4.5 操作方法
+
+#### キーボード操作
+
+- WASD / 矢印キー（4方向移動）
 
 #### タッチ操作
 
 - 仮想方向パッド（8方向）
-- タップで攻撃/アイテム拾い
-- メニューボタン（インベントリ）
+- A/Bボタン（決定/待機）
+- L/Rボタン（アイテム切り替え）
+- SELECT/STARTボタン（インベントリ/メニュー）
 
 #### UI配置
 
 ```text
 ┌─────────────────────────┐
+│  [階層 Lv HP 満腹度]    │
+├─────────────────────────┤
 │      ゲーム画面          │
 │                         │
 │                         │
 ├─────────────────────────┤
-│  [HP/状態バー]          │
-│                         │
-│    ◀   ▲   ▶           │
-│        ▼               │
-│  [メニュー] [待機]      │
+│  [メッセージログ 2行]    │
+├─────────────────────────┤
+│  [L]              [R]   │
+│  ↖ ↑ ↗        [A]     │
+│  ← · →                 │
+│  ↙ ↓ ↘        [B]     │
+│    [SELECT] [START]     │
 └─────────────────────────┘
 ```
 
@@ -202,7 +238,7 @@ roguelike/
 
 ### 5.1 アセット管理方法
 
-`public/assets/asset-pack.json`で一括管理（既存プロジェクトと同様）：
+`public/assets/asset-pack.json`で一括管理する予定（未実装、現在はDungeonScene.tsで個別ロード）：
 
 ```json
 {
@@ -226,64 +262,43 @@ this.load.pack('assets', 'assets/asset-pack.json')
 
 ### 5.2 アセットディレクトリ構成
 
+現在の実際のディレクトリ構成:
+
 ```text
 public/assets/
-├── asset-pack.json           # アセット定義
-├── sprites/
-│   ├── player_down.png
-│   ├── player_up.png
-│   ├── player_left.png
-│   ├── player_right.png
-│   ├── slime_idle.png
-│   ├── slime_attack.png
-│   ├── goblin_idle.png
-│   └── goblin_attack.png
-├── tiles/
-│   └── dungeon_tileset.png   # 床・壁・階段を1枚に
-├── items/
-│   ├── herb_heal.png
-│   ├── herb_antidote.png
-│   ├── scroll.png
-│   └── food.png
-├── ui/
-│   ├── hp_bar.png
-│   ├── dpad.png
-│   ├── btn_menu.png
-│   ├── btn_wait.png
-│   └── frame.png
-├── audio/
-│   ├── bgm_dungeon.mp3
-│   ├── se_attack.mp3
-│   ├── se_damage.mp3
-│   ├── se_heal.mp3
-│   ├── se_stairs.mp3
-│   ├── se_pickup.mp3
-│   └── se_death.mp3
-└── fonts/
-    └── pixel.ttf
+└── tiles/                              # 全タイル・スプライト
+    ├── floor_1.png 〜 floor_8.png      # 床バリエーション
+    ├── floor_stairs.png                # 階段
+    ├── wall_mid.png 等                 # 壁タイル（前面・側面・上端・角等 多数）
+    ├── knight_m_idle_anim_f0〜f3.png   # プレイヤー待機（男性）
+    ├── knight_m_run_anim_f0〜f3.png    # プレイヤー移動（男性）
+    ├── knight_f_idle_anim_f0〜f3.png   # プレイヤー待機（女性）
+    └── knight_f_run_anim_f0〜f3.png    # プレイヤー移動（女性）
 ```
+
+> **今後追加予定のディレクトリ:** `sprites/`（敵）、`items/`、`ui/`、`audio/`、`fonts/`
 
 ### 5.3 必要アセット一覧（最小構成）
 
-| カテゴリ       | 数量 | 内容                                 | サイズ       |
-| -------------- | ---- | ------------------------------------ | ------------ |
-| フォント       | 1    | ピクセルフォント                     | -            |
-| タイルセット   | 1    | 床・壁・階段を1枚に                  | 32x32/タイル |
-| プレイヤー     | 4枚  | 上下左右 各1枚                       | 32x32        |
-| 敵（スライム） | 2枚  | 待機・攻撃                           | 32x32        |
-| 敵（ゴブリン） | 2枚  | 待機・攻撃                           | 32x32        |
-| アイテム       | 4枚  | 回復草、毒消し草、巻物、食料         | 32x32        |
-| UI             | 5枚  | HPバー、方向パッド、ボタン           | 各種         |
-| 効果音         | 6個  | 攻撃、被ダメ、回復、階段、拾う、死亡 | -            |
-| BGM            | 1曲  | ダンジョン用ループ                   | -            |
+| カテゴリ | 数量 | 内容 | サイズ |
+| --- | --- | --- | --- |
+| フォント | 1 | ピクセルフォント | - |
+| タイルセット | 多数 | 床8種・壁多数・階段（個別PNG） | 16x16/タイル |
+| プレイヤー | 16枚 | 男女×待機・移動 各4フレーム | 16x16 |
+| 敵（スライム） | 2枚 | 待機・攻撃（未作成） | 16x16 |
+| 敵（ゴブリン） | 2枚 | 待機・攻撃（未作成） | 16x16 |
+| アイテム | 4枚 | 回復草、毒消し草、巻物、食料（未作成） | 16x16 |
+| UI | - | Phaser Graphicsで描画（画像不使用） | - |
+| 効果音 | 6個 | 攻撃、被ダメ、回復、階段、拾う、死亡（未作成） | - |
+| BGM | 1曲 | ダンジョン用ループ（未作成） | - |
 
-合計: 約25ファイル
+現状: タイル・スプライト約50ファイル作成済み。敵・アイテム・音声は未作成。
 
 ### 5.4 仮素材での開発
 
 初期は以下の方法で進める：
 
-1. **図形で代用**: Phaserの`Graphics`で四角・丸を描画
+1. ~~**図形で代用**: Phaserの`Graphics`で四角・丸を描画~~ → フリー素材のスプライトタイル（16×16）を使用中
 2. **フリー素材サイト**:
    - [itch.io](https://itch.io/game-assets/free/tag-roguelike)
    - [OpenGameArt](https://opengameart.org/)
@@ -338,12 +353,15 @@ front view, transparent background, sprite sheet style,
 
 ### 6.2 画面遷移
 
-```text
-タイトル
-  ├→ ダンジョン ←→ インベントリ
-  │      ├→ ゲームオーバー → タイトル
-  │      └→ クリア → タイトル
-  └→ 続きから → ダンジョン
+```mermaid
+graph TD
+    title[タイトル] -->|はじめから| dungeon[ダンジョン]
+    title -->|続きから| dungeon
+    dungeon <-->|開く/閉じる| inventory[インベントリ]
+    dungeon -->|死亡| gameover[ゲームオーバー]
+    dungeon -->|最終階クリア| clear[クリア]
+    gameover --> title
+    clear --> title
 ```
 
 ---
@@ -383,36 +401,36 @@ interface SaveData {
 ### Phase 1: 基盤構築
 
 - [x] Nuxt 3プロジェクトセットアップ
-- [x] Phaser 3 / rot.js / Pinia 導入
-- [x] 基本的なゲームループ実装
+- [x] Phaser 3 / rot.js / Pinia 導入（rot.jsは未使用）
+- [x] 入力→描画の基本フロー実装（ターン制ゲームループは未統合）
 - [x] ディレクトリ構成の整備
 - [x] Docker開発環境構築
 
 ### Phase 2: ダンジョン実装
 
-- [x] 固定マップの描画（仮素材・Graphics）
-- [x] クォータービュー描画システム
-- [x] タイル管理システム（床、壁、階段）
+- [x] 固定マップの描画（フリー素材スプライトタイル使用）
+- [x] 壁の立体表現描画システム（ビットマスク判定、タイルは1:1比率）
+- [x] タイル管理システム（床8種、壁多数、階段表示のみ）
 - [ ] FOV（視界）実装（rot.js）
 
 ### Phase 3: キャラクター実装
 
-- [x] プレイヤー移動（4方向）
-- [ ] ターン制システム
-- [ ] 敵AI（追跡、攻撃）
+- [x] プレイヤー移動（キーボード4方向、タッチDPad8方向）
+- [ ] ターン制システム（TurnManager.tsクラス作成済み、ゲーム未統合）
+- [ ] 敵AI（Enemy.tsクラス作成済み、AISystem.ts未作成、描画・配置未実装）
 
 ### Phase 4: ゲームシステム
 
-- [ ] 戦闘システム
-- [ ] アイテムシステム
-- [ ] 階層移動
+- [ ] 戦闘システム（CombatSystem.tsクラス作成済み、ゲーム未統合）
+- [ ] アイテムシステム（gameConfig.jsonに定義のみ、Item.ts未作成）
+- [ ] 階層移動（階段タイル表示済み、踏んでもログ出力のみ）
 
 ### Phase 5: UI/UX
 
 - [x] タイトル画面
-- [x] ステータスバー（階層、Lv、HP、満腹度）
-- [x] メッセージログ表示
-- [ ] スマホタッチ操作
+- [x] ステータスバー（階層、Lv、HP、満腹度）※描画済み、store未連携で値は静的
+- [x] メッセージログ表示（2行表示、アクション時にメッセージ追加）
+- [x] スマホタッチ操作（DPad8方向・A/B/L/R/SELECT/START実装済み、一部アクション未実装）
 - [ ] インベントリ画面
 - [ ] ゲームオーバー画面
 
@@ -509,7 +527,7 @@ Phaserは使わず、純粋なTypeScriptで。
 }
 ```
 
-**ローグライク用に拡張:**
+**ローグライク用に拡張（`game/data/gameConfig.json`として作成済み、コードからは未読み込み）:**
 
 ```json
 {
@@ -537,12 +555,24 @@ Phaserは使わず、純粋なTypeScriptで。
 }
 ```
 
+> **注意:** `tileSize: 32`はgameConfig.json上の値。DungeonScene.tsでは`baseTileSize = 16`（×4倍拡大=64px）をハードコードしており、このJSONは現在読み込まれていない。
+
 ### 10.3 活用すべき設計パターン
 
 #### 1. 状態機械パターン（敵AI）
 
+```mermaid
+stateDiagram-v2
+    [*] --> idle : 初期状態
+    idle --> chase : プレイヤー検知
+    chase --> attack : 攻撃範囲内
+    attack --> chase : 攻撃範囲外
+    chase --> idle : プレイヤー見失う
+```
+
+実装例（既存プロジェクトのSoundNinja.jsより）:
+
 ```typescript
-// 既存プロジェクトのSoundNinja.jsより
 aiState: 'patrol' | 'chase' | 'attack'
 
 switch (this.aiState) {
