@@ -15,7 +15,12 @@ export class DungeonScene extends Phaser.Scene {
   private mapWidth = 15
   private mapHeight = 12
   private map: number[][] = []
-  private playerPos = { x: 0, y: 0 }
+
+  // Pinia store と composable（GameCanvas.client.vue から registry 経由で受け取る）
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private gameStore: any = null
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private gameLoop: any = null
 
   // スプライトコンテナ
   private floorContainer!: Phaser.GameObjects.Container
@@ -91,8 +96,16 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   create() {
+    // Pinia store と composable を registry から取得
+    this.gameStore = this.game.registry.get('gameStore')
+    this.gameLoop = this.game.registry.get('gameLoop')
+
     this.calculateTileSize()
     this.createMap()
+
+    // プレイヤー初期位置を store に設定、敵を配置
+    this.gameLoop.initFloor({ x: 3, y: 3 })
+    this.gameStore.addEnemy({ id: 'slime-1', type: 'slime', x: 5, y: 4 })
 
     // コンテナ作成（描画順序制御用）
     this.floorContainer = this.add.container(0, 0)
@@ -121,10 +134,25 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private createAnimations() {
-    // アイドルアニメーション
+    // プレイヤーアイドルアニメーション
     if (!this.anims.exists('knight_idle_anim')) {
       this.anims.create({
         key: 'knight_idle_anim',
+        frames: [
+          { key: 'knight_f0' },
+          { key: 'knight_f1' },
+          { key: 'knight_f2' },
+          { key: 'knight_f3' },
+        ],
+        frameRate: 6,
+        repeat: -1,
+      })
+    }
+
+    // 敵アイドルアニメーション（女騎士スプライトを赤tintで流用）
+    if (!this.anims.exists('enemy_idle_anim')) {
+      this.anims.create({
+        key: 'enemy_idle_anim',
         frames: [
           { key: 'knight_f0' },
           { key: 'knight_f1' },
@@ -168,7 +196,6 @@ export class DungeonScene extends Phaser.Scene {
     ]
     this.mapWidth = 7
     this.mapHeight = 7
-    this.playerPos = { x: 3, y: 3 }
   }
 
   private drawScene() {
@@ -178,10 +205,11 @@ export class DungeonScene extends Phaser.Scene {
     this.entityContainer.removeAll(true)
 
     // プレイヤーを中心にビューポートを計算
+    const playerPos = this.gameStore.player.position
     const halfViewX = Math.floor(this.viewTilesX / 2)
     const halfViewY = Math.floor(this.viewTilesY / 2)
-    this.viewStartX = this.playerPos.x - halfViewX
-    this.viewStartY = this.playerPos.y - halfViewY
+    this.viewStartX = playerPos.x - halfViewX
+    this.viewStartY = playerPos.y - halfViewY
     const endX = this.viewStartX + this.viewTilesX
     const endY = this.viewStartY + this.viewTilesY
 
@@ -200,8 +228,11 @@ export class DungeonScene extends Phaser.Scene {
       }
     }
 
+    // 敵を描画（ビューポート内のみ）
+    this.drawEnemies(this.viewStartX, this.viewStartY, endX, endY)
+
     // プレイヤーを描画（常に画面中央）
-    this.drawPlayer(this.playerPos.x, this.playerPos.y, this.viewStartX, this.viewStartY)
+    this.drawPlayer(playerPos.x, playerPos.y, this.viewStartX, this.viewStartY)
 
     // デバッググリッドを更新
     if (this.debugGridVisible) {
@@ -386,6 +417,25 @@ export class DungeonScene extends Phaser.Scene {
   }
 
 
+  private drawEnemies(viewStartX: number, viewStartY: number, endX: number, endY: number) {
+    for (const enemy of this.gameStore.enemies) {
+      // ビューポート外はスキップ
+      if (enemy.x < viewStartX || enemy.x >= endX || enemy.y < viewStartY || enemy.y >= endY) continue
+
+      const screenTileX = enemy.x - viewStartX
+      const screenTileY = enemy.y - viewStartY
+      const x = this.offsetX + screenTileX * this.tileWidth + this.tileWidth / 2
+      const y = this.offsetY + screenTileY * this.tileHeight + this.tileHeight * 0.8
+
+      const sprite = this.add.sprite(x, y, 'knight_f0')
+      sprite.setScale(this.tileScale * 0.8)
+      sprite.setOrigin(0.5, 1)
+      sprite.setTint(0xff4444) // 赤tintで敵を区別
+      sprite.play('enemy_idle_anim')
+      this.entityContainer.add(sprite)
+    }
+  }
+
   private drawPlayer(tileX: number, tileY: number, viewStartX: number, viewStartY: number) {
     const screenTileX = tileX - viewStartX
     const screenTileY = tileY - viewStartY
@@ -432,25 +482,14 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private tryMove(dx: number, dy: number) {
-    const newX = this.playerPos.x + dx
-    const newY = this.playerPos.y + dy
+    const dir = dx === -1 ? '左' : dx === 1 ? '右' : dy === -1 ? '上' : '下'
+    console.log(`[Move] ${dir}`)
+    const messages = this.gameLoop.playerMove(dx, dy, this.map)
 
-    // 範囲チェックと壁チェック
-    if (
-      newX >= 0 &&
-      newX < this.mapWidth &&
-      newY >= 0 &&
-      newY < this.mapHeight &&
-      this.map[newY][newX] !== 1
-    ) {
-      this.playerPos.x = newX
-      this.playerPos.y = newY
+    // 移動が発生した場合（メッセージが空でも壁でなければ配列が返る）
+    if (messages !== null) {
       this.drawScene()
-
-      // 階段チェック
-      if (this.map[newY][newX] === 2) {
-        console.log('階段に到達!')
-      }
+      this.updateUI(messages)
     }
   }
 
@@ -467,30 +506,46 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private handleAction(action: string) {
-    const uiScene = this.scene.get('UIScene') as unknown as {
-      addMessage: (msg: string) => void
-    }
-
+    console.log(`[Action] ${action}`)
     switch (action) {
       case 'confirm':
-        uiScene.addMessage('決定/攻撃（未実装）')
+        this.updateUI(['決定/攻撃（未実装）'])
         break
       case 'wait':
-        uiScene.addMessage('その場で待機した')
-        // TODO: ターン経過処理
+        this.updateUI(['その場で待機した（未実装）'])
         break
       case 'menu':
-        uiScene.addMessage('メニューを開いた（未実装）')
+        this.updateUI(['メニューを開いた（未実装）'])
         break
       case 'inventory':
-        uiScene.addMessage('アイテム一覧（未実装）')
+        this.updateUI(['アイテム一覧（未実装）'])
         break
       case 'prevItem':
-        uiScene.addMessage('前のアイテム（未実装）')
+        this.updateUI(['前のアイテム（未実装）'])
         break
       case 'nextItem':
-        uiScene.addMessage('次のアイテム（未実装）')
+        this.updateUI(['次のアイテム（未実装）'])
         break
     }
+  }
+
+  private updateUI(messages: string[]) {
+    const uiScene = this.scene.get('UIScene') as unknown as {
+      addMessage: (msg: string) => void
+      updateHP: (current: number, max: number) => void
+      updateFloor: (floor: number) => void
+      updateLevel: (level: number) => void
+      updateSatiation: (current: number, max: number) => void
+    }
+
+    for (const msg of messages) {
+      uiScene.addMessage(msg)
+    }
+
+    const { player, dungeon } = this.gameStore
+    uiScene.updateHP(player.hp, player.maxHp)
+    uiScene.updateFloor(dungeon.floor)
+    uiScene.updateLevel(player.level)
+    uiScene.updateSatiation(player.satiation, player.maxSatiation)
   }
 }

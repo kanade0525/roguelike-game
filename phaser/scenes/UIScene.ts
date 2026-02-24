@@ -227,7 +227,7 @@ export class UIScene extends Phaser.Scene {
 
     btnB.on('pointerdown', () => {
       btnB.setFillStyle(0x7a7a9a)
-      this.emitAction('wait')
+      this.emitAction('inventory')
     })
     btnB.on('pointerup', () => btnB.setFillStyle(0x5a5a7a))
     btnB.on('pointerout', () => btnB.setFillStyle(0x5a5a7a))

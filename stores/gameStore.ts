@@ -12,6 +12,13 @@ interface PlayerState {
   position: { x: number; y: number }
 }
 
+interface EnemyState {
+  id: string
+  type: string
+  x: number
+  y: number
+}
+
 interface DungeonState {
   floor: number
 }
@@ -19,6 +26,7 @@ interface DungeonState {
 interface GameState {
   player: PlayerState
   dungeon: DungeonState
+  enemies: EnemyState[]
   turn: number
   messageLog: string[]
 }
@@ -39,6 +47,7 @@ export const useGameStore = defineStore('game', {
     dungeon: {
       floor: 1,
     },
+    enemies: [],
     turn: 0,
     messageLog: [],
   }),
@@ -52,7 +61,11 @@ export const useGameStore = defineStore('game', {
     movePlayer(dx: number, dy: number) {
       this.player.position.x += dx
       this.player.position.y += dy
-      this.endTurn()
+    },
+
+    setPlayerPosition(x: number, y: number) {
+      this.player.position.x = x
+      this.player.position.y = y
     },
 
     takeDamage(damage: number) {
@@ -81,6 +94,22 @@ export const useGameStore = defineStore('game', {
       if (this.messageLog.length > 50) {
         this.messageLog.shift()
       }
+    },
+
+    addEnemy(enemy: { id: string; type: string; x: number; y: number }) {
+      this.enemies.push(enemy)
+    },
+
+    moveEnemy(id: string, x: number, y: number) {
+      const enemy = this.enemies.find((e) => e.id === id)
+      if (enemy) {
+        enemy.x = x
+        enemy.y = y
+      }
+    },
+
+    clearEnemies() {
+      this.enemies = []
     },
 
     decreaseSatiation(amount: number) {
