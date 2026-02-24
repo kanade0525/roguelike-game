@@ -4,6 +4,9 @@ export default defineConfig({
   testDir: 'tests/e2e',
   timeout: 30000,
   retries: 1,
+  reporter: process.env.CI
+    ? [['json', { outputFile: 'test-results/e2e-results.json' }], ['list']]
+    : 'list',
   use: {
     baseURL: 'http://localhost:3000',
     screenshot: 'only-on-failure',
