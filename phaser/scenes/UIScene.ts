@@ -115,7 +115,7 @@ export class UIScene extends Phaser.Scene {
     this.levelText.setText(`Lv: ${level}`)
   }
 
-  updateSatiation(current: number, max: number) {
+  updateSatiation(current: number, _max: number) {
     this.satiationText.setText(`腹: ${current}`)
   }
 

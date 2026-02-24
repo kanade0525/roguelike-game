@@ -20,6 +20,9 @@ npm run generate  # 静的サイト生成
 npm run lint      # ESLint + Markdownlint 実行
 npm run lint:fix  # 自動修正付きリント
 npm run format    # Prettierでフォーマット
+npm run test      # ユニットテスト実行（Vitest）
+npm run test:watch # テスト監視モード
+npm run test:e2e  # E2Eテスト実行（Playwright）
 ```
 
 ## 開発フロー
