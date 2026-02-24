@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
       - run: npm ci
       - run: npm run lint
@@ -28,10 +28,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
       - run: npm ci
-      - run: npx vitest run --coverage --reporter=json --outputFile=test-results/unit-results.json
+      - run: npx vitest run --coverage --reporter=json --reporter=default --outputFile=test-results/unit-results.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -46,7 +46,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
@@ -82,14 +82,14 @@ jobs:
             }
 
             // --- Parse coverage ---
-            let coverageLines = '-', coverageBranches = '-', coverageFunctions = '-', coverageStatements = '-';
+            let covStmt = '-', covBranch = '-', covFunc = '-', covLines = '-';
             try {
               const covData = JSON.parse(fs.readFileSync('artifacts/unit-test-results/coverage/coverage-summary.json', 'utf8'));
-              const total = covData.total;
-              coverageLines = total.lines.pct + '%';
-              coverageBranches = total.branches.pct + '%';
-              coverageFunctions = total.functions.pct + '%';
-              coverageStatements = total.statements.pct + '%';
+              const t = covData.total;
+              covStmt = t.statements.pct + '%';
+              covBranch = t.branches.pct + '%';
+              covFunc = t.functions.pct + '%';
+              covLines = t.lines.pct + '%';
             } catch (e) {
               console.log('Coverage data not found:', e.message);
             }
@@ -113,36 +113,21 @@ jobs:
 
             const unitIcon = unitFailed > 0 ? '❌' : (unitTotal > 0 ? '✅' : '⚠️');
             const e2eIcon = e2eFailed > 0 ? '❌' : (e2eTotal > 0 ? '✅' : '⚠️');
+            const unitCov = covStmt === '-' ? '—' : `Stmt ${covStmt} / Branch ${covBranch} / Func ${covFunc} / Lines ${covLines}`;
 
-            const body = `## 🧪 テスト結果レポート
+            const body = [
+              '## 🧪 テスト結果レポート',
+              '',
+              '| 種別 | テスト | カバレッジ |',
+              '|------|--------|-----------|',
+              `| Unit ${unitIcon} | ${unitPassed} / ${unitTotal} passed | ${unitCov} |`,
+              `| E2E ${e2eIcon} | ${e2ePassed} / ${e2eTotal} passed | — |`,
+              '',
+              '---',
+              '🤖 *自動生成 by GitHub Actions*',
+            ].join('\n');
 
-            ### Unit Tests ${unitIcon}
-
-            | 項目 | 結果 |
-            |------|------|
-            | 成功 | ${unitPassed} / ${unitTotal} |
-            | 失敗 | ${unitFailed} |
-
-            #### カバレッジ
-
-            | 指標 | カバレッジ |
-            |------|-----------|
-            | Statements | ${coverageStatements} |
-            | Branches | ${coverageBranches} |
-            | Functions | ${coverageFunctions} |
-            | Lines | ${coverageLines} |
-
-            ### E2E Tests ${e2eIcon}
-
-            | 項目 | 結果 |
-            |------|------|
-            | 成功 | ${e2ePassed} / ${e2eTotal} |
-            | 失敗 | ${e2eFailed} |
-
-            ---
-            🤖 *自動生成 by GitHub Actions*`.replace(/^            /gm, '');
-
-            // Delete old comments from this bot
+            // Delete old comments
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -174,7 +159,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
       - run: npm ci
       - run: npm run generate
