@@ -28,9 +28,24 @@ test.describe('タイトル画面', () => {
 })
 
 test.describe('ゲーム画面', () => {
-  test('ゲームコンテナが表示される', async ({ page }) => {
+  test('ゲームコンテナとCanvasが表示される', async ({ page }) => {
     await page.goto('/game')
-    // GameCanvas.client.vue の .game-container が表示される
     await expect(page.locator('.game-container')).toBeVisible({ timeout: 10000 })
+    await expect(page.locator('.game-container canvas')).toBeAttached({
+      timeout: 10000,
+    })
+  })
+
+  test('キーボード入力でクラッシュしない', async ({ page }) => {
+    await page.goto('/game')
+    await expect(page.locator('.game-container')).toBeVisible({ timeout: 10000 })
+
+    // WASD と矢印キーを入力してもページが維持される
+    for (const key of ['w', 'a', 's', 'd', 'ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight']) {
+      await page.keyboard.press(key)
+    }
+
+    await expect(page).toHaveURL('/game')
+    await expect(page.locator('.game-container')).toBeVisible()
   })
 })
