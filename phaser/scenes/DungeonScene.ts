@@ -331,9 +331,13 @@ export class DungeonScene extends Phaser.Scene {
       case 'menu':
         this.updateUI(['メニューを開いた（未実装）'])
         break
-      case 'inventory':
-        this.updateUI(['アイテム一覧（未実装）'])
+      case 'inventory': {
+        const ui = this.scene.get('UIScene') as unknown as {
+          toggleMenu: () => void
+        }
+        ui.toggleMenu()
         break
+      }
       case 'prevItem':
         this.updateUI(['前のアイテム（未実装）'])
         break
