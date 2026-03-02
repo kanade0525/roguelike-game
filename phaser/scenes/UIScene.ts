@@ -43,7 +43,7 @@ export class UIScene extends Phaser.Scene {
     const textStyle: Phaser.Types.GameObjects.Text.TextStyle = {
       fontSize: '16px',
       color: '#ffffff',
-      fontFamily: 'monospace',
+      fontFamily: '"DotGothic16", monospace',
       fontStyle: 'bold',
     }
 
@@ -64,7 +64,7 @@ export class UIScene extends Phaser.Scene {
       const text = this.add.text(16, 438 + i * 20, '', {
         fontSize: '14px',
         color: '#ffffff',
-        fontFamily: 'monospace',
+        fontFamily: '"DotGothic16", monospace',
       })
       this.messageTexts.push(text)
     }
@@ -97,7 +97,7 @@ export class UIScene extends Phaser.Scene {
     const menuStyle: Phaser.Types.GameObjects.Text.TextStyle = {
       fontSize: '13px',
       color: '#cccccc',
-      fontFamily: 'monospace',
+      fontFamily: '"DotGothic16", monospace',
     }
 
     menuLabels.forEach((label) => {
@@ -118,7 +118,7 @@ export class UIScene extends Phaser.Scene {
     const nameText = this.add.text(382, 75, '不思議のダンジョン', {
       fontSize: '13px',
       color: '#ffffff',
-      fontFamily: 'monospace',
+      fontFamily: '"DotGothic16", monospace',
       fontStyle: 'bold',
     })
     nameText.setOrigin(0.5, 0.5)
@@ -135,7 +135,7 @@ export class UIScene extends Phaser.Scene {
     const statStyle: Phaser.Types.GameObjects.Text.TextStyle = {
       fontSize: '13px',
       color: '#ffffff',
-      fontFamily: 'monospace',
+      fontFamily: '"DotGothic16", monospace',
     }
 
     const statLines = [
@@ -153,7 +153,7 @@ export class UIScene extends Phaser.Scene {
     const hint = this.add.text(240, 420, 'B: 閉じる', {
       fontSize: '12px',
       color: '#888888',
-      fontFamily: 'monospace',
+      fontFamily: '"DotGothic16", monospace',
     })
     hint.setOrigin(0.5, 0.5)
     this.menuOverlay.add(hint)
