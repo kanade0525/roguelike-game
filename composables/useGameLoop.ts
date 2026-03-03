@@ -65,11 +65,6 @@ export function useGameLoop() {
       messages.push(`${def.name}を拾った！`)
     }
 
-    // 階段チェック
-    if (map[newY][newX] === 2) {
-      messages.push('階段を見つけた！')
-    }
-
     // ターン進行: player → enemy → end → player
     turnManager.playerAction()
     processEnemyTurn(map)
@@ -102,9 +97,19 @@ export function useGameLoop() {
     turnManager.reset()
   }
 
+  function goNextFloor() {
+    store.nextFloor()
+    store.setPlayerPosition(3, 3)
+    store.clearEnemies()
+    store.clearFloorItems()
+    turnManager.reset()
+    console.log(`${store.dungeon.floor}Fに到着`)
+  }
+
   return {
     playerMove,
     playerWait,
     initFloor,
+    goNextFloor,
   }
 }

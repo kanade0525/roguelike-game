@@ -304,6 +304,17 @@ export class DungeonScene extends Phaser.Scene {
     if (messages !== null) {
       this.drawScene()
       this.updateUI(messages)
+
+      // 階段に乗ったら確認ダイアログ
+      const pos = this.gameStore.player.position
+      if (this.map[pos.y][pos.x] === 2) {
+        const ui = this.scene.get('UIScene') as unknown as {
+          showConfirm: (message: string, onYes: () => void) => void
+        }
+        ui.showConfirm('次の階に移動しますか？', () => {
+          this.goNextFloor()
+        })
+      }
     }
   }
 
@@ -323,7 +334,6 @@ export class DungeonScene extends Phaser.Scene {
     console.log(`[Action] ${action}`)
     switch (action) {
       case 'confirm':
-        this.updateUI(['決定/攻撃（未実装）'])
         break
       case 'wait':
         this.updateUI(['その場で待機した（未実装）'])
@@ -345,6 +355,17 @@ export class DungeonScene extends Phaser.Scene {
         this.updateUI(['次のアイテム（未実装）'])
         break
     }
+  }
+
+  private goNextFloor() {
+    this.gameLoop.goNextFloor()
+
+    // 新フロアに敵・アイテムを再配置
+    this.gameStore.addEnemy({ id: 'slime-1', type: 'slime', x: 5, y: 4 })
+    this.gameStore.addFloorItem({ id: 'item-1', itemId: 'sword', x: 4, y: 2 })
+
+    this.drawScene()
+    this.updateUI([`${this.gameStore.dungeon.floor}Fに到着した！`])
   }
 
   private updateUI(messages: string[]) {

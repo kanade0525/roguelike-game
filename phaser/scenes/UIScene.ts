@@ -19,6 +19,11 @@ export class UIScene extends Phaser.Scene {
   private menuOverlay!: Phaser.GameObjects.Container
   private menuVisible = false
 
+  // 確認ダイアログ
+  private confirmDialog!: Phaser.GameObjects.Container
+  private confirmVisible = false
+  private onConfirmYes?: () => void
+
   constructor() {
     super({ key: 'UIScene' })
   }
@@ -28,6 +33,7 @@ export class UIScene extends Phaser.Scene {
     this.createMessageLog()
     this.createController()
     this.createMenuOverlay()
+    this.createConfirmDialog()
 
     // 初期メッセージ
     this.addMessage('ダンジョンに足を踏み入れた！')
@@ -45,6 +51,7 @@ export class UIScene extends Phaser.Scene {
       color: '#ffffff',
       fontFamily: '"DotGothic16", monospace',
       fontStyle: 'bold',
+      letterSpacing: 2,
     }
 
     this.floorText = this.add.text(20, 16, '1F', textStyle)
@@ -65,6 +72,7 @@ export class UIScene extends Phaser.Scene {
         fontSize: '14px',
         color: '#ffffff',
         fontFamily: '"DotGothic16", monospace',
+        letterSpacing: 2,
       })
       this.messageTexts.push(text)
     }
@@ -95,9 +103,10 @@ export class UIScene extends Phaser.Scene {
     ]
 
     const menuStyle: Phaser.Types.GameObjects.Text.TextStyle = {
-      fontSize: '13px',
+      fontSize: '16px',
       color: '#cccccc',
       fontFamily: '"DotGothic16", monospace',
+      letterSpacing: 2,
     }
 
     menuLabels.forEach((label) => {
@@ -116,10 +125,11 @@ export class UIScene extends Phaser.Scene {
     this.menuOverlay.add(nameBg)
 
     const nameText = this.add.text(382, 75, '不思議のダンジョン', {
-      fontSize: '13px',
+      fontSize: '16px',
       color: '#ffffff',
       fontFamily: '"DotGothic16", monospace',
       fontStyle: 'bold',
+      letterSpacing: 2,
     })
     nameText.setOrigin(0.5, 0.5)
     this.menuOverlay.add(nameText)
@@ -133,9 +143,10 @@ export class UIScene extends Phaser.Scene {
     this.menuOverlay.add(statBg)
 
     const statStyle: Phaser.Types.GameObjects.Text.TextStyle = {
-      fontSize: '13px',
+      fontSize: '16px',
       color: '#ffffff',
       fontFamily: '"DotGothic16", monospace',
+      letterSpacing: 2,
     }
 
     const statLines = [
@@ -154,9 +165,98 @@ export class UIScene extends Phaser.Scene {
       fontSize: '12px',
       color: '#888888',
       fontFamily: '"DotGothic16", monospace',
+      letterSpacing: 2,
     })
     hint.setOrigin(0.5, 0.5)
     this.menuOverlay.add(hint)
+  }
+
+  private createConfirmDialog() {
+    this.confirmDialog = this.add.container(0, 0)
+    this.confirmDialog.setVisible(false)
+    this.confirmDialog.setDepth(600)
+
+    // 半透明背景
+    const overlay = this.add.rectangle(240, 360, 480, 720, 0x000000, 0.6)
+    this.confirmDialog.add(overlay)
+
+    // パネル背景
+    const panel = this.add.graphics()
+    panel.fillStyle(0x1a1a2e, 0.95)
+    panel.fillRoundedRect(80, 180, 320, 120, 8)
+    panel.lineStyle(2, 0x3a3a5e, 1)
+    panel.strokeRoundedRect(80, 180, 320, 120, 8)
+    this.confirmDialog.add(panel)
+
+    // メッセージテキスト
+    const msgText = this.add.text(240, 210, '', {
+      fontSize: '14px',
+      color: '#ffffff',
+      fontFamily: '"DotGothic16", monospace',
+      letterSpacing: 2,
+    })
+    msgText.setOrigin(0.5, 0)
+    this.confirmDialog.add(msgText)
+
+    // 「はい」ボタン
+    const yesBg = this.add.rectangle(180, 270, 80, 30, 0x4a4a6a)
+    yesBg.setStrokeStyle(1, 0x6a6a8a)
+    yesBg.setInteractive({ useHandCursor: true })
+    this.confirmDialog.add(yesBg)
+
+    const yesText = this.add.text(180, 270, 'はい', {
+      fontSize: '14px',
+      color: '#ffffff',
+      fontFamily: '"DotGothic16", monospace',
+      letterSpacing: 2,
+    })
+    yesText.setOrigin(0.5, 0.5)
+    this.confirmDialog.add(yesText)
+
+    yesBg.on('pointerdown', () => {
+      this.hideConfirm()
+      if (this.onConfirmYes) this.onConfirmYes()
+    })
+
+    // 「いいえ」ボタン
+    const noBg = this.add.rectangle(300, 270, 80, 30, 0x4a4a6a)
+    noBg.setStrokeStyle(1, 0x6a6a8a)
+    noBg.setInteractive({ useHandCursor: true })
+    this.confirmDialog.add(noBg)
+
+    const noText = this.add.text(300, 270, 'いいえ', {
+      fontSize: '14px',
+      color: '#ffffff',
+      fontFamily: '"DotGothic16", monospace',
+      letterSpacing: 2,
+    })
+    noText.setOrigin(0.5, 0.5)
+    this.confirmDialog.add(noText)
+
+    noBg.on('pointerdown', () => {
+      this.hideConfirm()
+    })
+
+    // メッセージテキストへの参照を保持
+    this.confirmDialog.setData('msgText', msgText)
+  }
+
+  showConfirm(message: string, onYes: () => void) {
+    this.onConfirmYes = onYes
+    const msgText = this.confirmDialog.getData('msgText') as Phaser.GameObjects.Text
+    msgText.setText(message)
+    this.confirmVisible = true
+    this.confirmDialog.setVisible(true)
+  }
+
+  hideConfirm() {
+    this.confirmVisible = false
+    this.confirmDialog.setVisible(false)
+    this.onConfirmYes = undefined
+  }
+
+  isConfirmOpen(): boolean {
+    return this.confirmVisible
   }
 
   toggleMenu() {
