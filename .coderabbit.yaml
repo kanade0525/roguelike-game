@@ -1,0 +1,30 @@
+language: ja-JP
+
+reviews:
+  profile: chill
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  path_instructions:
+    - path: "game/**"
+      instructions: |
+        純粋なTypeScriptのみ。Phaserをインポートしていたら指摘すること。
+        テスト可能な設計になっているか確認。
+    - path: "phaser/**"
+      instructions: |
+        描画専用レイヤー。ゲームロジック（ダメージ計算、ターン管理等）が
+        含まれていたら指摘すること。状態変更はPinia store経由であること。
+    - path: "stores/**"
+      instructions: |
+        Pinia状態管理。Phaserをインポートしていたら指摘すること。
+    - path: "composables/**"
+      instructions: |
+        ロジック橋渡し層。Phaserをインポートしていたら指摘すること。
+
+  auto_review:
+    enabled: true
+    drafts: false
+
+chat:
+  auto_reply: true
