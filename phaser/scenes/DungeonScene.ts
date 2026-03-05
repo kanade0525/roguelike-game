@@ -292,16 +292,25 @@ export class DungeonScene extends Phaser.Scene {
     })
   }
 
-  private isUiLocked(): boolean {
-    const ui = this.scene.get('UIScene') as unknown as {
+  private getUiScene() {
+    return this.scene.get('UIScene') as unknown as {
       isConfirmOpen: () => boolean
       isMenuOpen: () => boolean
+      showConfirm: (message: string, onYes: () => void) => void
+      toggleMenu: () => void
+      moveMenuCursor: (dx: number, dy: number) => void
+      selectMenuItem: () => string | null
     }
-    return ui.isConfirmOpen() || ui.isMenuOpen()
   }
 
   private tryMove(dx: number, dy: number) {
-    if (this.isUiLocked()) return
+    const ui = this.getUiScene()
+    // メニュー表示中はカーソル移動に転送
+    if (ui.isMenuOpen()) {
+      ui.moveMenuCursor(dx, dy)
+      return
+    }
+    if (ui.isConfirmOpen()) return
 
     const dir = dx === -1 ? '左' : dx === 1 ? '右' : dy === -1 ? '上' : '下'
     console.log(`[Move] ${dir}`)
@@ -315,10 +324,7 @@ export class DungeonScene extends Phaser.Scene {
       // 階段に乗ったら確認ダイアログ
       const pos = this.gameStore.player.position
       if (this.map[pos.y][pos.x] === 2) {
-        const ui = this.scene.get('UIScene') as unknown as {
-          showConfirm: (message: string, onYes: () => void) => void
-        }
-        ui.showConfirm('次の階に移動しますか？', () => {
+        this.getUiScene().showConfirm('次の階に移動しますか？', () => {
           this.goNextFloor()
         })
       }
@@ -339,8 +345,24 @@ export class DungeonScene extends Phaser.Scene {
 
   private handleAction(action: string) {
     console.log(`[Action] ${action}`)
-    // inventory（メニュー開閉）は常に許可、それ以外はUI表示中ブロック
-    if (action !== 'inventory' && this.isUiLocked()) return
+    const ui = this.getUiScene()
+
+    // メニュー表示中: Aで選択、Bで閉じる
+    if (ui.isMenuOpen()) {
+      if (action === 'confirm') {
+        const selected = ui.selectMenuItem()
+        if (selected) {
+          ui.toggleMenu()
+          this.updateUI([`${selected}（未実装）`])
+        }
+      } else if (action === 'inventory') {
+        ui.toggleMenu()
+      }
+      return
+    }
+
+    // 確認ダイアログ表示中はinventory以外ブロック
+    if (action !== 'inventory' && ui.isConfirmOpen()) return
 
     switch (action) {
       case 'confirm':
@@ -351,13 +373,9 @@ export class DungeonScene extends Phaser.Scene {
       case 'menu':
         this.updateUI(['メニューを開いた（未実装）'])
         break
-      case 'inventory': {
-        const ui = this.scene.get('UIScene') as unknown as {
-          toggleMenu: () => void
-        }
+      case 'inventory':
         ui.toggleMenu()
         break
-      }
       case 'prevItem':
         this.updateUI(['前のアイテム（未実装）'])
         break

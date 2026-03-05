@@ -27,6 +27,10 @@ export class UIScene extends Phaser.Scene {
   private menuOverlay!: Phaser.GameObjects.Container
   private menuVisible = false
   private menuStatTexts: Phaser.GameObjects.Text[] = []
+  private menuCursor!: Phaser.GameObjects.Text
+  private menuCursorIndex = 0
+  private menuItemPositions: { x: number; y: number }[] = []
+  private menuItemLabels: string[] = []
 
   // 確認ダイアログ
   private confirmDialog!: Phaser.GameObjects.Container
@@ -105,12 +109,24 @@ export class UIScene extends Phaser.Scene {
 
     const menuStyle = { ...BASE_STYLE, color: TEXT_COLOR.muted }
 
+    this.menuItemPositions = []
+    this.menuItemLabels = []
     menuLabels.forEach((label) => {
       const x = 28 + label.col * 62
       const y = 70 + label.row * 24
       const t = this.add.text(x, y, label.text, menuStyle)
       this.menuOverlay.add(t)
+      this.menuItemPositions.push({ x, y })
+      this.menuItemLabels.push(label.text)
     })
+
+    // カーソル（▶）
+    this.menuCursor = this.add.text(0, 0, '▶', {
+      ...BASE_STYLE,
+      fontSize: '14px',
+      color: TEXT_COLOR.white,
+    })
+    this.menuOverlay.add(this.menuCursor)
 
     // 右上: ダンジョン名
     const nameBg = this.add.graphics()
@@ -239,9 +255,34 @@ export class UIScene extends Phaser.Scene {
   toggleMenu() {
     this.menuVisible = !this.menuVisible
     if (this.menuVisible) {
+      this.menuCursorIndex = 0
+      this.updateMenuCursor()
       this.updateMenuStats()
     }
     this.menuOverlay.setVisible(this.menuVisible)
+  }
+
+  moveMenuCursor(dx: number, dy: number) {
+    if (!this.menuVisible) return
+    // 2x2 grid: index 0=top-left, 1=top-right, 2=bottom-left, 3=bottom-right
+    const col = this.menuCursorIndex % 2
+    const row = Math.floor(this.menuCursorIndex / 2)
+    const newCol = Math.max(0, Math.min(1, col + dx))
+    const newRow = Math.max(0, Math.min(1, row + dy))
+    this.menuCursorIndex = newRow * 2 + newCol
+    this.updateMenuCursor()
+  }
+
+  selectMenuItem(): string | null {
+    if (!this.menuVisible) return null
+    return this.menuItemLabels[this.menuCursorIndex] ?? null
+  }
+
+  private updateMenuCursor() {
+    const pos = this.menuItemPositions[this.menuCursorIndex]
+    if (pos) {
+      this.menuCursor.setPosition(pos.x - 14, pos.y)
+    }
   }
 
   private updateMenuStats() {
