@@ -1,5 +1,12 @@
 import Phaser from 'phaser'
 
+const BASE_STYLE: Phaser.Types.GameObjects.Text.TextStyle = {
+  fontSize: '16px',
+  color: '#ffffff',
+  fontFamily: '"DotGothic16", monospace',
+  letterSpacing: 2,
+}
+
 export class UIScene extends Phaser.Scene {
   // 上部ステータスバー
   private floorText!: Phaser.GameObjects.Text
@@ -46,18 +53,12 @@ export class UIScene extends Phaser.Scene {
     bg.lineStyle(2, 0x3a3a5e, 1)
     bg.strokeRoundedRect(8, 8, 464, 36, 4)
 
-    const textStyle: Phaser.Types.GameObjects.Text.TextStyle = {
-      fontSize: '16px',
-      color: '#ffffff',
-      fontFamily: '"DotGothic16", monospace',
-      fontStyle: 'bold',
-      letterSpacing: 2,
-    }
+    const statusStyle = { ...BASE_STYLE, fontStyle: 'bold' }
 
-    this.floorText = this.add.text(20, 16, '1F', textStyle)
-    this.levelText = this.add.text(80, 16, 'Lv: 1', textStyle)
-    this.hpText = this.add.text(180, 16, 'HP: 100/100', textStyle)
-    this.satiationText = this.add.text(340, 16, '腹: 100', textStyle)
+    this.floorText = this.add.text(20, 16, '1F', statusStyle)
+    this.levelText = this.add.text(80, 16, 'Lv: 1', statusStyle)
+    this.hpText = this.add.text(180, 16, 'HP: 100/100', statusStyle)
+    this.satiationText = this.add.text(340, 16, '腹: 100', statusStyle)
   }
 
   private createMessageLog() {
@@ -69,10 +70,8 @@ export class UIScene extends Phaser.Scene {
 
     for (let i = 0; i < this.maxVisibleMessages; i++) {
       const text = this.add.text(16, 438 + i * 20, '', {
+        ...BASE_STYLE,
         fontSize: '14px',
-        color: '#ffffff',
-        fontFamily: '"DotGothic16", monospace',
-        letterSpacing: 2,
       })
       this.messageTexts.push(text)
     }
@@ -102,12 +101,7 @@ export class UIScene extends Phaser.Scene {
       { text: '作戦', col: 1, row: 1 },
     ]
 
-    const menuStyle: Phaser.Types.GameObjects.Text.TextStyle = {
-      fontSize: '16px',
-      color: '#cccccc',
-      fontFamily: '"DotGothic16", monospace',
-      letterSpacing: 2,
-    }
+    const menuStyle = { ...BASE_STYLE, color: '#cccccc' }
 
     menuLabels.forEach((label) => {
       const x = 28 + label.col * 62
@@ -125,11 +119,8 @@ export class UIScene extends Phaser.Scene {
     this.menuOverlay.add(nameBg)
 
     const nameText = this.add.text(382, 75, '不思議のダンジョン', {
-      fontSize: '16px',
-      color: '#ffffff',
-      fontFamily: '"DotGothic16", monospace',
+      ...BASE_STYLE,
       fontStyle: 'bold',
-      letterSpacing: 2,
     })
     nameText.setOrigin(0.5, 0.5)
     this.menuOverlay.add(nameText)
@@ -142,12 +133,7 @@ export class UIScene extends Phaser.Scene {
     statBg.strokeRoundedRect(16, 340, 448, 70, 6)
     this.menuOverlay.add(statBg)
 
-    const statStyle: Phaser.Types.GameObjects.Text.TextStyle = {
-      fontSize: '16px',
-      color: '#ffffff',
-      fontFamily: '"DotGothic16", monospace',
-      letterSpacing: 2,
-    }
+    const statStyle = { ...BASE_STYLE }
 
     const statLines = [
       '名前: 冒険者    Lv: 1     HP: 100/100',
@@ -162,10 +148,9 @@ export class UIScene extends Phaser.Scene {
 
     // 閉じるヒント
     const hint = this.add.text(240, 420, 'B: 閉じる', {
+      ...BASE_STYLE,
       fontSize: '12px',
       color: '#888888',
-      fontFamily: '"DotGothic16", monospace',
-      letterSpacing: 2,
     })
     hint.setOrigin(0.5, 0.5)
     this.menuOverlay.add(hint)
@@ -190,10 +175,8 @@ export class UIScene extends Phaser.Scene {
 
     // メッセージテキスト
     const msgText = this.add.text(240, 210, '', {
+      ...BASE_STYLE,
       fontSize: '14px',
-      color: '#ffffff',
-      fontFamily: '"DotGothic16", monospace',
-      letterSpacing: 2,
     })
     msgText.setOrigin(0.5, 0)
     this.confirmDialog.add(msgText)
@@ -205,10 +188,8 @@ export class UIScene extends Phaser.Scene {
     this.confirmDialog.add(yesBg)
 
     const yesText = this.add.text(180, 270, 'はい', {
+      ...BASE_STYLE,
       fontSize: '14px',
-      color: '#ffffff',
-      fontFamily: '"DotGothic16", monospace',
-      letterSpacing: 2,
     })
     yesText.setOrigin(0.5, 0.5)
     this.confirmDialog.add(yesText)
@@ -225,10 +206,8 @@ export class UIScene extends Phaser.Scene {
     this.confirmDialog.add(noBg)
 
     const noText = this.add.text(300, 270, 'いいえ', {
+      ...BASE_STYLE,
       fontSize: '14px',
-      color: '#ffffff',
-      fontFamily: '"DotGothic16", monospace',
-      letterSpacing: 2,
     })
     noText.setOrigin(0.5, 0.5)
     this.confirmDialog.add(noText)
