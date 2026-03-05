@@ -1,6 +1,6 @@
 import Phaser from 'phaser'
 import { TILE_COLOR } from '../../game/data/colors'
-import { getFloorConfig, getMap, TILE } from '../../game/data/maps'
+import { getMap, TILE } from '../../game/data/maps'
 
 export class DungeonScene extends Phaser.Scene {
   // 表示するタイル数（ビューポート）
@@ -87,38 +87,20 @@ export class DungeonScene extends Phaser.Scene {
   // --- フロア管理 ---
 
   private loadFloor(floor: number) {
-    const config = getFloorConfig(floor)
     this.map = getMap(floor)
     this.mapWidth = this.map[0].length
     this.mapHeight = this.map.length
-
-    this.gameLoop.initFloor(config.playerStart)
-    for (const enemy of config.enemies) {
-      this.gameStore.addEnemy(enemy)
-    }
-    for (const item of config.items) {
-      this.gameStore.addFloorItem(item)
-    }
+    this.gameLoop.initFloor(floor)
   }
 
   private goNextFloor() {
-    const nextFloor = this.gameStore.dungeon.floor + 1
-    const config = getFloorConfig(nextFloor)
-    this.gameLoop.goNextFloor(config.playerStart)
-
-    this.map = getMap(nextFloor)
+    const messages = this.gameLoop.goNextFloor()
+    const floor = this.gameStore.dungeon.floor
+    this.map = getMap(floor)
     this.mapWidth = this.map[0].length
     this.mapHeight = this.map.length
-
-    for (const enemy of config.enemies) {
-      this.gameStore.addEnemy(enemy)
-    }
-    for (const item of config.items) {
-      this.gameStore.addFloorItem(item)
-    }
-
     this.drawScene()
-    this.updateUI([`${this.gameStore.dungeon.floor}Fに到着した！`])
+    this.updateUI(messages)
   }
 
   // --- タイルサイズ計算 ---

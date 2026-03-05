@@ -2,6 +2,7 @@ import { useGameStore } from '~/stores/gameStore'
 import { TurnManager } from '~/game/systems/TurnManager'
 import { randomMove } from '~/game/systems/EnemyAI'
 import { ITEMS } from '~/game/data/items'
+import { getFloorConfig } from '~/game/data/maps'
 
 const turnManager = new TurnManager()
 
@@ -90,20 +91,36 @@ export function useGameLoop() {
     return ['その場で待機した。']
   }
 
-  function initFloor(playerPos: { x: number; y: number }) {
-    store.setPlayerPosition(playerPos.x, playerPos.y)
-    store.clearEnemies()
-    store.clearFloorItems()
-    turnManager.reset()
+  function spawnFloorEntities(floor: number) {
+    const config = getFloorConfig(floor)
+    for (const enemy of config.enemies) {
+      store.addEnemy(enemy)
+    }
+    for (const item of config.items) {
+      store.addFloorItem(item)
+    }
   }
 
-  function goNextFloor(startPos: { x: number; y: number } = { x: 1, y: 0 }) {
-    store.nextFloor()
-    store.setPlayerPosition(startPos.x, startPos.y)
+  function initFloor(floor: number) {
+    const config = getFloorConfig(floor)
+    store.setPlayerPosition(config.playerStart.x, config.playerStart.y)
     store.clearEnemies()
     store.clearFloorItems()
     turnManager.reset()
-    console.log(`${store.dungeon.floor}Fに到着`)
+    spawnFloorEntities(floor)
+  }
+
+  function goNextFloor(): string[] {
+    store.nextFloor()
+    const floor = store.dungeon.floor
+    const config = getFloorConfig(floor)
+    store.setPlayerPosition(config.playerStart.x, config.playerStart.y)
+    store.clearEnemies()
+    store.clearFloorItems()
+    turnManager.reset()
+    spawnFloorEntities(floor)
+    console.log(`${floor}Fに到着`)
+    return [`${floor}Fに到着した！`]
   }
 
   return {
