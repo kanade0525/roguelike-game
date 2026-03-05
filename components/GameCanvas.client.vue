@@ -18,7 +18,7 @@
       type: Phaser.AUTO,
       parent: gameContainer.value,
       width: 480,
-      height: 720,
+      height: 768,
       pixelArt: true,
       scale: {
         mode: Phaser.Scale.FIT,

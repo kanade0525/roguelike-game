@@ -84,7 +84,7 @@ export class UIScene extends Phaser.Scene {
     this.menuOverlay.setDepth(500)
 
     // 半透明背景
-    const overlay = this.add.rectangle(240, 360, 480, 720, 0x000000, 0.6)
+    const overlay = this.add.rectangle(240, 384, 480, 768, 0x000000, 0.6)
     this.menuOverlay.add(overlay)
 
     // 左上: メニューボタン（道具/マップ/足元/作戦）
@@ -163,7 +163,7 @@ export class UIScene extends Phaser.Scene {
     this.confirmDialog.setDepth(600)
 
     // 半透明背景
-    const overlay = this.add.rectangle(240, 360, 480, 720, 0x000000, 0.6)
+    const overlay = this.add.rectangle(240, 384, 480, 768, 0x000000, 0.6)
     this.confirmDialog.add(overlay)
 
     // パネル背景
@@ -287,21 +287,21 @@ export class UIScene extends Phaser.Scene {
   private createController() {
     const screenWidth = 480
     const controllerY = 488
-    const controllerHeight = 232
+    const controllerHeight = 280
 
     this.controllerBg = this.add.graphics()
     this.controllerBg.fillStyle(UI_COLOR.controllerBg, 1)
     this.controllerBg.fillRect(0, controllerY, screenWidth, controllerHeight)
 
-    this.createLRButtons(controllerY + 20)
-    this.createDPad(100, controllerY + 120)
-    this.createABButtons(380, controllerY + 120)
-    this.createSelectStartButtons(controllerY + 205)
+    this.createLRButtons(controllerY + 24)
+    this.createDPad(110, controllerY + 140)
+    this.createABButtons(380, controllerY + 140)
+    this.createSelectStartButtons(controllerY + 252)
   }
 
   private createDPad(centerX: number, centerY: number) {
-    const btnSize = 36
-    const gap = 2
+    const btnSize = 46
+    const gap = 3
     const graphics = this.add.graphics()
 
     const directions = [
@@ -348,13 +348,13 @@ export class UIScene extends Phaser.Scene {
   }
 
   private createABButtons(centerX: number, centerY: number) {
-    const radius = 30
+    const radius = 38
 
-    const btnA = this.add.circle(centerX + 28, centerY - 24, radius, UI_COLOR.abButton)
+    const btnA = this.add.circle(centerX + 32, centerY - 30, radius, UI_COLOR.abButton)
     btnA.setStrokeStyle(2, UI_COLOR.abButtonBorder)
     btnA.setInteractive({ useHandCursor: true })
-    this.add.text(centerX + 28, centerY - 24, 'A', {
-      fontSize: '20px',
+    this.add.text(centerX + 32, centerY - 30, 'A', {
+      fontSize: '24px',
       color: TEXT_COLOR.light,
       fontStyle: 'bold',
     }).setOrigin(0.5)
@@ -366,11 +366,11 @@ export class UIScene extends Phaser.Scene {
     btnA.on('pointerup', () => btnA.setFillStyle(UI_COLOR.abButton))
     btnA.on('pointerout', () => btnA.setFillStyle(UI_COLOR.abButton))
 
-    const btnB = this.add.circle(centerX - 28, centerY + 24, radius, UI_COLOR.abButton)
+    const btnB = this.add.circle(centerX - 32, centerY + 30, radius, UI_COLOR.abButton)
     btnB.setStrokeStyle(2, UI_COLOR.abButtonBorder)
     btnB.setInteractive({ useHandCursor: true })
-    this.add.text(centerX - 28, centerY + 24, 'B', {
-      fontSize: '20px',
+    this.add.text(centerX - 32, centerY + 30, 'B', {
+      fontSize: '24px',
       color: TEXT_COLOR.light,
       fontStyle: 'bold',
     }).setOrigin(0.5)
@@ -385,8 +385,8 @@ export class UIScene extends Phaser.Scene {
 
   private createLRButtons(y: number) {
     const graphics = this.add.graphics()
-    const btnWidth = 70
-    const btnHeight = 26
+    const btnWidth = 85
+    const btnHeight = 32
 
     graphics.fillStyle(UI_COLOR.buttonBg, 1)
     graphics.fillRoundedRect(15, y - btnHeight / 2, btnWidth, btnHeight, 4)
@@ -396,7 +396,7 @@ export class UIScene extends Phaser.Scene {
     const btnL = this.add.rectangle(15 + btnWidth / 2, y, btnWidth, btnHeight, 0x000000, 0)
     btnL.setInteractive({ useHandCursor: true })
     this.add.text(15 + btnWidth / 2, y, 'L', {
-      fontSize: '14px',
+      fontSize: '16px',
       color: TEXT_COLOR.subtle,
       fontStyle: 'bold',
     }).setOrigin(0.5)
@@ -412,7 +412,7 @@ export class UIScene extends Phaser.Scene {
     const btnR = this.add.rectangle(rX + btnWidth / 2, y, btnWidth, btnHeight, 0x000000, 0)
     btnR.setInteractive({ useHandCursor: true })
     this.add.text(rX + btnWidth / 2, y, 'R', {
-      fontSize: '14px',
+      fontSize: '16px',
       color: TEXT_COLOR.subtle,
       fontStyle: 'bold',
     }).setOrigin(0.5)
@@ -422,9 +422,9 @@ export class UIScene extends Phaser.Scene {
 
   private createSelectStartButtons(y: number) {
     const graphics = this.add.graphics()
-    const btnWidth = 55
-    const btnHeight = 18
-    const gap = 10
+    const btnWidth = 65
+    const btnHeight = 24
+    const gap = 12
     const centerX = 240
 
     const selectX = centerX - gap / 2 - btnWidth
@@ -434,7 +434,7 @@ export class UIScene extends Phaser.Scene {
     const btnSelect = this.add.rectangle(selectX + btnWidth / 2, y, btnWidth, btnHeight, 0x000000, 0)
     btnSelect.setInteractive({ useHandCursor: true })
     this.add.text(selectX + btnWidth / 2, y, 'SELECT', {
-      fontSize: '9px',
+      fontSize: '11px',
       color: TEXT_COLOR.dim,
     }).setOrigin(0.5)
 
@@ -446,7 +446,7 @@ export class UIScene extends Phaser.Scene {
     const btnStart = this.add.rectangle(startX + btnWidth / 2, y, btnWidth, btnHeight, 0x000000, 0)
     btnStart.setInteractive({ useHandCursor: true })
     this.add.text(startX + btnWidth / 2, y, 'START', {
-      fontSize: '9px',
+      fontSize: '11px',
       color: TEXT_COLOR.dim,
     }).setOrigin(0.5)
 
