@@ -19,6 +19,8 @@ export function randomMove(
   map: number[][],
   occupied: Position[],
 ): Position | null {
+  if (map.length === 0 || map[0].length === 0) return null
+
   const shuffled = [...DIRECTIONS].sort(() => Math.random() - 0.5)
 
   for (const { dx, dy } of shuffled) {

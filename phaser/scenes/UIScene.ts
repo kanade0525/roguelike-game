@@ -26,6 +26,7 @@ export class UIScene extends Phaser.Scene {
   // メニューオーバーレイ（Bボタンで表示/非表示）
   private menuOverlay!: Phaser.GameObjects.Container
   private menuVisible = false
+  private menuStatTexts: Phaser.GameObjects.Text[] = []
 
   // 確認ダイアログ
   private confirmDialog!: Phaser.GameObjects.Container
@@ -136,16 +137,12 @@ export class UIScene extends Phaser.Scene {
 
     const statStyle = { ...BASE_STYLE }
 
-    const statLines = [
-      '名前: 冒険者    Lv: 1     HP: 100/100',
-      '攻撃: 10   防御: 5    満腹度: 100/100',
-      '経験値: 0/100          1F',
-    ]
-
-    statLines.forEach((line, i) => {
-      const t = this.add.text(28, 350 + i * 20, line, statStyle)
+    this.menuStatTexts = []
+    for (let i = 0; i < 3; i++) {
+      const t = this.add.text(28, 350 + i * 20, '', statStyle)
       this.menuOverlay.add(t)
-    })
+      this.menuStatTexts.push(t)
+    }
 
     // 閉じるヒント
     const hint = this.add.text(240, 420, 'B: 閉じる', {
@@ -241,7 +238,21 @@ export class UIScene extends Phaser.Scene {
 
   toggleMenu() {
     this.menuVisible = !this.menuVisible
+    if (this.menuVisible) {
+      this.updateMenuStats()
+    }
     this.menuOverlay.setVisible(this.menuVisible)
+  }
+
+  private updateMenuStats() {
+    const store = this.game.registry.get('gameStore')
+    if (!store) return
+    const p = store.player
+    const d = store.dungeon
+    const expNeeded = p.level * 100
+    this.menuStatTexts[0].setText(`名前: 冒険者    Lv: ${p.level}     HP: ${p.hp}/${p.maxHp}`)
+    this.menuStatTexts[1].setText(`攻撃: ${p.attack}   防御: ${p.defense}    満腹度: ${p.satiation}/${p.maxSatiation}`)
+    this.menuStatTexts[2].setText(`経験値: ${p.exp}/${expNeeded}          ${d.floor}F`)
   }
 
   isMenuOpen(): boolean {

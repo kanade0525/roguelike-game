@@ -56,6 +56,10 @@ export class DungeonScene extends Phaser.Scene {
     this.gameStore = this.game.registry.get('gameStore')
     this.gameLoop = this.game.registry.get('gameLoop')
 
+    if (!this.gameStore || !this.gameLoop) {
+      throw new Error('gameStore or gameLoop not found in registry')
+    }
+
     this.calculateTileSize()
     this.createMap()
 
@@ -288,7 +292,17 @@ export class DungeonScene extends Phaser.Scene {
     })
   }
 
+  private isUiLocked(): boolean {
+    const ui = this.scene.get('UIScene') as unknown as {
+      isConfirmOpen: () => boolean
+      isMenuOpen: () => boolean
+    }
+    return ui.isConfirmOpen() || ui.isMenuOpen()
+  }
+
   private tryMove(dx: number, dy: number) {
+    if (this.isUiLocked()) return
+
     const dir = dx === -1 ? '左' : dx === 1 ? '右' : dy === -1 ? '上' : '下'
     console.log(`[Move] ${dir}`)
     const messages = this.gameLoop.playerMove(dx, dy, this.map)
@@ -325,6 +339,9 @@ export class DungeonScene extends Phaser.Scene {
 
   private handleAction(action: string) {
     console.log(`[Action] ${action}`)
+    // inventory（メニュー開閉）は常に許可、それ以外はUI表示中ブロック
+    if (action !== 'inventory' && this.isUiLocked()) return
+
     switch (action) {
       case 'confirm':
         break
