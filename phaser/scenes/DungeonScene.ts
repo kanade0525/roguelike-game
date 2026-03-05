@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import { TILE_COLOR } from '../../game/data/colors'
+import { getFloorConfig, getMap, TILE } from '../../game/data/maps'
 
 export class DungeonScene extends Phaser.Scene {
   // 表示するタイル数（ビューポート）
@@ -12,12 +13,12 @@ export class DungeonScene extends Phaser.Scene {
   private tileWidth = 0
   private tileHeight = 0
 
-  // マップサイズ（ビューポートより大きくできる）
-  private mapWidth = 15
-  private mapHeight = 12
+  // マップ
+  private mapWidth = 0
+  private mapHeight = 0
   private map: number[][] = []
 
-  // Pinia store と composable（GameCanvas.client.vue から registry 経由で受け取る）
+  // Pinia store と composable
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private gameStore: any = null
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -40,8 +41,8 @@ export class DungeonScene extends Phaser.Scene {
   // 画面サイズ
   private screenWidth = 0
   private screenHeight = 0
-  private gameAreaTop = 50 // ステータスバー下
-  private gameAreaBottom = 430 // メッセージログ上
+  private gameAreaTop = 50
+  private gameAreaBottom = 430
 
   constructor() {
     super({ key: 'DungeonScene' })
@@ -52,7 +53,6 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   create() {
-    // Pinia store と composable を registry から取得
     this.gameStore = this.game.registry.get('gameStore')
     this.gameLoop = this.game.registry.get('gameLoop')
 
@@ -61,12 +61,7 @@ export class DungeonScene extends Phaser.Scene {
     }
 
     this.calculateTileSize()
-    this.createMap()
-
-    // プレイヤー初期位置を store に設定、敵を配置
-    this.gameLoop.initFloor({ x: 3, y: 3 })
-    this.gameStore.addEnemy({ id: 'slime-1', type: 'slime', x: 5, y: 4 })
-    this.gameStore.addFloorItem({ id: 'item-1', itemId: 'sword', x: 4, y: 2 })
+    this.loadFloor(1)
 
     // コンテナ作成（描画順序制御用）
     this.tileContainer = this.add.container(0, 0)
@@ -74,7 +69,7 @@ export class DungeonScene extends Phaser.Scene {
     this.debugContainer = this.add.container(0, 0)
     this.debugContainer.setVisible(this.debugGridVisible)
 
-    // グローバルからアクセス可能にする（コンソールからtoggleDebugGrid()で切り替え）
+    // デバッググリッド切り替え（コンソール用）
     ;(window as unknown as { toggleDebugGrid: () => void }).toggleDebugGrid = () => {
       this.debugGridVisible = !this.debugGridVisible
       this.debugContainer.setVisible(this.debugGridVisible)
@@ -86,65 +81,67 @@ export class DungeonScene extends Phaser.Scene {
     this.setupInput()
     this.setupTouchInput()
 
-    // UIシーンを並行起動
     this.scene.launch('UIScene')
   }
 
+  // --- フロア管理 ---
+
+  private loadFloor(floor: number) {
+    const config = getFloorConfig(floor)
+    this.map = getMap(floor)
+    this.mapWidth = this.map[0].length
+    this.mapHeight = this.map.length
+
+    this.gameLoop.initFloor(config.playerStart)
+    for (const enemy of config.enemies) {
+      this.gameStore.addEnemy(enemy)
+    }
+    for (const item of config.items) {
+      this.gameStore.addFloorItem(item)
+    }
+  }
+
+  private goNextFloor() {
+    const nextFloor = this.gameStore.dungeon.floor + 1
+    const config = getFloorConfig(nextFloor)
+    this.gameLoop.goNextFloor(config.playerStart)
+
+    this.map = getMap(nextFloor)
+    this.mapWidth = this.map[0].length
+    this.mapHeight = this.map.length
+
+    for (const enemy of config.enemies) {
+      this.gameStore.addEnemy(enemy)
+    }
+    for (const item of config.items) {
+      this.gameStore.addFloorItem(item)
+    }
+
+    this.drawScene()
+    this.updateUI([`${this.gameStore.dungeon.floor}Fに到着した！`])
+  }
+
+  // --- タイルサイズ計算 ---
+
   private calculateTileSize() {
-    // 画面サイズを取得
     this.screenWidth = this.scale.width
     this.screenHeight = this.scale.height
 
-    // ゲームエリアの高さ（ステータスバー下〜メッセージログ上）
     const gameAreaHeight = this.gameAreaBottom - this.gameAreaTop
-
-    // タイルサイズを計算（横幅基準でスケール調整）
     this.tileScale = Math.floor(this.screenWidth / this.viewTilesX / this.baseTileSize)
     this.tileWidth = this.baseTileSize * this.tileScale
     this.tileHeight = this.baseTileSize * this.tileScale
 
-    // オフセットを計算（ビューポートを中央揃え）
     this.offsetX = Math.floor((this.screenWidth - this.viewTilesX * this.tileWidth) / 2)
     this.offsetY = this.gameAreaTop + Math.floor((gameAreaHeight - this.viewTilesY * this.tileHeight) / 2)
   }
 
-  private createMap(floor: number = 1) {
-    // TODO: マップを大きくする（最低30x30程度）
-    // TODO: マップ自動生成（部屋＋通路アルゴリズム）に置き換える
-    // TODO: フロア数を増やす（最低10F、ボスフロア含む）
-    // TODO: マップデータをgame/data/に分離する
-    // フロアごとのマップ定義: 0=床, 1=壁, 2=階段
-    const maps: Record<number, number[][]> = {
-      1: [
-        [1, 1, 0, 0, 0, 1, 1],
-        [1, 1, 0, 0, 0, 1, 1],
-        [0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0],
-        [1, 1, 0, 0, 0, 1, 1],
-        [1, 1, 0, 0, 2, 1, 1],
-      ],
-      2: [
-        [1, 0, 0, 0, 0, 0, 1],
-        [0, 0, 0, 1, 0, 0, 0],
-        [0, 0, 0, 1, 0, 0, 0],
-        [0, 1, 1, 1, 0, 0, 0],
-        [0, 0, 0, 0, 0, 1, 0],
-        [0, 0, 0, 0, 0, 1, 0],
-        [1, 0, 0, 0, 0, 2, 1],
-      ],
-    }
-    this.map = maps[floor] ?? maps[1]
-    this.mapWidth = this.map[0].length
-    this.mapHeight = this.map.length
-  }
+  // --- 描画 ---
 
   private drawScene() {
-    // コンテナをクリア
     this.tileContainer.removeAll(true)
     this.entityContainer.removeAll(true)
 
-    // プレイヤーを中心にビューポートを計算
     const playerPos = this.gameStore.player.position
     const halfViewX = Math.floor(this.viewTilesX / 2)
     const halfViewY = Math.floor(this.viewTilesY / 2)
@@ -153,23 +150,16 @@ export class DungeonScene extends Phaser.Scene {
     const endX = this.viewStartX + this.viewTilesX
     const endY = this.viewStartY + this.viewTilesY
 
-    // ビューポート内の全タイルを描画
     for (let y = this.viewStartY; y < endY; y++) {
       for (let x = this.viewStartX; x < endX; x++) {
         this.drawTile(x, y)
       }
     }
 
-    // アイテムを描画（ビューポート内のみ）
     this.drawItems(this.viewStartX, this.viewStartY, endX, endY)
-
-    // 敵を描画（ビューポート内のみ）
     this.drawEnemies(this.viewStartX, this.viewStartY, endX, endY)
-
-    // プレイヤーを描画（常に画面中央）
     this.drawPlayer(playerPos.x, playerPos.y)
 
-    // デバッググリッドを更新
     if (this.debugGridVisible) {
       this.drawDebugGrid()
     }
@@ -181,12 +171,11 @@ export class DungeonScene extends Phaser.Scene {
     const x = this.offsetX + screenX * this.tileWidth + this.tileWidth / 2
     const y = this.offsetY + screenY * this.tileHeight + this.tileHeight / 2
 
-    // タイル種別に応じた色を決定
-    let color: number = TILE_COLOR.wall // 範囲外は壁色
+    let color: number = TILE_COLOR.wall
     if (tileX >= 0 && tileX < this.mapWidth && tileY >= 0 && tileY < this.mapHeight) {
       const tile = this.map[tileY][tileX]
-      if (tile === 0) color = TILE_COLOR.floor
-      else if (tile === 2) color = TILE_COLOR.stairs
+      if (tile === TILE.FLOOR) color = TILE_COLOR.floor
+      else if (tile === TILE.STAIRS) color = TILE_COLOR.stairs
       else color = TILE_COLOR.wall
     }
 
@@ -194,18 +183,14 @@ export class DungeonScene extends Phaser.Scene {
     this.tileContainer.add(rect)
   }
 
-  // タイルが床かどうか判定（範囲外は壁扱い）
   private isFloor(x: number, y: number): boolean {
-    if (x < 0 || x >= this.mapWidth || y < 0 || y >= this.mapHeight) {
-      return false
-    }
-    return this.map[y][x] === 0 || this.map[y][x] === 2
+    if (x < 0 || x >= this.mapWidth || y < 0 || y >= this.mapHeight) return false
+    return this.map[y][x] === TILE.FLOOR || this.map[y][x] === TILE.STAIRS
   }
 
   private drawDebugGrid() {
     this.debugContainer.removeAll(true)
 
-    // ビューポート範囲のデバッググリッドを描画
     for (let y = this.viewStartY - 2; y < this.viewStartY + this.viewTilesY + 2; y++) {
       for (let x = this.viewStartX - 2; x < this.viewStartX + this.viewTilesX + 2; x++) {
         const screenX = x - this.viewStartX
@@ -213,17 +198,14 @@ export class DungeonScene extends Phaser.Scene {
         const pixelX = this.offsetX + screenX * this.tileWidth + this.tileWidth / 2
         const pixelY = this.offsetY + screenY * this.tileHeight + this.tileHeight / 2
 
-        // 座標ラベル（マップ座標を表示）
         const label = `${x},${y}`
-
-        // 床エリアは黄色、壁エリアは赤色、範囲外は灰色
         const isFloorArea = x >= 0 && x < this.mapWidth && y >= 0 && y < this.mapHeight && this.isFloor(x, y)
         const isInMap = x >= 0 && x < this.mapWidth && y >= 0 && y < this.mapHeight
-        let color = '#666666' // 範囲外（灰色）
+        let color = '#666666'
         if (isFloorArea) {
-          color = '#ffff00' // 床（黄色）
+          color = '#ffff00'
         } else if (isInMap) {
-          color = '#ff6666' // 壁（赤色）
+          color = '#ff6666'
         }
 
         const text = this.add.text(pixelX, pixelY, label, {
@@ -242,12 +224,10 @@ export class DungeonScene extends Phaser.Scene {
   private drawItems(viewStartX: number, viewStartY: number, endX: number, endY: number) {
     for (const item of this.gameStore.floorItems) {
       if (item.x < viewStartX || item.x >= endX || item.y < viewStartY || item.y >= endY) continue
-
       const screenTileX = item.x - viewStartX
       const screenTileY = item.y - viewStartY
       const x = this.offsetX + screenTileX * this.tileWidth + this.tileWidth / 2
       const y = this.offsetY + screenTileY * this.tileHeight + this.tileHeight / 2
-
       const rect = this.add.rectangle(x, y, this.tileWidth * 0.4, this.tileHeight * 0.4, TILE_COLOR.item)
       this.entityContainer.add(rect)
     }
@@ -255,14 +235,11 @@ export class DungeonScene extends Phaser.Scene {
 
   private drawEnemies(viewStartX: number, viewStartY: number, endX: number, endY: number) {
     for (const enemy of this.gameStore.enemies) {
-      // ビューポート外はスキップ
       if (enemy.x < viewStartX || enemy.x >= endX || enemy.y < viewStartY || enemy.y >= endY) continue
-
       const screenTileX = enemy.x - viewStartX
       const screenTileY = enemy.y - viewStartY
       const x = this.offsetX + screenTileX * this.tileWidth + this.tileWidth / 2
       const y = this.offsetY + screenTileY * this.tileHeight + this.tileHeight / 2
-
       const rect = this.add.rectangle(x, y, this.tileWidth * 0.7, this.tileHeight * 0.7, TILE_COLOR.enemy)
       this.entityContainer.add(rect)
     }
@@ -273,10 +250,11 @@ export class DungeonScene extends Phaser.Scene {
     const screenTileY = tileY - this.viewStartY
     const x = this.offsetX + screenTileX * this.tileWidth + this.tileWidth / 2
     const y = this.offsetY + screenTileY * this.tileHeight + this.tileHeight / 2
-
     const rect = this.add.rectangle(x, y, this.tileWidth * 0.7, this.tileHeight * 0.7, TILE_COLOR.player)
     this.entityContainer.add(rect)
   }
+
+  // --- 入力 ---
 
   private setupInput() {
     this.input.keyboard?.on('keydown', (event: KeyboardEvent) => {
@@ -323,7 +301,6 @@ export class DungeonScene extends Phaser.Scene {
 
   private tryMove(dx: number, dy: number) {
     const ui = this.getUiScene()
-    // メニュー表示中はカーソル移動に転送
     if (ui.isMenuOpen()) {
       ui.moveMenuCursor(dx, dy)
       return
@@ -337,14 +314,12 @@ export class DungeonScene extends Phaser.Scene {
     console.log(`[Move] ${dir}`)
     const messages = this.gameLoop.playerMove(dx, dy, this.map)
 
-    // 移動が発生した場合（メッセージが空でも壁でなければ配列が返る）
     if (messages !== null) {
       this.drawScene()
       this.updateUI(messages)
 
-      // 階段に乗ったら確認ダイアログ
       const pos = this.gameStore.player.position
-      if (this.map[pos.y][pos.x] === 2) {
+      if (this.map[pos.y][pos.x] === TILE.STAIRS) {
         this.getUiScene().showConfirm('次の階に移動しますか？', () => {
           this.goNextFloor()
         })
@@ -353,12 +328,9 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private setupTouchInput() {
-    // UISceneからの移動イベントを受け取る
     this.events.on('playerMove', (dx: number, dy: number) => {
       this.tryMove(dx, dy)
     })
-
-    // UISceneからのアクションイベントを受け取る
     this.events.on('playerAction', (action: string) => {
       this.handleAction(action)
     })
@@ -368,7 +340,6 @@ export class DungeonScene extends Phaser.Scene {
     console.log(`[Action] ${action}`)
     const ui = this.getUiScene()
 
-    // メニュー表示中: Aで選択、Bで閉じる
     if (ui.isMenuOpen()) {
       if (action === 'confirm') {
         const selected = ui.selectMenuItem()
@@ -382,7 +353,6 @@ export class DungeonScene extends Phaser.Scene {
       return
     }
 
-    // 確認ダイアログ表示中: Aで決定、Bで閉じる
     if (ui.isConfirmOpen()) {
       if (action === 'confirm') {
         ui.confirmSelect()
@@ -411,30 +381,7 @@ export class DungeonScene extends Phaser.Scene {
     }
   }
 
-  private goNextFloor() {
-    // フロアごとの開始位置
-    const startPositions: Record<number, { x: number; y: number }> = {
-      2: { x: 1, y: 0 },
-    }
-    const nextFloor = this.gameStore.dungeon.floor + 1
-    this.gameLoop.goNextFloor(startPositions[nextFloor] ?? { x: 3, y: 3 })
-
-    const floor = this.gameStore.dungeon.floor
-    this.createMap(floor)
-
-    // フロアごとの敵・アイテム配置
-    if (floor === 2) {
-      this.gameStore.addEnemy({ id: 'slime-2a', type: 'slime', x: 1, y: 1 })
-      this.gameStore.addEnemy({ id: 'slime-2b', type: 'slime', x: 4, y: 5 })
-      this.gameStore.addFloorItem({ id: 'item-2', itemId: 'sword', x: 2, y: 4 })
-    } else {
-      this.gameStore.addEnemy({ id: 'slime-1', type: 'slime', x: 5, y: 4 })
-      this.gameStore.addFloorItem({ id: 'item-1', itemId: 'sword', x: 4, y: 2 })
-    }
-
-    this.drawScene()
-    this.updateUI([`${floor}Fに到着した！`])
-  }
+  // --- UI更新 ---
 
   private updateUI(messages: string[]) {
     const uiScene = this.scene.get('UIScene') as unknown as {
