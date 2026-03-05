@@ -108,19 +108,31 @@ export class DungeonScene extends Phaser.Scene {
     this.offsetY = this.gameAreaTop + Math.floor((gameAreaHeight - this.viewTilesY * this.tileHeight) / 2)
   }
 
-  private createMap() {
-    // 十字型マップ: 0=床, 1=壁, 2=階段
-    this.map = [
-      [1, 1, 0, 0, 0, 1, 1],
-      [1, 1, 0, 0, 0, 1, 1],
-      [0, 0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0, 0],
-      [1, 1, 0, 0, 0, 1, 1],
-      [1, 1, 0, 0, 2, 1, 1],
-    ]
-    this.mapWidth = 7
-    this.mapHeight = 7
+  private createMap(floor: number = 1) {
+    // フロアごとのマップ定義: 0=床, 1=壁, 2=階段
+    const maps: Record<number, number[][]> = {
+      1: [
+        [1, 1, 0, 0, 0, 1, 1],
+        [1, 1, 0, 0, 0, 1, 1],
+        [0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0],
+        [1, 1, 0, 0, 0, 1, 1],
+        [1, 1, 0, 0, 2, 1, 1],
+      ],
+      2: [
+        [1, 0, 0, 0, 0, 0, 1],
+        [0, 0, 0, 1, 0, 0, 0],
+        [0, 0, 0, 1, 0, 0, 0],
+        [0, 1, 1, 1, 0, 0, 0],
+        [0, 0, 0, 0, 0, 1, 0],
+        [0, 0, 0, 0, 0, 1, 0],
+        [1, 0, 0, 0, 0, 2, 1],
+      ],
+    }
+    this.map = maps[floor] ?? maps[1]
+    this.mapWidth = this.map[0].length
+    this.mapHeight = this.map.length
   }
 
   private drawScene() {
@@ -300,6 +312,8 @@ export class DungeonScene extends Phaser.Scene {
       toggleMenu: () => void
       moveMenuCursor: (dx: number, dy: number) => void
       selectMenuItem: () => string | null
+      moveConfirmCursor: (dx: number) => void
+      confirmSelect: () => void
     }
   }
 
@@ -310,7 +324,10 @@ export class DungeonScene extends Phaser.Scene {
       ui.moveMenuCursor(dx, dy)
       return
     }
-    if (ui.isConfirmOpen()) return
+    if (ui.isConfirmOpen()) {
+      ui.moveConfirmCursor(dx)
+      return
+    }
 
     const dir = dx === -1 ? '左' : dx === 1 ? '右' : dy === -1 ? '上' : '下'
     console.log(`[Move] ${dir}`)
@@ -361,8 +378,13 @@ export class DungeonScene extends Phaser.Scene {
       return
     }
 
-    // 確認ダイアログ表示中はinventory以外ブロック
-    if (action !== 'inventory' && ui.isConfirmOpen()) return
+    // 確認ダイアログ表示中: Aで決定、Bで閉じる
+    if (ui.isConfirmOpen()) {
+      if (action === 'confirm') {
+        ui.confirmSelect()
+      }
+      return
+    }
 
     switch (action) {
       case 'confirm':
@@ -386,14 +408,28 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private goNextFloor() {
-    this.gameLoop.goNextFloor()
+    // フロアごとの開始位置
+    const startPositions: Record<number, { x: number; y: number }> = {
+      2: { x: 1, y: 0 },
+    }
+    const nextFloor = this.gameStore.dungeon.floor + 1
+    this.gameLoop.goNextFloor(startPositions[nextFloor] ?? { x: 3, y: 3 })
 
-    // 新フロアに敵・アイテムを再配置
-    this.gameStore.addEnemy({ id: 'slime-1', type: 'slime', x: 5, y: 4 })
-    this.gameStore.addFloorItem({ id: 'item-1', itemId: 'sword', x: 4, y: 2 })
+    const floor = this.gameStore.dungeon.floor
+    this.createMap(floor)
+
+    // フロアごとの敵・アイテム配置
+    if (floor === 2) {
+      this.gameStore.addEnemy({ id: 'slime-2a', type: 'slime', x: 1, y: 1 })
+      this.gameStore.addEnemy({ id: 'slime-2b', type: 'slime', x: 4, y: 5 })
+      this.gameStore.addFloorItem({ id: 'item-2', itemId: 'sword', x: 2, y: 4 })
+    } else {
+      this.gameStore.addEnemy({ id: 'slime-1', type: 'slime', x: 5, y: 4 })
+      this.gameStore.addFloorItem({ id: 'item-1', itemId: 'sword', x: 4, y: 2 })
+    }
 
     this.drawScene()
-    this.updateUI([`${this.gameStore.dungeon.floor}Fに到着した！`])
+    this.updateUI([`${floor}Fに到着した！`])
   }
 
   private updateUI(messages: string[]) {

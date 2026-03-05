@@ -36,6 +36,11 @@ export class UIScene extends Phaser.Scene {
   private confirmDialog!: Phaser.GameObjects.Container
   private confirmVisible = false
   private onConfirmYes?: () => void
+  private confirmCursorIndex = 0 // 0=はい, 1=いいえ
+  private confirmCursor!: Phaser.GameObjects.Text
+  private confirmYesX = 180
+  private confirmNoX = 300
+  private confirmBtnY = 270
 
   constructor() {
     super({ key: 'UIScene' })
@@ -209,8 +214,9 @@ export class UIScene extends Phaser.Scene {
     this.confirmDialog.add(yesText)
 
     yesBg.on('pointerdown', () => {
+      const callback = this.onConfirmYes
       this.hideConfirm()
-      if (this.onConfirmYes) this.onConfirmYes()
+      if (callback) callback()
     })
 
     // 「いいえ」ボタン
@@ -230,6 +236,14 @@ export class UIScene extends Phaser.Scene {
       this.hideConfirm()
     })
 
+    // 確認ダイアログ用カーソル
+    this.confirmCursor = this.add.text(0, 0, '▶', {
+      ...BASE_STYLE,
+      fontSize: '14px',
+      color: TEXT_COLOR.white,
+    })
+    this.confirmDialog.add(this.confirmCursor)
+
     // メッセージテキストへの参照を保持
     this.confirmDialog.setData('msgText', msgText)
   }
@@ -238,6 +252,8 @@ export class UIScene extends Phaser.Scene {
     this.onConfirmYes = onYes
     const msgText = this.confirmDialog.getData('msgText') as Phaser.GameObjects.Text
     msgText.setText(message)
+    this.confirmCursorIndex = 0
+    this.updateConfirmCursor()
     this.confirmVisible = true
     this.confirmDialog.setVisible(true)
   }
@@ -250,6 +266,26 @@ export class UIScene extends Phaser.Scene {
 
   isConfirmOpen(): boolean {
     return this.confirmVisible
+  }
+
+  moveConfirmCursor(dx: number) {
+    if (!this.confirmVisible) return
+    this.confirmCursorIndex = dx < 0 ? 0 : dx > 0 ? 1 : this.confirmCursorIndex
+    this.updateConfirmCursor()
+  }
+
+  confirmSelect() {
+    if (!this.confirmVisible) return
+    const callback = this.onConfirmYes
+    this.hideConfirm()
+    if (this.confirmCursorIndex === 0 && callback) {
+      callback()
+    }
+  }
+
+  private updateConfirmCursor() {
+    const x = this.confirmCursorIndex === 0 ? this.confirmYesX : this.confirmNoX
+    this.confirmCursor.setPosition(x - 35, this.confirmBtnY - 8)
   }
 
   toggleMenu() {

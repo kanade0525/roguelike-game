@@ -97,9 +97,9 @@ export function useGameLoop() {
     turnManager.reset()
   }
 
-  function goNextFloor() {
+  function goNextFloor(startPos: { x: number; y: number } = { x: 1, y: 0 }) {
     store.nextFloor()
-    store.setPlayerPosition(3, 3)
+    store.setPlayerPosition(startPos.x, startPos.y)
     store.clearEnemies()
     store.clearFloorItems()
     turnManager.reset()
