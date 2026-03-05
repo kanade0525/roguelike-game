@@ -28,3 +28,4 @@ logs
 test-results/
 playwright-report/
 coverage/
+.vscode/settings.json

@@ -12,6 +12,25 @@ interface PlayerState {
   position: { x: number; y: number }
 }
 
+interface EnemyState {
+  id: string
+  type: string
+  x: number
+  y: number
+}
+
+interface FloorItem {
+  id: string
+  itemId: string
+  x: number
+  y: number
+}
+
+interface InventoryItem {
+  itemId: string
+  name: string
+}
+
 interface DungeonState {
   floor: number
 }
@@ -19,6 +38,9 @@ interface DungeonState {
 interface GameState {
   player: PlayerState
   dungeon: DungeonState
+  enemies: EnemyState[]
+  floorItems: FloorItem[]
+  inventory: InventoryItem[]
   turn: number
   messageLog: string[]
 }
@@ -39,6 +61,9 @@ export const useGameStore = defineStore('game', {
     dungeon: {
       floor: 1,
     },
+    enemies: [],
+    floorItems: [],
+    inventory: [],
     turn: 0,
     messageLog: [],
   }),
@@ -52,7 +77,11 @@ export const useGameStore = defineStore('game', {
     movePlayer(dx: number, dy: number) {
       this.player.position.x += dx
       this.player.position.y += dy
-      this.endTurn()
+    },
+
+    setPlayerPosition(x: number, y: number) {
+      this.player.position.x = x
+      this.player.position.y = y
     },
 
     takeDamage(damage: number) {
@@ -81,6 +110,38 @@ export const useGameStore = defineStore('game', {
       if (this.messageLog.length > 50) {
         this.messageLog.shift()
       }
+    },
+
+    addEnemy(enemy: { id: string; type: string; x: number; y: number }) {
+      this.enemies.push(enemy)
+    },
+
+    moveEnemy(id: string, x: number, y: number) {
+      const enemy = this.enemies.find((e) => e.id === id)
+      if (enemy) {
+        enemy.x = x
+        enemy.y = y
+      }
+    },
+
+    clearEnemies() {
+      this.enemies = []
+    },
+
+    addFloorItem(item: FloorItem) {
+      this.floorItems.push(item)
+    },
+
+    removeFloorItem(id: string) {
+      this.floorItems = this.floorItems.filter((i) => i.id !== id)
+    },
+
+    addToInventory(item: InventoryItem) {
+      this.inventory.push(item)
+    },
+
+    clearFloorItems() {
+      this.floorItems = []
     },
 
     decreaseSatiation(amount: number) {

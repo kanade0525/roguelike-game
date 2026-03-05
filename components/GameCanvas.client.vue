@@ -3,9 +3,13 @@
   import { onMounted, onUnmounted, ref } from 'vue'
   import { DungeonScene } from '~/phaser/scenes/DungeonScene'
   import { UIScene } from '~/phaser/scenes/UIScene'
+  import { useGameStore } from '~/stores/gameStore'
+  import { useGameLoop } from '~/composables/useGameLoop'
 
   const gameContainer = ref<HTMLDivElement | null>(null)
   let game: Phaser.Game | null = null
+  const gameStore = useGameStore()
+  const gameLoop = useGameLoop()
 
   onMounted(() => {
     if (!gameContainer.value) return
@@ -14,7 +18,7 @@
       type: Phaser.AUTO,
       parent: gameContainer.value,
       width: 480,
-      height: 720,
+      height: 768,
       pixelArt: true,
       scale: {
         mode: Phaser.Scale.FIT,
@@ -25,6 +29,8 @@
     }
 
     game = new Phaser.Game(config)
+    game.registry.set('gameStore', gameStore)
+    game.registry.set('gameLoop', gameLoop)
   })
 
   onUnmounted(() => {
