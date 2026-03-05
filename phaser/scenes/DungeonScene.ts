@@ -109,6 +109,10 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private createMap(floor: number = 1) {
+    // TODO: マップを大きくする（最低30x30程度）
+    // TODO: マップ自動生成（部屋＋通路アルゴリズム）に置き換える
+    // TODO: フロア数を増やす（最低10F、ボスフロア含む）
+    // TODO: マップデータをgame/data/に分離する
     // フロアごとのマップ定義: 0=床, 1=壁, 2=階段
     const maps: Record<number, number[][]> = {
       1: [
