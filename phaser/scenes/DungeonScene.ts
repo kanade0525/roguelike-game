@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { TILE_COLOR } from '../../game/data/colors'
 
 export class DungeonScene extends Phaser.Scene {
   // 表示するタイル数（ビューポート）
@@ -41,14 +42,6 @@ export class DungeonScene extends Phaser.Scene {
   private screenHeight = 0
   private gameAreaTop = 50 // ステータスバー下
   private gameAreaBottom = 430 // メッセージログ上
-
-  // プロトタイプ配色
-  private readonly COLOR_FLOOR = 0x333333
-  private readonly COLOR_WALL = 0x888888
-  private readonly COLOR_STAIRS = 0xccaa00
-  private readonly COLOR_PLAYER = 0x4444ff
-  private readonly COLOR_ENEMY = 0xff4444
-  private readonly COLOR_ITEM = 0x44cc44
 
   constructor() {
     super({ key: 'DungeonScene' })
@@ -169,12 +162,12 @@ export class DungeonScene extends Phaser.Scene {
     const y = this.offsetY + screenY * this.tileHeight + this.tileHeight / 2
 
     // タイル種別に応じた色を決定
-    let color = this.COLOR_WALL // 範囲外は壁色
+    let color: number = TILE_COLOR.wall // 範囲外は壁色
     if (tileX >= 0 && tileX < this.mapWidth && tileY >= 0 && tileY < this.mapHeight) {
       const tile = this.map[tileY][tileX]
-      if (tile === 0) color = this.COLOR_FLOOR
-      else if (tile === 2) color = this.COLOR_STAIRS
-      else color = this.COLOR_WALL
+      if (tile === 0) color = TILE_COLOR.floor
+      else if (tile === 2) color = TILE_COLOR.stairs
+      else color = TILE_COLOR.wall
     }
 
     const rect = this.add.rectangle(x, y, this.tileWidth, this.tileHeight, color)
@@ -235,7 +228,7 @@ export class DungeonScene extends Phaser.Scene {
       const x = this.offsetX + screenTileX * this.tileWidth + this.tileWidth / 2
       const y = this.offsetY + screenTileY * this.tileHeight + this.tileHeight / 2
 
-      const rect = this.add.rectangle(x, y, this.tileWidth * 0.4, this.tileHeight * 0.4, this.COLOR_ITEM)
+      const rect = this.add.rectangle(x, y, this.tileWidth * 0.4, this.tileHeight * 0.4, TILE_COLOR.item)
       this.entityContainer.add(rect)
     }
   }
@@ -250,7 +243,7 @@ export class DungeonScene extends Phaser.Scene {
       const x = this.offsetX + screenTileX * this.tileWidth + this.tileWidth / 2
       const y = this.offsetY + screenTileY * this.tileHeight + this.tileHeight / 2
 
-      const rect = this.add.rectangle(x, y, this.tileWidth * 0.7, this.tileHeight * 0.7, this.COLOR_ENEMY)
+      const rect = this.add.rectangle(x, y, this.tileWidth * 0.7, this.tileHeight * 0.7, TILE_COLOR.enemy)
       this.entityContainer.add(rect)
     }
   }
@@ -261,7 +254,7 @@ export class DungeonScene extends Phaser.Scene {
     const x = this.offsetX + screenTileX * this.tileWidth + this.tileWidth / 2
     const y = this.offsetY + screenTileY * this.tileHeight + this.tileHeight / 2
 
-    const rect = this.add.rectangle(x, y, this.tileWidth * 0.7, this.tileHeight * 0.7, this.COLOR_PLAYER)
+    const rect = this.add.rectangle(x, y, this.tileWidth * 0.7, this.tileHeight * 0.7, TILE_COLOR.player)
     this.entityContainer.add(rect)
   }
 

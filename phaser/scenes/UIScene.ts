@@ -1,8 +1,9 @@
 import Phaser from 'phaser'
+import { TEXT_COLOR, UI_COLOR } from '../../game/data/colors'
 
 const BASE_STYLE: Phaser.Types.GameObjects.Text.TextStyle = {
   fontSize: '16px',
-  color: '#ffffff',
+  color: TEXT_COLOR.white,
   fontFamily: '"DotGothic16", monospace',
   letterSpacing: 2,
 }
@@ -48,9 +49,9 @@ export class UIScene extends Phaser.Scene {
 
   private createStatusBar() {
     const bg = this.add.graphics()
-    bg.fillStyle(0x1a1a2e, 0.9)
+    bg.fillStyle(UI_COLOR.panelBg, 0.9)
     bg.fillRoundedRect(8, 8, 464, 36, 4)
-    bg.lineStyle(2, 0x3a3a5e, 1)
+    bg.lineStyle(2, UI_COLOR.panelBorder, 1)
     bg.strokeRoundedRect(8, 8, 464, 36, 4)
 
     const statusStyle = { ...BASE_STYLE, fontStyle: 'bold' }
@@ -63,9 +64,9 @@ export class UIScene extends Phaser.Scene {
 
   private createMessageLog() {
     const bg = this.add.graphics()
-    bg.fillStyle(0x1a1a2e, 0.9)
+    bg.fillStyle(UI_COLOR.panelBg, 0.9)
     bg.fillRoundedRect(8, 430, 464, 50, 4)
-    bg.lineStyle(2, 0x3a3a5e, 1)
+    bg.lineStyle(2, UI_COLOR.panelBorder, 1)
     bg.strokeRoundedRect(8, 430, 464, 50, 4)
 
     for (let i = 0; i < this.maxVisibleMessages; i++) {
@@ -88,9 +89,9 @@ export class UIScene extends Phaser.Scene {
 
     // 左上: メニューボタン（道具/マップ/足元/作戦）
     const menuBg = this.add.graphics()
-    menuBg.fillStyle(0x1a1a2e, 0.95)
+    menuBg.fillStyle(UI_COLOR.panelBg, 0.95)
     menuBg.fillRoundedRect(16, 60, 130, 60, 6)
-    menuBg.lineStyle(1, 0x3a3a5e, 1)
+    menuBg.lineStyle(1, UI_COLOR.panelBorder, 1)
     menuBg.strokeRoundedRect(16, 60, 130, 60, 6)
     this.menuOverlay.add(menuBg)
 
@@ -101,7 +102,7 @@ export class UIScene extends Phaser.Scene {
       { text: '作戦', col: 1, row: 1 },
     ]
 
-    const menuStyle = { ...BASE_STYLE, color: '#cccccc' }
+    const menuStyle = { ...BASE_STYLE, color: TEXT_COLOR.muted }
 
     menuLabels.forEach((label) => {
       const x = 28 + label.col * 62
@@ -112,9 +113,9 @@ export class UIScene extends Phaser.Scene {
 
     // 右上: ダンジョン名
     const nameBg = this.add.graphics()
-    nameBg.fillStyle(0x1a1a2e, 0.95)
+    nameBg.fillStyle(UI_COLOR.panelBg, 0.95)
     nameBg.fillRoundedRect(300, 60, 164, 30, 6)
-    nameBg.lineStyle(1, 0x3a3a5e, 1)
+    nameBg.lineStyle(1, UI_COLOR.panelBorder, 1)
     nameBg.strokeRoundedRect(300, 60, 164, 30, 6)
     this.menuOverlay.add(nameBg)
 
@@ -127,9 +128,9 @@ export class UIScene extends Phaser.Scene {
 
     // 下部: 詳細ステータス
     const statBg = this.add.graphics()
-    statBg.fillStyle(0x1a1a2e, 0.95)
+    statBg.fillStyle(UI_COLOR.panelBg, 0.95)
     statBg.fillRoundedRect(16, 340, 448, 70, 6)
-    statBg.lineStyle(1, 0x3a3a5e, 1)
+    statBg.lineStyle(1, UI_COLOR.panelBorder, 1)
     statBg.strokeRoundedRect(16, 340, 448, 70, 6)
     this.menuOverlay.add(statBg)
 
@@ -150,7 +151,7 @@ export class UIScene extends Phaser.Scene {
     const hint = this.add.text(240, 420, 'B: 閉じる', {
       ...BASE_STYLE,
       fontSize: '12px',
-      color: '#888888',
+      color: TEXT_COLOR.dim,
     })
     hint.setOrigin(0.5, 0.5)
     this.menuOverlay.add(hint)
@@ -167,9 +168,9 @@ export class UIScene extends Phaser.Scene {
 
     // パネル背景
     const panel = this.add.graphics()
-    panel.fillStyle(0x1a1a2e, 0.95)
+    panel.fillStyle(UI_COLOR.panelBg, 0.95)
     panel.fillRoundedRect(80, 180, 320, 120, 8)
-    panel.lineStyle(2, 0x3a3a5e, 1)
+    panel.lineStyle(2, UI_COLOR.panelBorder, 1)
     panel.strokeRoundedRect(80, 180, 320, 120, 8)
     this.confirmDialog.add(panel)
 
@@ -182,8 +183,8 @@ export class UIScene extends Phaser.Scene {
     this.confirmDialog.add(msgText)
 
     // 「はい」ボタン
-    const yesBg = this.add.rectangle(180, 270, 80, 30, 0x4a4a6a)
-    yesBg.setStrokeStyle(1, 0x6a6a8a)
+    const yesBg = this.add.rectangle(180, 270, 80, 30, UI_COLOR.buttonHighlight)
+    yesBg.setStrokeStyle(1, UI_COLOR.buttonHighlightBorder)
     yesBg.setInteractive({ useHandCursor: true })
     this.confirmDialog.add(yesBg)
 
@@ -200,8 +201,8 @@ export class UIScene extends Phaser.Scene {
     })
 
     // 「いいえ」ボタン
-    const noBg = this.add.rectangle(300, 270, 80, 30, 0x4a4a6a)
-    noBg.setStrokeStyle(1, 0x6a6a8a)
+    const noBg = this.add.rectangle(300, 270, 80, 30, UI_COLOR.buttonHighlight)
+    noBg.setStrokeStyle(1, UI_COLOR.buttonHighlightBorder)
     noBg.setInteractive({ useHandCursor: true })
     this.confirmDialog.add(noBg)
 
@@ -289,7 +290,7 @@ export class UIScene extends Phaser.Scene {
     const controllerHeight = 232
 
     this.controllerBg = this.add.graphics()
-    this.controllerBg.fillStyle(0x2a2a3e, 1)
+    this.controllerBg.fillStyle(UI_COLOR.controllerBg, 1)
     this.controllerBg.fillRect(0, controllerY, screenWidth, controllerHeight)
 
     this.createLRButtons(controllerY + 20)
@@ -322,9 +323,9 @@ export class UIScene extends Phaser.Scene {
       const x = startX + dir.col * (btnSize + gap)
       const y = startY + dir.row * (btnSize + gap)
 
-      graphics.fillStyle(0x4a4a5a, 1)
+      graphics.fillStyle(UI_COLOR.buttonBg, 1)
       graphics.fillRoundedRect(x, y, btnSize, btnSize, 6)
-      graphics.lineStyle(1, 0x5a5a6a, 1)
+      graphics.lineStyle(1, UI_COLOR.buttonBorder, 1)
       graphics.strokeRoundedRect(x, y, btnSize, btnSize, 6)
 
       const btn = this.add.rectangle(x + btnSize / 2, y + btnSize / 2, btnSize, btnSize, 0x000000, 0)
@@ -332,7 +333,7 @@ export class UIScene extends Phaser.Scene {
 
       this.add.text(x + btnSize / 2, y + btnSize / 2, dir.arrow, {
         fontSize: '20px',
-        color: '#cccccc',
+        color: TEXT_COLOR.muted,
       }).setOrigin(0.5)
 
       btn.on('pointerdown', () => {
@@ -342,44 +343,44 @@ export class UIScene extends Phaser.Scene {
 
     const cx = startX + btnSize + gap
     const cy = startY + btnSize + gap
-    graphics.fillStyle(0x3a3a4a, 1)
+    graphics.fillStyle(UI_COLOR.selectButton, 1)
     graphics.fillRoundedRect(cx, cy, btnSize, btnSize, 6)
   }
 
   private createABButtons(centerX: number, centerY: number) {
     const radius = 30
 
-    const btnA = this.add.circle(centerX + 28, centerY - 24, radius, 0x5a5a7a)
-    btnA.setStrokeStyle(2, 0x7a7a9a)
+    const btnA = this.add.circle(centerX + 28, centerY - 24, radius, UI_COLOR.abButton)
+    btnA.setStrokeStyle(2, UI_COLOR.abButtonBorder)
     btnA.setInteractive({ useHandCursor: true })
     this.add.text(centerX + 28, centerY - 24, 'A', {
       fontSize: '20px',
-      color: '#dddddd',
+      color: TEXT_COLOR.light,
       fontStyle: 'bold',
     }).setOrigin(0.5)
 
     btnA.on('pointerdown', () => {
-      btnA.setFillStyle(0x7a7a9a)
+      btnA.setFillStyle(UI_COLOR.abButtonBorder)
       this.emitAction('confirm')
     })
-    btnA.on('pointerup', () => btnA.setFillStyle(0x5a5a7a))
-    btnA.on('pointerout', () => btnA.setFillStyle(0x5a5a7a))
+    btnA.on('pointerup', () => btnA.setFillStyle(UI_COLOR.abButton))
+    btnA.on('pointerout', () => btnA.setFillStyle(UI_COLOR.abButton))
 
-    const btnB = this.add.circle(centerX - 28, centerY + 24, radius, 0x5a5a7a)
-    btnB.setStrokeStyle(2, 0x7a7a9a)
+    const btnB = this.add.circle(centerX - 28, centerY + 24, radius, UI_COLOR.abButton)
+    btnB.setStrokeStyle(2, UI_COLOR.abButtonBorder)
     btnB.setInteractive({ useHandCursor: true })
     this.add.text(centerX - 28, centerY + 24, 'B', {
       fontSize: '20px',
-      color: '#dddddd',
+      color: TEXT_COLOR.light,
       fontStyle: 'bold',
     }).setOrigin(0.5)
 
     btnB.on('pointerdown', () => {
-      btnB.setFillStyle(0x7a7a9a)
+      btnB.setFillStyle(UI_COLOR.abButtonBorder)
       this.emitAction('inventory')
     })
-    btnB.on('pointerup', () => btnB.setFillStyle(0x5a5a7a))
-    btnB.on('pointerout', () => btnB.setFillStyle(0x5a5a7a))
+    btnB.on('pointerup', () => btnB.setFillStyle(UI_COLOR.abButton))
+    btnB.on('pointerout', () => btnB.setFillStyle(UI_COLOR.abButton))
   }
 
   private createLRButtons(y: number) {
@@ -387,32 +388,32 @@ export class UIScene extends Phaser.Scene {
     const btnWidth = 70
     const btnHeight = 26
 
-    graphics.fillStyle(0x4a4a5a, 1)
+    graphics.fillStyle(UI_COLOR.buttonBg, 1)
     graphics.fillRoundedRect(15, y - btnHeight / 2, btnWidth, btnHeight, 4)
-    graphics.lineStyle(1, 0x5a5a6a, 1)
+    graphics.lineStyle(1, UI_COLOR.buttonBorder, 1)
     graphics.strokeRoundedRect(15, y - btnHeight / 2, btnWidth, btnHeight, 4)
 
     const btnL = this.add.rectangle(15 + btnWidth / 2, y, btnWidth, btnHeight, 0x000000, 0)
     btnL.setInteractive({ useHandCursor: true })
     this.add.text(15 + btnWidth / 2, y, 'L', {
       fontSize: '14px',
-      color: '#aaaaaa',
+      color: TEXT_COLOR.subtle,
       fontStyle: 'bold',
     }).setOrigin(0.5)
 
     btnL.on('pointerdown', () => this.emitAction('prevItem'))
 
     const rX = 480 - 15 - btnWidth
-    graphics.fillStyle(0x4a4a5a, 1)
+    graphics.fillStyle(UI_COLOR.buttonBg, 1)
     graphics.fillRoundedRect(rX, y - btnHeight / 2, btnWidth, btnHeight, 4)
-    graphics.lineStyle(1, 0x5a5a6a, 1)
+    graphics.lineStyle(1, UI_COLOR.buttonBorder, 1)
     graphics.strokeRoundedRect(rX, y - btnHeight / 2, btnWidth, btnHeight, 4)
 
     const btnR = this.add.rectangle(rX + btnWidth / 2, y, btnWidth, btnHeight, 0x000000, 0)
     btnR.setInteractive({ useHandCursor: true })
     this.add.text(rX + btnWidth / 2, y, 'R', {
       fontSize: '14px',
-      color: '#aaaaaa',
+      color: TEXT_COLOR.subtle,
       fontStyle: 'bold',
     }).setOrigin(0.5)
 
@@ -427,14 +428,14 @@ export class UIScene extends Phaser.Scene {
     const centerX = 240
 
     const selectX = centerX - gap / 2 - btnWidth
-    graphics.fillStyle(0x3a3a4a, 1)
+    graphics.fillStyle(UI_COLOR.selectButton, 1)
     graphics.fillRoundedRect(selectX, y - btnHeight / 2, btnWidth, btnHeight, 9)
 
     const btnSelect = this.add.rectangle(selectX + btnWidth / 2, y, btnWidth, btnHeight, 0x000000, 0)
     btnSelect.setInteractive({ useHandCursor: true })
     this.add.text(selectX + btnWidth / 2, y, 'SELECT', {
       fontSize: '9px',
-      color: '#888888',
+      color: TEXT_COLOR.dim,
     }).setOrigin(0.5)
 
     btnSelect.on('pointerdown', () => this.emitAction('inventory'))
@@ -446,7 +447,7 @@ export class UIScene extends Phaser.Scene {
     btnStart.setInteractive({ useHandCursor: true })
     this.add.text(startX + btnWidth / 2, y, 'START', {
       fontSize: '9px',
-      color: '#888888',
+      color: TEXT_COLOR.dim,
     }).setOrigin(0.5)
 
     btnStart.on('pointerdown', () => this.emitAction('menu'))
