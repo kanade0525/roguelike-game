@@ -37,7 +37,8 @@ function vibrate(ms: number = 15) {
 }
 
 function buttonFeedback() {
-  playClickSound()
+  // 音と振動を同時に発火（直列だと片方がブロックする場合がある）
+  requestAnimationFrame(() => playClickSound())
   vibrate()
 }
 
