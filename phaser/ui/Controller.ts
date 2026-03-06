@@ -1,35 +1,41 @@
 import type Phaser from 'phaser'
 import { TEXT_COLOR, UI_COLOR } from '../../game/data/colors'
 
-// 短いクリック音を生成するWeb Audio
+// AudioContextをシングルトンで保持（連打対応）
+let audioCtx: AudioContext | null = null
+function getAudioContext(): AudioContext | null {
+  try {
+    if (!audioCtx || audioCtx.state === 'closed') {
+      audioCtx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)()
+    }
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume()
+    }
+    return audioCtx
+  } catch {
+    return null
+  }
+}
+
 function playClickSound() {
-  try {
-    const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)()
-    const osc = ctx.createOscillator()
-    const gain = ctx.createGain()
-    osc.connect(gain)
-    gain.connect(ctx.destination)
-    osc.frequency.value = 800
-    osc.type = 'square'
-    gain.gain.setValueAtTime(0.08, ctx.currentTime)
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05)
-    osc.start(ctx.currentTime)
-    osc.stop(ctx.currentTime + 0.05)
-  } catch {
-    // Audio not available
-  }
+  const ctx = getAudioContext()
+  if (!ctx) return
+  const osc = ctx.createOscillator()
+  const gain = ctx.createGain()
+  osc.connect(gain)
+  gain.connect(ctx.destination)
+  osc.frequency.value = 800
+  osc.type = 'square'
+  gain.gain.setValueAtTime(0.08, ctx.currentTime)
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05)
+  osc.start(ctx.currentTime)
+  osc.stop(ctx.currentTime + 0.05)
 }
 
-// 振動フィードバック
 function vibrate(ms: number = 15) {
-  try {
-    navigator?.vibrate?.(ms)
-  } catch {
-    // Vibration not available
-  }
+  navigator?.vibrate?.(ms)
 }
 
-// ボタン押下時の共通フィードバック
 function buttonFeedback() {
   playClickSound()
   vibrate()
@@ -65,10 +71,17 @@ export class Controller {
   ) {
     btn.on('pointerdown', () => {
       btn.setFillStyle(pressedColor)
+      btn.setScale(0.9)
       buttonFeedback()
     })
-    btn.on('pointerup', () => btn.setFillStyle(normalColor))
-    btn.on('pointerout', () => btn.setFillStyle(normalColor))
+    btn.on('pointerup', () => {
+      btn.setFillStyle(normalColor)
+      btn.setScale(1)
+    })
+    btn.on('pointerout', () => {
+      btn.setFillStyle(normalColor)
+      btn.setScale(1)
+    })
   }
 
   private createDPad(centerX: number, centerY: number, onMove: (dx: number, dy: number) => void) {
