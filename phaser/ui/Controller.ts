@@ -33,12 +33,11 @@ function playClickSound() {
 }
 
 function vibrate(ms: number = 15) {
-  navigator?.vibrate?.(ms)
+  globalThis.navigator?.vibrate?.(ms)
 }
 
 function buttonFeedback() {
-  // 音と振動を同時に発火（直列だと片方がブロックする場合がある）
-  requestAnimationFrame(() => playClickSound())
+  playClickSound()
   vibrate()
 }
 
@@ -195,6 +194,7 @@ export class Controller {
 
     const selectX = centerX - gap / 2 - btnWidth / 2
     const btnSelect = this.scene.add.rectangle(selectX, y, btnWidth, btnHeight, UI_COLOR.selectButton)
+    btnSelect.setStrokeStyle(1, UI_COLOR.buttonBorder)
     btnSelect.setInteractive({ useHandCursor: true })
     this.scene.add.text(selectX, y, 'SELECT', {
       fontSize: '11px',
@@ -206,6 +206,7 @@ export class Controller {
 
     const startBtnX = centerX + gap / 2 + btnWidth / 2
     const btnStart = this.scene.add.rectangle(startBtnX, y, btnWidth, btnHeight, UI_COLOR.selectButton)
+    btnStart.setStrokeStyle(1, UI_COLOR.buttonBorder)
     btnStart.setInteractive({ useHandCursor: true })
     this.scene.add.text(startBtnX, y, 'START', {
       fontSize: '11px',
