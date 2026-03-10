@@ -80,7 +80,7 @@ for (const t of tasks) {
 
 // Mermaid図生成
 md += '\n## 依存関係図（クリティカルパス強調）\n\n'
-md += '```mermaid\ngraph TD\n'
+md += '```mermaid\ngraph LR\n'
 
 // subgraph でカテゴリごとにノード定義
 for (const cat of categoryOrder) {
@@ -88,6 +88,7 @@ for (const cat of categoryOrder) {
   if (!catTasks) continue
   const label = categoryLabels[cat] || cat
   md += `\n    subgraph ${mid(catTasks[0].id).charAt(0)}["${label}"]\n`
+  md += '        direction TB\n'
   for (const t of catTasks) {
     const task = taskMap.get(t.id)
     md += `        ${mid(t.id)}["${t.id} ${task.name}<br>${task.adjusted}h"]\n`

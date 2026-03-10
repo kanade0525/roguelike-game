@@ -44,15 +44,17 @@
 ## 依存関係図（クリティカルパス強調）
 
 ```mermaid
-graph TD
+graph LR
 
     subgraph A["A: 基盤（敵・戦闘）"]
+        direction TB
         A1["A-1 敵パラメータ拡充<br>5.2h"]
         A2["A-2 戦闘システム統合<br>10.4h"]
         A3["A-3 敵AI強化<br>10.4h"]
     end
 
     subgraph B["B: ゲーム体験"]
+        direction TB
         B1["B-1 アイテムシステム<br>14.4h"]
         B2["B-2 満腹度システム<br>7.2h"]
         B3["B-3 経験値・レベルアップ<br>9.6h"]
@@ -60,23 +62,27 @@ graph TD
     end
 
     subgraph C["C: マップ"]
+        direction TB
         C1["C-1 マップ自動生成<br>15.6h"]
         C2["C-2 FOV<br>9.6h"]
     end
 
     subgraph D["D: 描画"]
+        direction TB
         D1["D-1 スプライト描画<br>12h"]
         D2["D-2 アニメーション<br>10h"]
         D3["D-3 ダメージ演出<br>6h"]
     end
 
     subgraph E["E: UI/UX"]
+        direction TB
         E1["E-1 ゲームオーバー画面<br>6h"]
         E2["E-2 HPバー・ミニマップ<br>4h"]
         E3["E-3 8方向移動<br>4h"]
     end
 
     subgraph F["F: 仕上げ"]
+        direction TB
         F1["F-1 BGM・効果音<br>8h"]
         F2["F-2 gameConfig活用<br>4h"]
         F3["F-3 セーブ/ロード<br>13h"]
@@ -86,12 +92,14 @@ graph TD
     end
 
     subgraph G["G: ストーリー"]
+        direction TB
         G1["G-1 メインストーリー・世界観設計<br>24h"]
         G2["G-2 クエストシステム設計<br>15.6h"]
         G3["G-3 NPC会話・ダイアログシステム<br>20.8h"]
     end
 
     subgraph H["H: 村"]
+        direction TB
         H1["H-1 村マップ・画面設計<br>20.8h"]
         H2["H-2 村長（クエスト依頼NPC）<br>15.6h"]
         H3["H-3 道具屋（売買システム）<br>14.4h"]
@@ -100,6 +108,7 @@ graph TD
     end
 
     subgraph I["I: トルネコ風メカニクス"]
+        direction TB
         I1["I-1 ゴールド・装備データモデル拡張<br>7.2h"]
         I2["I-2 ゴールドシステム（ドロップ・拾得・表示）<br>9.6h"]
         I3["I-3 装備システム（装備・強化・成長）<br>13h"]
