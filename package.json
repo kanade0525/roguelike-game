@@ -15,7 +15,8 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "wbs": "node scripts/generate-wbs.mjs"
   },
   "dependencies": {
     "@pinia/nuxt": "^0.9.0",
