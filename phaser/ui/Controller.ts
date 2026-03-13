@@ -1,6 +1,46 @@
 import type Phaser from 'phaser'
 import { TEXT_COLOR, UI_COLOR } from '../../game/data/colors'
 
+// AudioContextをシングルトンで保持（連打対応）
+let audioCtx: AudioContext | null = null
+function getAudioContext(): AudioContext | null {
+  try {
+    if (!audioCtx || audioCtx.state === 'closed') {
+      audioCtx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)()
+    }
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume()
+    }
+    return audioCtx
+  } catch {
+    return null
+  }
+}
+
+function playClickSound() {
+  const ctx = getAudioContext()
+  if (!ctx) return
+  const osc = ctx.createOscillator()
+  const gain = ctx.createGain()
+  osc.connect(gain)
+  gain.connect(ctx.destination)
+  osc.frequency.value = 800
+  osc.type = 'square'
+  gain.gain.setValueAtTime(0.08, ctx.currentTime)
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05)
+  osc.start(ctx.currentTime)
+  osc.stop(ctx.currentTime + 0.05)
+}
+
+function vibrate(ms: number = 15) {
+  globalThis.navigator?.vibrate?.(ms)
+}
+
+function buttonFeedback() {
+  playClickSound()
+  vibrate()
+}
+
 export class Controller {
   private scene: Phaser.Scene
 
@@ -24,10 +64,29 @@ export class Controller {
     this.createSelectStartButtons(controllerY + 252, onAction)
   }
 
+  private addButtonFeedback(
+    btn: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Shape,
+    normalColor: number,
+    pressedColor: number,
+  ) {
+    btn.on('pointerdown', () => {
+      btn.setFillStyle(pressedColor)
+      btn.setScale(0.9)
+      buttonFeedback()
+    })
+    btn.on('pointerup', () => {
+      btn.setFillStyle(normalColor)
+      btn.setScale(1)
+    })
+    btn.on('pointerout', () => {
+      btn.setFillStyle(normalColor)
+      btn.setScale(1)
+    })
+  }
+
   private createDPad(centerX: number, centerY: number, onMove: (dx: number, dy: number) => void) {
     const btnSize = 46
     const gap = 3
-    const graphics = this.scene.add.graphics()
 
     const directions = [
       { dx: -1, dy: -1, col: 0, row: 0, arrow: '↖' },
@@ -48,12 +107,10 @@ export class Controller {
       const x = startX + dir.col * (btnSize + gap)
       const y = startY + dir.row * (btnSize + gap)
 
-      graphics.fillStyle(UI_COLOR.buttonBg, 1)
-      graphics.fillRoundedRect(x, y, btnSize, btnSize, 6)
-      graphics.lineStyle(1, UI_COLOR.buttonBorder, 1)
-      graphics.strokeRoundedRect(x, y, btnSize, btnSize, 6)
-
-      const btn = this.scene.add.rectangle(x + btnSize / 2, y + btnSize / 2, btnSize, btnSize, 0x000000, 0)
+      const btn = this.scene.add.rectangle(
+        x + btnSize / 2, y + btnSize / 2, btnSize, btnSize, UI_COLOR.buttonBg,
+      )
+      btn.setStrokeStyle(1, UI_COLOR.buttonBorder)
       btn.setInteractive({ useHandCursor: true })
 
       this.scene.add.text(x + btnSize / 2, y + btnSize / 2, dir.arrow, {
@@ -61,13 +118,14 @@ export class Controller {
         color: TEXT_COLOR.muted,
       }).setOrigin(0.5)
 
+      this.addButtonFeedback(btn, UI_COLOR.buttonBg, UI_COLOR.buttonHighlight)
       btn.on('pointerdown', () => onMove(dir.dx, dir.dy))
     })
 
-    const cx = startX + btnSize + gap
-    const cy = startY + btnSize + gap
-    graphics.fillStyle(UI_COLOR.selectButton, 1)
-    graphics.fillRoundedRect(cx, cy, btnSize, btnSize, 6)
+    // 中央の装飾
+    const cx = startX + btnSize + gap + btnSize / 2
+    const cy = startY + btnSize + gap + btnSize / 2
+    this.scene.add.rectangle(cx, cy, btnSize, btnSize, UI_COLOR.selectButton)
   }
 
   private createABButtons(centerX: number, centerY: number, onAction: (action: string) => void) {
@@ -82,12 +140,8 @@ export class Controller {
       fontStyle: 'bold',
     }).setOrigin(0.5)
 
-    btnA.on('pointerdown', () => {
-      btnA.setFillStyle(UI_COLOR.abButtonBorder)
-      onAction('confirm')
-    })
-    btnA.on('pointerup', () => btnA.setFillStyle(UI_COLOR.abButton))
-    btnA.on('pointerout', () => btnA.setFillStyle(UI_COLOR.abButton))
+    this.addButtonFeedback(btnA, UI_COLOR.abButton, UI_COLOR.abButtonBorder)
+    btnA.on('pointerdown', () => onAction('confirm'))
 
     const btnB = this.scene.add.circle(centerX - 32, centerY + 30, radius, UI_COLOR.abButton)
     btnB.setStrokeStyle(2, UI_COLOR.abButtonBorder)
@@ -98,25 +152,16 @@ export class Controller {
       fontStyle: 'bold',
     }).setOrigin(0.5)
 
-    btnB.on('pointerdown', () => {
-      btnB.setFillStyle(UI_COLOR.abButtonBorder)
-      onAction('inventory')
-    })
-    btnB.on('pointerup', () => btnB.setFillStyle(UI_COLOR.abButton))
-    btnB.on('pointerout', () => btnB.setFillStyle(UI_COLOR.abButton))
+    this.addButtonFeedback(btnB, UI_COLOR.abButton, UI_COLOR.abButtonBorder)
+    btnB.on('pointerdown', () => onAction('inventory'))
   }
 
   private createLRButtons(y: number, onAction: (action: string) => void) {
-    const graphics = this.scene.add.graphics()
     const btnWidth = 85
     const btnHeight = 32
 
-    graphics.fillStyle(UI_COLOR.buttonBg, 1)
-    graphics.fillRoundedRect(15, y - btnHeight / 2, btnWidth, btnHeight, 4)
-    graphics.lineStyle(1, UI_COLOR.buttonBorder, 1)
-    graphics.strokeRoundedRect(15, y - btnHeight / 2, btnWidth, btnHeight, 4)
-
-    const btnL = this.scene.add.rectangle(15 + btnWidth / 2, y, btnWidth, btnHeight, 0x000000, 0)
+    const btnL = this.scene.add.rectangle(15 + btnWidth / 2, y, btnWidth, btnHeight, UI_COLOR.buttonBg)
+    btnL.setStrokeStyle(1, UI_COLOR.buttonBorder)
     btnL.setInteractive({ useHandCursor: true })
     this.scene.add.text(15 + btnWidth / 2, y, 'L', {
       fontSize: '16px',
@@ -124,15 +169,12 @@ export class Controller {
       fontStyle: 'bold',
     }).setOrigin(0.5)
 
+    this.addButtonFeedback(btnL, UI_COLOR.buttonBg, UI_COLOR.buttonHighlight)
     btnL.on('pointerdown', () => onAction('prevItem'))
 
     const rX = 480 - 15 - btnWidth
-    graphics.fillStyle(UI_COLOR.buttonBg, 1)
-    graphics.fillRoundedRect(rX, y - btnHeight / 2, btnWidth, btnHeight, 4)
-    graphics.lineStyle(1, UI_COLOR.buttonBorder, 1)
-    graphics.strokeRoundedRect(rX, y - btnHeight / 2, btnWidth, btnHeight, 4)
-
-    const btnR = this.scene.add.rectangle(rX + btnWidth / 2, y, btnWidth, btnHeight, 0x000000, 0)
+    const btnR = this.scene.add.rectangle(rX + btnWidth / 2, y, btnWidth, btnHeight, UI_COLOR.buttonBg)
+    btnR.setStrokeStyle(1, UI_COLOR.buttonBorder)
     btnR.setInteractive({ useHandCursor: true })
     this.scene.add.text(rX + btnWidth / 2, y, 'R', {
       fontSize: '16px',
@@ -140,39 +182,38 @@ export class Controller {
       fontStyle: 'bold',
     }).setOrigin(0.5)
 
+    this.addButtonFeedback(btnR, UI_COLOR.buttonBg, UI_COLOR.buttonHighlight)
     btnR.on('pointerdown', () => onAction('nextItem'))
   }
 
   private createSelectStartButtons(y: number, onAction: (action: string) => void) {
-    const graphics = this.scene.add.graphics()
     const btnWidth = 65
     const btnHeight = 24
     const gap = 12
     const centerX = 240
 
-    const selectX = centerX - gap / 2 - btnWidth
-    graphics.fillStyle(UI_COLOR.selectButton, 1)
-    graphics.fillRoundedRect(selectX, y - btnHeight / 2, btnWidth, btnHeight, 9)
-
-    const btnSelect = this.scene.add.rectangle(selectX + btnWidth / 2, y, btnWidth, btnHeight, 0x000000, 0)
+    const selectX = centerX - gap / 2 - btnWidth / 2
+    const btnSelect = this.scene.add.rectangle(selectX, y, btnWidth, btnHeight, UI_COLOR.selectButton)
+    btnSelect.setStrokeStyle(1, UI_COLOR.buttonBorder)
     btnSelect.setInteractive({ useHandCursor: true })
-    this.scene.add.text(selectX + btnWidth / 2, y, 'SELECT', {
+    this.scene.add.text(selectX, y, 'SELECT', {
       fontSize: '11px',
       color: TEXT_COLOR.dim,
     }).setOrigin(0.5)
 
+    this.addButtonFeedback(btnSelect, UI_COLOR.selectButton, UI_COLOR.buttonBg)
     btnSelect.on('pointerdown', () => onAction('inventory'))
 
-    const startX = centerX + gap / 2
-    graphics.fillRoundedRect(startX, y - btnHeight / 2, btnWidth, btnHeight, 9)
-
-    const btnStart = this.scene.add.rectangle(startX + btnWidth / 2, y, btnWidth, btnHeight, 0x000000, 0)
+    const startBtnX = centerX + gap / 2 + btnWidth / 2
+    const btnStart = this.scene.add.rectangle(startBtnX, y, btnWidth, btnHeight, UI_COLOR.selectButton)
+    btnStart.setStrokeStyle(1, UI_COLOR.buttonBorder)
     btnStart.setInteractive({ useHandCursor: true })
-    this.scene.add.text(startX + btnWidth / 2, y, 'START', {
+    this.scene.add.text(startBtnX, y, 'START', {
       fontSize: '11px',
       color: TEXT_COLOR.dim,
     }).setOrigin(0.5)
 
+    this.addButtonFeedback(btnStart, UI_COLOR.selectButton, UI_COLOR.buttonBg)
     btnStart.on('pointerdown', () => onAction('menu'))
   }
 }
