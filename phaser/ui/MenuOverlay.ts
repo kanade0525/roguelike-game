@@ -23,7 +23,7 @@ export class MenuOverlay {
     this.container.setDepth(500)
 
     // 半透明背景
-    const overlay = scene.add.rectangle(240, 384, 480, 768, 0x000000, 0.6)
+    const overlay = scene.add.rectangle(240, 243, 480, 486, 0x000000, 0.6)
     this.container.add(overlay)
 
     // 左上: メニューボタン（道具/マップ/足元/作戦）
