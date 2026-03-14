@@ -23,15 +23,15 @@ export class MenuOverlay {
     this.container.setDepth(500)
 
     // 半透明背景
-    const overlay = scene.add.rectangle(240, 384, 480, 768, 0x000000, 0.6)
+    const overlay = scene.add.rectangle(240, 243, 480, 486, 0x000000, 0.6)
     this.container.add(overlay)
 
     // 左上: メニューボタン（道具/マップ/足元/作戦）
     const menuBg = scene.add.graphics()
     menuBg.fillStyle(UI_COLOR.panelBg, 0.95)
-    menuBg.fillRoundedRect(16, 60, 130, 60, 6)
+    menuBg.fillRoundedRect(8, 56, 170, 76, 6)
     menuBg.lineStyle(1, UI_COLOR.panelBorder, 1)
-    menuBg.strokeRoundedRect(16, 60, 130, 60, 6)
+    menuBg.strokeRoundedRect(8, 56, 170, 76, 6)
     this.container.add(menuBg)
 
     const menuLabels = [
@@ -46,8 +46,8 @@ export class MenuOverlay {
     this.itemPositions = []
     this.itemLabels = []
     menuLabels.forEach((label) => {
-      const x = 28 + label.col * 62
-      const y = 70 + label.row * 24
+      const x = 36 + label.col * 72
+      const y = 68 + label.row * 28
       const t = scene.add.text(x, y, label.text, menuStyle)
       this.container.add(t)
       this.itemPositions.push({ x, y })
@@ -65,12 +65,12 @@ export class MenuOverlay {
     // 右上: ダンジョン名
     const nameBg = scene.add.graphics()
     nameBg.fillStyle(UI_COLOR.panelBg, 0.95)
-    nameBg.fillRoundedRect(300, 60, 164, 30, 6)
+    nameBg.fillRoundedRect(250, 56, 222, 36, 6)
     nameBg.lineStyle(1, UI_COLOR.panelBorder, 1)
-    nameBg.strokeRoundedRect(300, 60, 164, 30, 6)
+    nameBg.strokeRoundedRect(250, 56, 222, 36, 6)
     this.container.add(nameBg)
 
-    const nameText = scene.add.text(382, 75, '不思議のダンジョン', {
+    const nameText = scene.add.text(361, 74, '不思議のダンジョン', {
       ...BASE_STYLE,
       fontStyle: 'bold',
     })

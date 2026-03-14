@@ -51,8 +51,8 @@ export class Controller {
   ) {
     this.scene = scene
     const screenWidth = 480
-    const controllerY = 488
-    const controllerHeight = 280
+    const controllerY = 486
+    const controllerHeight = 274
 
     const controllerBg = scene.add.graphics()
     controllerBg.fillStyle(UI_COLOR.controllerBg, 1)
@@ -86,7 +86,7 @@ export class Controller {
 
   private createDPad(centerX: number, centerY: number, onMove: (dx: number, dy: number) => void) {
     const btnSize = 46
-    const gap = 3
+    const gap = 4
 
     const directions = [
       { dx: -1, dy: -1, col: 0, row: 0, arrow: '↖' },
@@ -103,29 +103,59 @@ export class Controller {
     const startX = centerX - gridSize / 2
     const startY = centerY - gridSize / 2
 
+    const radius = 8
+
     directions.forEach((dir) => {
       const x = startX + dir.col * (btnSize + gap)
       const y = startY + dir.row * (btnSize + gap)
+      const cx = x + btnSize / 2
+      const cy = y + btnSize / 2
 
-      const btn = this.scene.add.rectangle(
-        x + btnSize / 2, y + btnSize / 2, btnSize, btnSize, UI_COLOR.buttonBg,
-      )
+      const btn = this.scene.add.rectangle(cx, cy, btnSize, btnSize, UI_COLOR.buttonBg)
       btn.setStrokeStyle(1, UI_COLOR.buttonBorder)
       btn.setInteractive({ useHandCursor: true })
 
-      this.scene.add.text(x + btnSize / 2, y + btnSize / 2, dir.arrow, {
+      // 角丸の見た目をグラフィックスで重ねる
+      const g = this.scene.add.graphics()
+      g.fillStyle(UI_COLOR.buttonBg, 1)
+      g.fillRoundedRect(x, y, btnSize, btnSize, radius)
+      g.lineStyle(1, UI_COLOR.buttonBorder, 1)
+      g.strokeRoundedRect(x, y, btnSize, btnSize, radius)
+
+      // 元のrectangleは透明にしてヒットエリアとして残す
+      btn.setFillStyle(0x000000, 0)
+      btn.setStrokeStyle()
+
+      this.scene.add.text(cx, cy, dir.arrow, {
         fontSize: '20px',
         color: TEXT_COLOR.muted,
       }).setOrigin(0.5)
 
-      this.addButtonFeedback(btn, UI_COLOR.buttonBg, UI_COLOR.buttonHighlight)
-      btn.on('pointerdown', () => onMove(dir.dx, dir.dy))
+      btn.on('pointerdown', () => {
+        g.clear()
+        g.fillStyle(UI_COLOR.buttonHighlight, 1)
+        g.fillRoundedRect(x, y, btnSize, btnSize, radius)
+        g.lineStyle(1, UI_COLOR.buttonBorder, 1)
+        g.strokeRoundedRect(x, y, btnSize, btnSize, radius)
+        buttonFeedback()
+        onMove(dir.dx, dir.dy)
+      })
+      btn.on('pointerup', () => {
+        g.clear()
+        g.fillStyle(UI_COLOR.buttonBg, 1)
+        g.fillRoundedRect(x, y, btnSize, btnSize, radius)
+        g.lineStyle(1, UI_COLOR.buttonBorder, 1)
+        g.strokeRoundedRect(x, y, btnSize, btnSize, radius)
+      })
+      btn.on('pointerout', () => {
+        g.clear()
+        g.fillStyle(UI_COLOR.buttonBg, 1)
+        g.fillRoundedRect(x, y, btnSize, btnSize, radius)
+        g.lineStyle(1, UI_COLOR.buttonBorder, 1)
+        g.strokeRoundedRect(x, y, btnSize, btnSize, radius)
+      })
     })
 
-    // 中央の装飾
-    const cx = startX + btnSize + gap + btnSize / 2
-    const cy = startY + btnSize + gap + btnSize / 2
-    this.scene.add.rectangle(cx, cy, btnSize, btnSize, UI_COLOR.selectButton)
   }
 
   private createABButtons(centerX: number, centerY: number, onAction: (action: string) => void) {

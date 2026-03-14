@@ -16,12 +16,12 @@ export class MessageLog {
   constructor(scene: Phaser.Scene) {
     const bg = scene.add.graphics()
     bg.fillStyle(UI_COLOR.panelBg, 0.9)
-    bg.fillRoundedRect(8, 430, 464, 50, 4)
+    bg.fillRoundedRect(8, 428, 464, 50, 4)
     bg.lineStyle(2, UI_COLOR.panelBorder, 1)
-    bg.strokeRoundedRect(8, 430, 464, 50, 4)
+    bg.strokeRoundedRect(8, 428, 464, 50, 4)
 
     for (let i = 0; i < this.maxVisibleMessages; i++) {
-      const text = scene.add.text(16, 438 + i * 20, '', {
+      const text = scene.add.text(16, 436 + i * 20, '', {
         ...BASE_STYLE,
         fontSize: '14px',
       })

@@ -4,8 +4,8 @@ import { getMap, TILE } from '../../game/data/maps'
 
 export class DungeonScene extends Phaser.Scene {
   // 表示するタイル数（ビューポート）
-  private viewTilesX = 7
-  private viewTilesY = 5
+  private viewTilesX = 8
+  private viewTilesY = 6
 
   // タイルサイズ（16x16を拡大表示）
   private baseTileSize = 16
@@ -41,8 +41,8 @@ export class DungeonScene extends Phaser.Scene {
   // 画面サイズ
   private screenWidth = 0
   private screenHeight = 0
-  private gameAreaTop = 50
-  private gameAreaBottom = 430
+  private gameAreaTop = 52
+  private gameAreaBottom = 420
 
   constructor() {
     super({ key: 'DungeonScene' })
@@ -110,9 +110,12 @@ export class DungeonScene extends Phaser.Scene {
     this.screenHeight = this.scale.height
 
     const gameAreaHeight = this.gameAreaBottom - this.gameAreaTop
-    this.tileScale = Math.floor(this.screenWidth / this.viewTilesX / this.baseTileSize)
-    this.tileWidth = this.baseTileSize * this.tileScale
-    this.tileHeight = this.baseTileSize * this.tileScale
+    const tileFromWidth = this.screenWidth / this.viewTilesX
+    const tileFromHeight = gameAreaHeight / this.viewTilesY
+    const tileSize = Math.floor(Math.min(tileFromWidth, tileFromHeight))
+    this.tileScale = tileSize / this.baseTileSize
+    this.tileWidth = tileSize
+    this.tileHeight = tileSize
 
     this.offsetX = Math.floor((this.screenWidth - this.viewTilesX * this.tileWidth) / 2)
     this.offsetY = this.gameAreaTop + Math.floor((gameAreaHeight - this.viewTilesY * this.tileHeight) / 2)
