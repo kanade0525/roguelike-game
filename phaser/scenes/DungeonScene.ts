@@ -1,5 +1,5 @@
 import Phaser from 'phaser'
-import { getMap, TILE } from '../../game/data/maps'
+import { TILE } from '../../game/data/maps'
 
 export class DungeonScene extends Phaser.Scene {
   // 表示するタイル数（ビューポート）
@@ -95,9 +95,8 @@ export class DungeonScene extends Phaser.Scene {
 
     this.calculateTileSize()
 
-    // useGameLoop側で新規/復元を判定済み。Sceneはマップを読み込んで描画するだけ
-    const floor = this.gameStore.dungeon.floor
-    this.map = getMap(floor)
+    // Sceneはstoreのマップを読み込んで描画するだけ
+    this.map = this.gameStore.currentMap
     this.mapWidth = this.map[0].length
     this.mapHeight = this.map.length
 
@@ -128,7 +127,12 @@ export class DungeonScene extends Phaser.Scene {
     if (!this.anims.exists('knight_idle_anim')) {
       this.anims.create({
         key: 'knight_idle_anim',
-        frames: [{ key: 'knight_f0' }, { key: 'knight_f1' }, { key: 'knight_f2' }, { key: 'knight_f3' }],
+        frames: [
+          { key: 'knight_f0' },
+          { key: 'knight_f1' },
+          { key: 'knight_f2' },
+          { key: 'knight_f3' },
+        ],
         frameRate: 6,
         repeat: -1,
       })
@@ -136,7 +140,12 @@ export class DungeonScene extends Phaser.Scene {
     if (!this.anims.exists('skelet_idle_anim')) {
       this.anims.create({
         key: 'skelet_idle_anim',
-        frames: [{ key: 'skelet_f0' }, { key: 'skelet_f1' }, { key: 'skelet_f2' }, { key: 'skelet_f3' }],
+        frames: [
+          { key: 'skelet_f0' },
+          { key: 'skelet_f1' },
+          { key: 'skelet_f2' },
+          { key: 'skelet_f3' },
+        ],
         frameRate: 6,
         repeat: -1,
       })
@@ -147,8 +156,7 @@ export class DungeonScene extends Phaser.Scene {
 
   private goNextFloor() {
     const messages = this.gameLoop.goNextFloor()
-    const floor = this.gameStore.dungeon.floor
-    this.map = getMap(floor)
+    this.map = this.gameStore.currentMap
     this.mapWidth = this.map[0].length
     this.mapHeight = this.map.length
     this.drawScene()
@@ -170,7 +178,8 @@ export class DungeonScene extends Phaser.Scene {
     this.tileHeight = tileSize
 
     this.offsetX = Math.floor((this.screenWidth - this.viewTilesX * this.tileWidth) / 2)
-    this.offsetY = this.gameAreaTop + Math.floor((gameAreaHeight - this.viewTilesY * this.tileHeight) / 2)
+    this.offsetY =
+      this.gameAreaTop + Math.floor((gameAreaHeight - this.viewTilesY * this.tileHeight) / 2)
   }
 
   // --- 描画 ---
@@ -194,8 +203,7 @@ export class DungeonScene extends Phaser.Scene {
         if (x < 0 || x >= this.mapWidth || y < 0 || y >= this.mapHeight) continue
         const tile = this.map[y][x]
         if (tile === TILE.FLOOR || tile === TILE.STAIRS) {
-          const inViewport =
-            x >= this.viewStartX && x < endX && y >= this.viewStartY && y < endY
+          const inViewport = x >= this.viewStartX && x < endX && y >= this.viewStartY && y < endY
           if (inViewport && tile === TILE.FLOOR) {
             this.drawFloorTile(x, y)
           }
@@ -247,7 +255,13 @@ export class DungeonScene extends Phaser.Scene {
   private addWallTile(texture: string, gridX: number, gridY: number) {
     const screenX = gridX - this.viewStartX
     const screenY = gridY - this.viewStartY
-    if (screenX < -2 || screenX > this.viewTilesX + 1 || screenY < -2 || screenY > this.viewTilesY + 1) return
+    if (
+      screenX < -2 ||
+      screenX > this.viewTilesX + 1 ||
+      screenY < -2 ||
+      screenY > this.viewTilesY + 1
+    )
+      return
     const x = this.offsetX + screenX * this.tileWidth
     const y = this.offsetY + screenY * this.tileHeight
     const img = this.add.image(x, y, texture)
@@ -322,7 +336,8 @@ export class DungeonScene extends Phaser.Scene {
         const pixelY = this.offsetY + screenY * this.tileHeight + this.tileHeight / 2
 
         const label = `${x},${y}`
-        const isFloorArea = x >= 0 && x < this.mapWidth && y >= 0 && y < this.mapHeight && this.isFloor(x, y)
+        const isFloorArea =
+          x >= 0 && x < this.mapWidth && y >= 0 && y < this.mapHeight && this.isFloor(x, y)
         const isInMap = x >= 0 && x < this.mapWidth && y >= 0 && y < this.mapHeight
         let color = '#666666'
         if (isFloorArea) {
@@ -359,7 +374,8 @@ export class DungeonScene extends Phaser.Scene {
 
   private drawEnemies(viewStartX: number, viewStartY: number, endX: number, endY: number) {
     for (const enemy of this.gameStore.enemies) {
-      if (enemy.x < viewStartX || enemy.x >= endX || enemy.y < viewStartY || enemy.y >= endY) continue
+      if (enemy.x < viewStartX || enemy.x >= endX || enemy.y < viewStartY || enemy.y >= endY)
+        continue
       const screenTileX = enemy.x - viewStartX
       const screenTileY = enemy.y - viewStartY
       const x = this.offsetX + screenTileX * this.tileWidth + this.tileWidth / 2
@@ -442,7 +458,7 @@ export class DungeonScene extends Phaser.Scene {
 
     const dir = dx === -1 ? '左' : dx === 1 ? '右' : dy === -1 ? '上' : '下'
     console.log(`[Move] ${dir}`)
-    const messages = this.gameLoop.playerMove(dx, dy, this.map)
+    const messages = this.gameLoop.playerMove(dx, dy)
 
     if (messages !== null) {
       this.drawScene()

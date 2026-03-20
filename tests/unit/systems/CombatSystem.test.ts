@@ -13,10 +13,7 @@ describe('CombatSystem', () => {
       // 回避もクリティカルも発生しない
       vi.spyOn(Math, 'random').mockReturnValue(0.5)
 
-      const result = combat.calculateDamage(
-        { attack: 10 },
-        { attack: 0, defense: 3 },
-      )
+      const result = combat.calculateDamage({ attack: 10 }, { attack: 0, defense: 3 })
       expect(result.damage).toBe(7) // 10 - 3
       expect(result.isCritical).toBe(false)
       expect(result.isDodged).toBe(false)
@@ -27,10 +24,7 @@ describe('CombatSystem', () => {
     it('最低ダメージは1', () => {
       vi.spyOn(Math, 'random').mockReturnValue(0.5)
 
-      const result = combat.calculateDamage(
-        { attack: 1 },
-        { attack: 0, defense: 100 },
-      )
+      const result = combat.calculateDamage({ attack: 1 }, { attack: 0, defense: 100 })
       expect(result.damage).toBe(1)
 
       vi.restoreAllMocks()
@@ -39,10 +33,7 @@ describe('CombatSystem', () => {
     it('防御力が未設定なら0として扱う', () => {
       vi.spyOn(Math, 'random').mockReturnValue(0.5)
 
-      const result = combat.calculateDamage(
-        { attack: 10 },
-        { attack: 0 },
-      )
+      const result = combat.calculateDamage({ attack: 10 }, { attack: 0 })
       expect(result.damage).toBe(10)
 
       vi.restoreAllMocks()
@@ -52,10 +43,7 @@ describe('CombatSystem', () => {
       // 最初のrandom (回避判定) < 0.05 → 回避
       vi.spyOn(Math, 'random').mockReturnValue(0.01)
 
-      const result = combat.calculateDamage(
-        { attack: 100 },
-        { attack: 0, defense: 0 },
-      )
+      const result = combat.calculateDamage({ attack: 100 }, { attack: 0, defense: 0 })
       expect(result.isDodged).toBe(true)
       expect(result.damage).toBe(0)
 
@@ -68,10 +56,7 @@ describe('CombatSystem', () => {
       // 2回目: クリティカル判定 → 0.05 (< 0.1 なのでクリティカル)
       mockRandom.mockReturnValueOnce(0.5).mockReturnValueOnce(0.05)
 
-      const result = combat.calculateDamage(
-        { attack: 10 },
-        { attack: 0, defense: 3 },
-      )
+      const result = combat.calculateDamage({ attack: 10 }, { attack: 0, defense: 3 })
       expect(result.isCritical).toBe(true)
       expect(result.damage).toBe(17) // 10 * 2 - 3
 
