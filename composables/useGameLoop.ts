@@ -116,7 +116,7 @@ export function useGameLoop() {
   function initDungeon(dungeonId: string = DEFAULT_DUNGEON_ID) {
     const dungeon = getDungeon(dungeonId)
     store.resetGame()
-    store.setDungeon(dungeonId, dungeon.totalFloors)
+    store.setDungeon(dungeonId, dungeon.floors.length)
     initFloor(1)
   }
 
