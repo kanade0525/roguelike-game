@@ -148,6 +148,27 @@ export const useGameStore = defineStore('game', {
       this.player.satiation = Math.max(0, this.player.satiation - amount)
     },
 
+    saveToSession() {
+      sessionStorage.setItem('gameState', JSON.stringify(this.$state))
+    },
+
+    restoreFromSession(): boolean {
+      const saved = sessionStorage.getItem('gameState')
+      if (!saved) {
+        this.$reset()
+        return false
+      }
+      try {
+        this.$reset()
+        this.$patch(JSON.parse(saved))
+        return true
+      } catch {
+        this.$reset()
+        sessionStorage.removeItem('gameState')
+        return false
+      }
+    },
+
     gainExp(amount: number) {
       this.player.exp += amount
       const expNeeded = this.player.level * 100

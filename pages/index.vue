@@ -3,6 +3,7 @@
   const router = useRouter()
 
   const startGame = () => {
+    sessionStorage.removeItem('gameState')
     router.push('/game')
   }
 
