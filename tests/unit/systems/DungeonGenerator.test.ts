@@ -133,42 +133,40 @@ describe('DungeonGenerator', () => {
       ],
       playerStart: { x: 1, y: 1 },
       stairsPosition: { x: 3, y: 3 },
-      enemies: [{ type: 'slime', x: 2, y: 2 }],
-      items: [{ itemId: 'sword', x: 3, y: 1 }],
     }
 
+    const fixedOptions = { ...defaultOptions, enemyCount: 1, itemCount: 0, fixedFloor }
+
     it('固定マップが正しく返される', () => {
-      const result = generateFloor({ ...defaultOptions, fixedFloor })
+      const result = generateFloor(fixedOptions)
       expect(result.map.length).toBe(5)
       expect(result.map[0].length).toBe(5)
     })
 
     it('プレイヤー位置が固定マップの指定通り', () => {
-      const result = generateFloor({ ...defaultOptions, fixedFloor })
+      const result = generateFloor(fixedOptions)
       expect(result.playerStart).toEqual({ x: 1, y: 1 })
     })
 
     it('階段位置が固定マップの指定通り', () => {
-      const result = generateFloor({ ...defaultOptions, fixedFloor })
+      const result = generateFloor(fixedOptions)
       expect(result.stairsPosition).toEqual({ x: 3, y: 3 })
     })
 
-    it('敵が固定マップの指定通り配置される', () => {
-      const result = generateFloor({ ...defaultOptions, fixedFloor })
-      expect(result.enemies.length).toBe(1)
-      expect(result.enemies[0].type).toBe('slime')
-      expect(result.enemies[0].x).toBe(2)
+    it('敵がoptions経由で配置される（候補がない場合は0）', () => {
+      const result = generateFloor(fixedOptions)
+      // 5x5マップではプレイヤー周辺除外で候補がないため0
+      expect(result.enemies.length).toBe(0)
     })
 
-    it('アイテムが固定マップの指定通り配置される', () => {
-      const result = generateFloor({ ...defaultOptions, fixedFloor })
-      expect(result.items.length).toBe(1)
-      expect(result.items[0].itemId).toBe('sword')
+    it('アイテム数0で空配列が返される', () => {
+      const result = generateFloor(fixedOptions)
+      expect(result.items.length).toBe(0)
     })
 
     it('固定マップの元配列を変更しない（コピー）', () => {
       const original = fixedFloor.map[1][1]
-      generateFloor({ ...defaultOptions, fixedFloor })
+      generateFloor(fixedOptions)
       expect(fixedFloor.map[1][1]).toBe(original)
     })
   })

@@ -63,7 +63,7 @@ export const useGameStore = defineStore('game', {
     },
     dungeon: {
       floor: 1,
-      dungeonId: 'forest',
+      dungeonId: 'silentForest',
       totalFloors: 5,
     },
     enemies: [],

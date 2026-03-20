@@ -4,7 +4,7 @@ import { randomMove } from '~/game/systems/EnemyAI'
 import { ITEMS } from '~/game/data/items'
 import { generateFloor } from '~/game/systems/DungeonGenerator'
 import { getFloorDifficulty } from '~/game/data/floorConfig'
-import { getDungeonType, DEFAULT_DUNGEON_ID } from '~/game/data/dungeonTypes'
+import { getDungeon, DEFAULT_DUNGEON_ID } from '~/game/dungeon'
 
 const turnManager = new TurnManager()
 
@@ -83,9 +83,10 @@ export function useGameLoop() {
 
   function initFloor(floor: number) {
     const dungeonId = store.dungeon.dungeonId
-    const dungeon = getDungeonType(dungeonId)
+    const dungeon = getDungeon(dungeonId)
     const difficulty = getFloorDifficulty(floor, dungeonId)
-    const fixedFloor = dungeon.fixedFloors?.[floor]
+    const floorIndex = Math.min(floor - 1, dungeon.floors.length - 1)
+    const fixedFloor = dungeon.floors[floorIndex].fixedMap
 
     const generated = generateFloor({
       width: difficulty.mapWidth,
@@ -113,7 +114,7 @@ export function useGameLoop() {
   }
 
   function initDungeon(dungeonId: string = DEFAULT_DUNGEON_ID) {
-    const dungeon = getDungeonType(dungeonId)
+    const dungeon = getDungeon(dungeonId)
     store.resetGame()
     store.setDungeon(dungeonId, dungeon.totalFloors)
     initFloor(1)
