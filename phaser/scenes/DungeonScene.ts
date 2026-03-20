@@ -94,7 +94,17 @@ export class DungeonScene extends Phaser.Scene {
     }
 
     this.calculateTileSize()
-    this.loadFloor(1)
+
+    const isNewGame = this.game.registry.get('isNewGame')
+    const floor = this.gameStore.dungeon.floor
+    if (isNewGame) {
+      this.loadFloor(floor)
+    } else {
+      // リロード時: マップだけ読み込み、エンティティはstore状態を使う
+      this.map = getMap(floor)
+      this.mapWidth = this.map[0].length
+      this.mapHeight = this.map.length
+    }
 
     // コンテナ作成（描画順序制御用）
     this.floorContainer = this.add.container(0, 0)
