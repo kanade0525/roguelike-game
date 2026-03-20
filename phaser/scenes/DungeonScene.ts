@@ -95,10 +95,7 @@ export class DungeonScene extends Phaser.Scene {
 
     this.calculateTileSize()
 
-    // Sceneはstoreのマップを読み込んで描画するだけ
-    this.map = this.gameStore.currentMap
-    this.mapWidth = this.map[0].length
-    this.mapHeight = this.map.length
+    this.syncMapFromStore()
 
     // コンテナ作成（描画順序制御用）
     this.floorContainer = this.add.container(0, 0)
@@ -154,11 +151,19 @@ export class DungeonScene extends Phaser.Scene {
 
   // --- フロア管理 ---
 
-  private goNextFloor() {
-    const messages = this.gameLoop.goNextFloor()
-    this.map = this.gameStore.currentMap
+  private syncMapFromStore() {
+    const map = this.gameStore.currentMap
+    if (!Array.isArray(map) || map.length === 0 || !Array.isArray(map[0]) || map[0].length === 0) {
+      throw new Error('currentMap is empty or invalid')
+    }
+    this.map = map
     this.mapWidth = this.map[0].length
     this.mapHeight = this.map.length
+  }
+
+  private goNextFloor() {
+    const messages = this.gameLoop.goNextFloor()
+    this.syncMapFromStore()
     this.drawScene()
     this.updateUI(messages)
   }

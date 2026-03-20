@@ -11,11 +11,13 @@ export interface FloorDifficultyConfig {
 
 export function getFloorDifficulty(floor: number): FloorDifficultyConfig {
   const { enemiesPerFloor } = gameConfig.dungeonConfig
-  const enemyCount = enemiesPerFloor[Math.min(floor - 1, enemiesPerFloor.length - 1)]
-  const itemCount = Math.min(1 + Math.floor(floor / 2), 4)
+  const normalizedFloor = Math.max(1, Math.floor(floor))
+  const floorIndex = Math.min(normalizedFloor - 1, enemiesPerFloor.length - 1)
+  const enemyCount = enemiesPerFloor[floorIndex]
+  const itemCount = Math.min(1 + Math.floor(normalizedFloor / 2), 4)
 
-  const mapWidth = Math.min(30 + Math.floor(floor * 2), 50)
-  const mapHeight = Math.min(30 + Math.floor(floor * 2), 50)
+  const mapWidth = Math.min(30 + normalizedFloor * 2, 50)
+  const mapHeight = Math.min(30 + normalizedFloor * 2, 50)
 
   // 階層が深くなるほどゴブリンの比率が上がる
   const enemyTypes: { type: string; weight: number }[] =

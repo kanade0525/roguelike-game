@@ -147,7 +147,7 @@ export const useGameStore = defineStore('game', {
     },
 
     setCurrentMap(map: number[][]) {
-      this.currentMap = map
+      this.currentMap = map.map((row) => [...row])
     },
 
     decreaseSatiation(amount: number) {

@@ -93,10 +93,17 @@ export function generateFloor(options: DungeonGeneratorOptions): GeneratedFloor 
   // プレイヤーと階段を別の部屋に配置
   const shuffledRooms = [...rooms].sort(() => Math.random() - 0.5)
   const playerRoom = shuffledRooms[0]
-  const stairsRoom = shuffledRooms[shuffledRooms.length - 1]
+  const stairsRoom = shuffledRooms.length >= 2 ? shuffledRooms[shuffledRooms.length - 1] : playerRoom
 
   const playerStart = { x: playerRoom.centerX, y: playerRoom.centerY }
-  const stairsPosition = { x: stairsRoom.centerX, y: stairsRoom.centerY }
+  // 1部屋のみの場合はプレイヤーからオフセットした位置に階段を配置
+  let stairsPosition: { x: number; y: number }
+  if (stairsRoom !== playerRoom) {
+    stairsPosition = { x: stairsRoom.centerX, y: stairsRoom.centerY }
+  } else {
+    const offsetX = playerRoom.centerX + 1 < playerRoom.x + playerRoom.width ? 1 : -1
+    stairsPosition = { x: playerRoom.centerX + offsetX, y: playerRoom.centerY }
+  }
   map[stairsPosition.y][stairsPosition.x] = TILE.STAIRS
 
   // 敵を配置（プレイヤー周辺2マス以内を除外）
