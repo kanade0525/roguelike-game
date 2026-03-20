@@ -61,9 +61,58 @@ npm run test:e2e  # E2Eテスト実行（Playwright）
 - **game/entities/Enemy.ts**: 敵データ・ロジック（スライム、ゴブリン）
 - **game/systems/TurnManager.ts**: ターン制管理（player → enemy → end）
 - **game/systems/CombatSystem.ts**: ダメージ計算
+- **game/systems/DungeonGenerator.ts**: rot.jsによるマップ自動生成
+- **game/systems/SpawnValidator.ts**: 敵スポーン位置のバリデーション
 - **phaser/scenes/DungeonScene.ts**: ダンジョン描画
 - **phaser/scenes/UIScene.ts**: HP等のHUD描画
 - **stores/gameStore.ts**: 全ゲーム状態の一元管理
+
+### ダンジョン定義（`game/dungeon/`）
+
+ダンジョンはフロア単位のファイル構成で管理する：
+
+```text
+game/dungeon/
+├── types.ts                    # 型定義（FloorConfig, DungeonDefinition等）
+├── index.ts                    # 全ダンジョンexport、getDungeon()
+├── presets/                    # ボスマップ等の共通プリセット
+│   ├── arenaSmall.ts           # 再利用可能な固定マップ
+│   └── ...
+├── SilentForest/               # ダンジョン: 静寂の森（5F）
+│   ├── index.ts                # ダンジョン定義（id, name, floors）
+│   ├── F1.ts                   # 各フロアの設定
+│   └── ...
+├── DarkCastle/                 # ダンジョン: 暗黒城（8F）
+└── Abyss/                      # ダンジョン: 深淵（10F）
+```
+
+**新しいダンジョンを追加する手順:**
+
+1. `game/dungeon/NewDungeon/` フォルダを作成
+2. 各フロアの `F1.ts` 〜 `FN.ts` を作成（マップサイズ、敵数・種類、アイテム等）
+3. ボスフロアは `presets/` の既存プリセットを参照するか新規作成
+4. `index.ts` でダンジョン定義をまとめる
+5. `game/dungeon/index.ts` に import を追加
+
+**フロアファイルの構造:**
+
+```typescript
+// ランダム生成フロア
+const floor: FloorConfig = {
+  mapSize: { w: 30, h: 30 },
+  enemies: { count: 3, types: [{ type: 'slime', weight: 1 }] },
+  items: { count: 1, types: [{ itemId: 'sword', weight: 1 }] },
+}
+
+// ボスフロア（固定マップ）
+const floor: FloorConfig = {
+  mapSize: { w: 13, h: 13 },
+  enemies: { count: 1, types: [{ type: 'slime', weight: 1 }] },
+  items: { count: 0, types: [] },
+  isBossFloor: true,
+  fixedMap: arenaSmall, // プリセット参照
+}
+```
 
 ### 設定ファイル
 
@@ -72,7 +121,6 @@ npm run test:e2e  # E2Eテスト実行（Playwright）
 - 画面サイズ、タイルサイズ
 - プレイヤーステータス（HP、攻撃力、防御力）
 - 敵種類ごとのパラメータ
-- ダンジョン設定（階層数、敵出現数）
 
 ## ゲームシステム
 
@@ -138,16 +186,21 @@ Phaserは使わず、純粋なTypeScriptで。
 - Nuxt 3 + Phaser 3 + Pinia 環境構築
 - Docker開発環境
 - タイトル画面
-- クォータービューダンジョン描画
+- スプライト描画（床8種・壁オートタイル・キャラクターアニメーション）
 - プレイヤー移動（4方向）
 - ステータスバー（階層、Lv、HP、満腹度）
 - メッセージログ
+- rot.jsによるダンジョン自動生成（部屋+通路）
+- 複数ダンジョンタイプ（静寂の森5F・暗黒城8F・深淵10F）
+- ボスフロア固定マップ（共通プリセット）
+- 敵スポーンバリデーション（プレイヤー周辺除外・重複防止）
+- 階層移動（階段確認ダイアログ）
+- sessionStorageによる状態保持（リロード対応）
 
 ### 未実装
 
-- 敵の配置と戦闘
-- ターン制システム
+- 戦闘システム統合
+- 敵AI強化（追跡・タイプ別行動）
 - アイテムシステム
-- 階層移動
 - FOV（視界）
 - セーブ/ロード
