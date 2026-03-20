@@ -200,13 +200,15 @@ export class DungeonScene extends Phaser.Scene {
     const endX = this.viewStartX + this.viewTilesX
     const endY = this.viewStartY + this.viewTilesY
 
-    // 床セルのみ描画し、隣接壁をオーバーレイ
-    for (let y = this.viewStartY; y < endY; y++) {
-      for (let x = this.viewStartX; x < endX; x++) {
+    // 床セルのみ描画し、隣接壁をオーバーレイ（画面端の壁欠け防止で1タイル広く走査）
+    for (let y = this.viewStartY - 1; y < endY + 1; y++) {
+      for (let x = this.viewStartX - 1; x < endX + 1; x++) {
         if (x < 0 || x >= this.mapWidth || y < 0 || y >= this.mapHeight) continue
         const tile = this.map[y][x]
         if (tile === TILE.FLOOR || tile === TILE.STAIRS) {
-          if (tile === TILE.FLOOR) {
+          const inViewport =
+            x >= this.viewStartX && x < endX && y >= this.viewStartY && y < endY
+          if (inViewport && tile === TILE.FLOOR) {
             this.drawFloorTile(x, y)
           }
           this.drawBorderOverlay(x, y)
