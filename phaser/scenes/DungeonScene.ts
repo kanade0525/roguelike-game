@@ -196,7 +196,9 @@ export class DungeonScene extends Phaser.Scene {
         if (x < 0 || x >= this.mapWidth || y < 0 || y >= this.mapHeight) continue
         const tile = this.map[y][x]
         if (tile === TILE.FLOOR || tile === TILE.STAIRS) {
-          this.drawFloorTile(x, y, tile === TILE.STAIRS)
+          if (tile === TILE.FLOOR) {
+            this.drawFloorTile(x, y)
+          }
           this.drawBorderOverlay(x, y)
         }
       }
@@ -229,13 +231,13 @@ export class DungeonScene extends Phaser.Scene {
     }
   }
 
-  private drawFloorTile(tileX: number, tileY: number, isStairs: boolean) {
+  private drawFloorTile(tileX: number, tileY: number) {
     const screenTileX = tileX - this.viewStartX
     const screenTileY = tileY - this.viewStartY
     const x = this.offsetX + screenTileX * this.tileWidth + this.tileWidth / 2
     const y = this.offsetY + screenTileY * this.tileHeight + this.tileHeight / 2
 
-    const textureKey = isStairs ? 'floor_stairs' : `floor_${((tileX * 7 + tileY * 13) % 8) + 1}`
+    const textureKey = `floor_${((tileX * 7 + tileY * 13) % 8) + 1}`
     const tile = this.add.image(x, y, textureKey)
     tile.setScale(this.tileScale)
     this.floorContainer.add(tile)
