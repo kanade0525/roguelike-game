@@ -28,6 +28,7 @@ export interface DungeonGeneratorOptions {
   itemCount: number
   enemyTypes: { type: string; weight: number }[]
   itemTypes: { itemId: string; weight: number }[]
+  fixedFloor?: import('../data/dungeonTypes').FixedFloorConfig
 }
 
 function pickWeighted<T extends { weight: number }>(items: T[]): T {
@@ -58,6 +59,11 @@ function getSpawnableTiles(
 }
 
 export function generateFloor(options: DungeonGeneratorOptions): GeneratedFloor {
+  // 固定マップが指定されている場合はそれを使用
+  if (options.fixedFloor) {
+    return buildFixedFloor(options.fixedFloor, options.floor)
+  }
+
   const { width, height, floor } = options
 
   // 全セルを壁で初期化
@@ -137,4 +143,32 @@ export function generateFloor(options: DungeonGeneratorOptions): GeneratedFloor 
   }
 
   return { map, rooms, playerStart, stairsPosition, enemies, items }
+}
+
+function buildFixedFloor(
+  config: import('../data/dungeonTypes').FixedFloorConfig,
+  floor: number,
+): GeneratedFloor {
+  const map = config.map.map((row) => [...row])
+  const enemies = config.enemies.map((e, i) => ({
+    id: `enemy-${floor}-${i}`,
+    type: e.type,
+    x: e.x,
+    y: e.y,
+  }))
+  const items = config.items.map((item, i) => ({
+    id: `item-${floor}-${i}`,
+    itemId: item.itemId,
+    x: item.x,
+    y: item.y,
+  }))
+
+  return {
+    map,
+    rooms: [],
+    playerStart: { ...config.playerStart },
+    stairsPosition: config.stairsPosition ?? { x: 0, y: 0 },
+    enemies,
+    items,
+  }
 }

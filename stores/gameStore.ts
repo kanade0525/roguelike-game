@@ -33,6 +33,8 @@ interface InventoryItem {
 
 interface DungeonState {
   floor: number
+  dungeonId: string
+  totalFloors: number
 }
 
 interface GameState {
@@ -61,6 +63,8 @@ export const useGameStore = defineStore('game', {
     },
     dungeon: {
       floor: 1,
+      dungeonId: 'forest',
+      totalFloors: 5,
     },
     enemies: [],
     floorItems: [],
@@ -97,6 +101,12 @@ export const useGameStore = defineStore('game', {
 
     nextFloor() {
       this.dungeon.floor++
+    },
+
+    setDungeon(dungeonId: string, totalFloors: number) {
+      this.dungeon.dungeonId = dungeonId
+      this.dungeon.totalFloors = totalFloors
+      this.dungeon.floor = 1
     },
 
     endTurn() {

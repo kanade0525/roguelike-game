@@ -2,63 +2,82 @@ import { describe, it, expect } from 'vitest'
 import { getFloorDifficulty } from '../../../game/data/floorConfig'
 
 describe('floorConfig', () => {
-  describe('getFloorDifficulty', () => {
-    it('1Fの敵数が3', () => {
-      const config = getFloorDifficulty(1)
-      expect(config.enemyCount).toBe(3)
+  describe('getFloorDifficulty (forest)', () => {
+    it('1Fの敵数が2', () => {
+      const config = getFloorDifficulty(1, 'forest')
+      expect(config.enemyCount).toBe(2)
     })
 
-    it('10Fの敵数が15', () => {
-      const config = getFloorDifficulty(10)
-      expect(config.enemyCount).toBe(15)
+    it('4Fの敵数が5', () => {
+      const config = getFloorDifficulty(4, 'forest')
+      expect(config.enemyCount).toBe(5)
     })
 
-    it('1Fのマップサイズが32x32', () => {
-      const config = getFloorDifficulty(1)
-      expect(config.mapWidth).toBe(32)
+    it('マップサイズが基準+成長', () => {
+      const config = getFloorDifficulty(1, 'forest')
+      expect(config.mapWidth).toBe(32) // 30 + 1*2
       expect(config.mapHeight).toBe(32)
     })
 
-    it('10Fのマップサイズが50x50（上限）', () => {
-      const config = getFloorDifficulty(10)
-      expect(config.mapWidth).toBe(50)
-      expect(config.mapHeight).toBe(50)
+    it('ボスフロア判定', () => {
+      expect(getFloorDifficulty(4, 'forest').isBossFloor).toBe(false)
+      expect(getFloorDifficulty(5, 'forest').isBossFloor).toBe(true)
     })
 
-    it('1-3Fはスライムのみ', () => {
-      for (let f = 1; f <= 3; f++) {
-        const config = getFloorDifficulty(f)
-        expect(config.enemyTypes).toEqual([{ type: 'slime', weight: 1 }])
+    it('固定フロア判定', () => {
+      expect(getFloorDifficulty(4, 'forest').isFixedFloor).toBe(false)
+      expect(getFloorDifficulty(5, 'forest').isFixedFloor).toBe(true)
+    })
+
+    it('全フロアでスライムのみ', () => {
+      for (let f = 1; f <= 5; f++) {
+        const config = getFloorDifficulty(f, 'forest')
+        expect(config.enemyTypes.every((e) => e.type === 'slime')).toBe(true)
       }
     })
+  })
 
-    it('4-6Fでゴブリンが出現', () => {
-      const config = getFloorDifficulty(4)
+  describe('getFloorDifficulty (castle)', () => {
+    it('4F以降でゴブリンが出現', () => {
+      const config = getFloorDifficulty(4, 'castle')
       expect(config.enemyTypes.some((e) => e.type === 'goblin')).toBe(true)
     })
 
-    it('7F以降でゴブリンの比率が高い', () => {
-      const config = getFloorDifficulty(7)
-      const goblin = config.enemyTypes.find((e) => e.type === 'goblin')
-      const slime = config.enemyTypes.find((e) => e.type === 'slime')
-      expect(goblin!.weight).toBeGreaterThan(slime!.weight)
+    it('8Fがボスフロア', () => {
+      expect(getFloorDifficulty(8, 'castle').isBossFloor).toBe(true)
+    })
+  })
+
+  describe('getFloorDifficulty (abyss)', () => {
+    it('8F以降はゴブリンのみ', () => {
+      const config = getFloorDifficulty(8, 'abyss')
+      expect(config.enemyTypes.every((e) => e.type === 'goblin')).toBe(true)
     })
 
+    it('10Fがボスフロア', () => {
+      expect(getFloorDifficulty(10, 'abyss').isBossFloor).toBe(true)
+    })
+  })
+
+  describe('境界値', () => {
     it('floor=0でもエラーにならない', () => {
-      const config = getFloorDifficulty(0)
+      const config = getFloorDifficulty(0, 'forest')
       expect(config.enemyCount).toBeDefined()
-      expect(config.mapWidth).toBeGreaterThanOrEqual(32)
     })
 
     it('負のfloorでもエラーにならない', () => {
-      const config = getFloorDifficulty(-5)
+      const config = getFloorDifficulty(-5, 'forest')
       expect(config.enemyCount).toBeDefined()
     })
 
-    it('上限を超えるfloorで最大値が返る', () => {
-      const config = getFloorDifficulty(100)
-      expect(config.enemyCount).toBe(15)
-      expect(config.mapWidth).toBe(50)
+    it('デフォルトダンジョンIDで動作する', () => {
+      const config = getFloorDifficulty(1)
+      expect(config.enemyCount).toBeDefined()
+    })
+
+    it('不明なダンジョンIDでフォールバック', () => {
+      const config = getFloorDifficulty(1, 'unknown')
+      expect(config.enemyCount).toBeDefined()
     })
   })
 })

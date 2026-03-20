@@ -121,4 +121,55 @@ describe('DungeonGenerator', () => {
       expect(result.items.length).toBe(0)
     })
   })
+
+  describe('固定マップ生成', () => {
+    const fixedFloor = {
+      map: [
+        [1, 1, 1, 1, 1],
+        [1, 0, 0, 0, 1],
+        [1, 0, 0, 0, 1],
+        [1, 0, 0, 2, 1],
+        [1, 1, 1, 1, 1],
+      ],
+      playerStart: { x: 1, y: 1 },
+      stairsPosition: { x: 3, y: 3 },
+      enemies: [{ type: 'slime', x: 2, y: 2 }],
+      items: [{ itemId: 'sword', x: 3, y: 1 }],
+    }
+
+    it('固定マップが正しく返される', () => {
+      const result = generateFloor({ ...defaultOptions, fixedFloor })
+      expect(result.map.length).toBe(5)
+      expect(result.map[0].length).toBe(5)
+    })
+
+    it('プレイヤー位置が固定マップの指定通り', () => {
+      const result = generateFloor({ ...defaultOptions, fixedFloor })
+      expect(result.playerStart).toEqual({ x: 1, y: 1 })
+    })
+
+    it('階段位置が固定マップの指定通り', () => {
+      const result = generateFloor({ ...defaultOptions, fixedFloor })
+      expect(result.stairsPosition).toEqual({ x: 3, y: 3 })
+    })
+
+    it('敵が固定マップの指定通り配置される', () => {
+      const result = generateFloor({ ...defaultOptions, fixedFloor })
+      expect(result.enemies.length).toBe(1)
+      expect(result.enemies[0].type).toBe('slime')
+      expect(result.enemies[0].x).toBe(2)
+    })
+
+    it('アイテムが固定マップの指定通り配置される', () => {
+      const result = generateFloor({ ...defaultOptions, fixedFloor })
+      expect(result.items.length).toBe(1)
+      expect(result.items[0].itemId).toBe('sword')
+    })
+
+    it('固定マップの元配列を変更しない（コピー）', () => {
+      const original = fixedFloor.map[1][1]
+      generateFloor({ ...defaultOptions, fixedFloor })
+      expect(fixedFloor.map[1][1]).toBe(original)
+    })
+  })
 })
