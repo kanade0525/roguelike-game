@@ -2,39 +2,33 @@ import { useGameStore } from '~/stores/gameStore'
 import { TurnManager } from '~/game/systems/TurnManager'
 import { randomMove } from '~/game/systems/EnemyAI'
 import { ITEMS } from '~/game/data/items'
-import { getFloorConfig, TILE } from '~/game/data/maps'
-import { findValidSpawnPosition } from '~/game/systems/SpawnValidator'
+import { generateFloor } from '~/game/systems/DungeonGenerator'
+import { getFloorDifficulty } from '~/game/data/floorConfig'
 
 const turnManager = new TurnManager()
 
 export function useGameLoop() {
   const store = useGameStore()
 
-  function processEnemyTurn(map: number[][]) {
+  function processEnemyTurn() {
+    const map = store.currentMap
     const playerPos = store.player.position
     for (const enemy of store.enemies) {
-      // プレイヤー位置と他の敵位置を占有リストに含める
       const occupied = [
         playerPos,
-        ...store.enemies
-          .filter((e) => e.id !== enemy.id)
-          .map((e) => ({ x: e.x, y: e.y })),
+        ...store.enemies.filter((e) => e.id !== enemy.id).map((e) => ({ x: e.x, y: e.y })),
       ]
       const newPos = randomMove({ x: enemy.x, y: enemy.y }, map, occupied)
       if (newPos) {
         store.moveEnemy(enemy.id, newPos.x, newPos.y)
-        console.log(`[Enemy] ${enemy.type} → (${newPos.x}, ${newPos.y})`)
       }
     }
   }
 
-  function playerMove(
-    dx: number,
-    dy: number,
-    map: number[][],
-  ): string[] | null {
+  function playerMove(dx: number, dy: number): string[] | null {
     if (!turnManager.isPlayerTurn) return null
 
+    const map = store.currentMap
     const messages: string[] = []
     const newX = store.player.position.x + dx
     const newY = store.player.position.y + dy
@@ -67,23 +61,22 @@ export function useGameLoop() {
       messages.push(`${def.name}を拾った！`)
     }
 
-    // ターン進行: player → enemy → end → player
+    // ターン進行
     turnManager.playerAction()
-    processEnemyTurn(map)
+    processEnemyTurn()
     turnManager.enemyAction()
     turnManager.endTurn()
     store.endTurn()
     store.decreaseSatiation(1)
-    console.log(`${store.turn}ターン目`)
 
     return messages
   }
 
-  function playerWait(map: number[][]): string[] {
+  function playerWait(): string[] {
     if (!turnManager.isPlayerTurn) return []
 
     turnManager.playerAction()
-    processEnemyTurn(map)
+    processEnemyTurn()
     turnManager.enemyAction()
     turnManager.endTurn()
     store.endTurn()
@@ -92,55 +85,36 @@ export function useGameLoop() {
     return ['その場で待機した。']
   }
 
-  function spawnFloorEntities(floor: number) {
-    const config = getFloorConfig(floor)
-    const { map, playerStart } = config
-
-    // 階段の座標を占有リストに含める
-    const occupied: { x: number; y: number }[] = []
-    for (let y = 0; y < map.length; y++) {
-      for (let x = 0; x < map[0].length; x++) {
-        if (map[y][x] === TILE.STAIRS) {
-          occupied.push({ x, y })
-        }
-      }
-    }
-
-    // アイテムを配置し、占有リストに追加
-    for (const item of config.items) {
-      store.addFloorItem(item)
-      occupied.push({ x: item.x, y: item.y })
-    }
-
-    // 敵を配置（バリデーション付き）
-    for (const enemy of config.enemies) {
-      const pos = findValidSpawnPosition(enemy.x, enemy.y, map, playerStart, occupied)
-      if (pos) {
-        store.addEnemy({ ...enemy, x: pos.x, y: pos.y })
-        occupied.push(pos)
-      }
-    }
-  }
-
   function initFloor(floor: number) {
-    const config = getFloorConfig(floor)
-    store.setPlayerPosition(config.playerStart.x, config.playerStart.y)
+    const difficulty = getFloorDifficulty(floor)
+    const generated = generateFloor({
+      width: difficulty.mapWidth,
+      height: difficulty.mapHeight,
+      floor,
+      enemyCount: difficulty.enemyCount,
+      itemCount: difficulty.itemCount,
+      enemyTypes: difficulty.enemyTypes,
+      itemTypes: difficulty.itemTypes,
+    })
+
+    store.setCurrentMap(generated.map)
+    store.setPlayerPosition(generated.playerStart.x, generated.playerStart.y)
     store.clearEnemies()
     store.clearFloorItems()
     turnManager.reset()
-    spawnFloorEntities(floor)
+
+    for (const item of generated.items) {
+      store.addFloorItem(item)
+    }
+    for (const enemy of generated.enemies) {
+      store.addEnemy(enemy)
+    }
   }
 
   function goNextFloor(): string[] {
     store.nextFloor()
     const floor = store.dungeon.floor
-    const config = getFloorConfig(floor)
-    store.setPlayerPosition(config.playerStart.x, config.playerStart.y)
-    store.clearEnemies()
-    store.clearFloorItems()
-    turnManager.reset()
-    spawnFloorEntities(floor)
-    console.log(`${floor}Fに到着`)
+    initFloor(floor)
     return [`${floor}Fに到着した！`]
   }
 

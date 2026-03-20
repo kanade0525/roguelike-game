@@ -16,7 +16,7 @@ export function isValidSpawnPosition(
   y: number,
   map: number[][],
   playerStart: Position,
-  occupied: Position[],
+  occupied: Position[]
 ): boolean {
   // マップ範囲チェック
   if (y < 0 || y >= map.length || x < 0 || x >= map[0].length) return false
@@ -42,7 +42,7 @@ export function findValidSpawnPosition(
   preferredY: number,
   map: number[][],
   playerStart: Position,
-  occupied: Position[],
+  occupied: Position[]
 ): Position | null {
   // 指定位置が有効ならそのまま返す
   if (isValidSpawnPosition(preferredX, preferredY, map, playerStart, occupied)) {

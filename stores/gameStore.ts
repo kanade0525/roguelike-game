@@ -43,6 +43,7 @@ interface GameState {
   inventory: InventoryItem[]
   turn: number
   messageLog: string[]
+  currentMap: number[][]
 }
 
 export const useGameStore = defineStore('game', {
@@ -66,6 +67,7 @@ export const useGameStore = defineStore('game', {
     inventory: [],
     turn: 0,
     messageLog: [],
+    currentMap: [],
   }),
 
   getters: {
@@ -142,6 +144,10 @@ export const useGameStore = defineStore('game', {
 
     clearFloorItems() {
       this.floorItems = []
+    },
+
+    setCurrentMap(map: number[][]) {
+      this.currentMap = map.map((row) => [...row])
     },
 
     decreaseSatiation(amount: number) {

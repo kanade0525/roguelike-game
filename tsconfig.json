@@ -8,9 +8,5 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
   },
-  "exclude": [
-    "tests",
-    "vitest.config.ts",
-    "playwright.config.ts"
-  ]
+  "exclude": ["tests", "vitest.config.ts", "playwright.config.ts"]
 }

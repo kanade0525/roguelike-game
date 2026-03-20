@@ -27,9 +27,7 @@
 
     <!-- メニューボタン -->
     <div class="menu nes-container is-dark is-rounded">
-      <button class="nes-btn is-primary menu-btn" @click="startGame">
-        はじめから
-      </button>
+      <button class="nes-btn is-primary menu-btn" @click="startGame">はじめから</button>
       <button
         class="nes-btn menu-btn"
         :class="{ 'is-disabled': !hasSaveData }"
@@ -38,11 +36,8 @@
       >
         つづきから
       </button>
-      <button class="nes-btn menu-btn is-disabled" disabled>
-        せってい
-      </button>
+      <button class="nes-btn menu-btn is-disabled" disabled>せってい</button>
     </div>
-
   </div>
 </template>
 

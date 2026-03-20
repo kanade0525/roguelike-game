@@ -17,7 +17,7 @@ const DIRECTIONS = [
 export function randomMove(
   enemy: Position,
   map: number[][],
-  occupied: Position[],
+  occupied: Position[]
 ): Position | null {
   if (map.length === 0 || map[0].length === 0) return null
 

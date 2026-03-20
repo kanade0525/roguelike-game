@@ -21,7 +21,7 @@ export class UIScene extends Phaser.Scene {
     new Controller(
       this,
       (dx, dy) => this.emitMove(dx, dy),
-      (action) => this.emitAction(action),
+      (action) => this.emitAction(action)
     )
     this.menu = new MenuOverlay(this)
     this.confirm = new ConfirmDialog(this)

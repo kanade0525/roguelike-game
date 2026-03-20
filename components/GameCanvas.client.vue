@@ -39,8 +39,8 @@
 
     // sessionStorageから状態を復元、なければ新規初期化
     const restored = gameStore.restoreFromSession()
-    if (!restored) {
-      gameLoop.initFloor(1)
+    if (!restored || gameStore.currentMap.length === 0) {
+      gameLoop.initFloor(gameStore.dungeon.floor)
     }
 
     // 状態変更時にsessionStorageへ自動保存（Game生成前に開始）

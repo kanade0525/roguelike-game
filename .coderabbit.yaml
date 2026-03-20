@@ -7,18 +7,18 @@ reviews:
   poem: false
   review_status: true
   path_instructions:
-    - path: "game/**"
+    - path: 'game/**'
       instructions: |
         純粋なTypeScriptのみ。Phaserをインポートしていたら指摘すること。
         テスト可能な設計になっているか確認。
-    - path: "phaser/**"
+    - path: 'phaser/**'
       instructions: |
         描画専用レイヤー。ゲームロジック（ダメージ計算、ターン管理等）が
         含まれていたら指摘すること。状態変更はPinia store経由であること。
-    - path: "stores/**"
+    - path: 'stores/**'
       instructions: |
         Pinia状態管理。Phaserをインポートしていたら指摘すること。
-    - path: "composables/**"
+    - path: 'composables/**'
       instructions: |
         ロジック橋渡し層。Phaserをインポートしていたら指摘すること。
 
