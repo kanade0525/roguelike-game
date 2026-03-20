@@ -22,6 +22,12 @@
         mode: Phaser.Scale.FIT,
         autoCenter: Phaser.Scale.CENTER_BOTH,
       },
+      callbacks: {
+        preBoot: (g) => {
+          g.registry.set('gameStore', gameStore)
+          g.registry.set('gameLoop', gameLoop)
+        },
+      },
       scene: [DungeonScene, UIScene],
       backgroundColor: '#1a1a2e',
     })
@@ -31,18 +37,18 @@
     await nextTick()
     if (!gameContainer.value) return
 
-    // sessionStorageから状態を復元（なければ初期状態のまま）
+    // sessionStorageから状態を復元、なければ新規初期化
     const restored = gameStore.restoreFromSession()
-    // 復元できなかった場合は新規ゲームとして初期化フラグを立てる
-    game = markRaw(createGame(gameContainer.value))
-    game.registry.set('gameStore', gameStore)
-    game.registry.set('gameLoop', gameLoop)
-    game.registry.set('isNewGame', !restored)
+    if (!restored) {
+      gameLoop.initFloor(1)
+    }
 
-    // 状態変更時にsessionStorageへ自動保存
+    // 状態変更時にsessionStorageへ自動保存（Game生成前に開始）
     gameStore.$subscribe(() => {
       gameStore.saveToSession()
     })
+
+    game = markRaw(createGame(gameContainer.value))
   })
 
   onUnmounted(() => {

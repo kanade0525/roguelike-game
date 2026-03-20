@@ -95,16 +95,11 @@ export class DungeonScene extends Phaser.Scene {
 
     this.calculateTileSize()
 
-    const isNewGame = this.game.registry.get('isNewGame')
+    // useGameLoop側で新規/復元を判定済み。Sceneはマップを読み込んで描画するだけ
     const floor = this.gameStore.dungeon.floor
-    if (isNewGame) {
-      this.loadFloor(floor)
-    } else {
-      // リロード時: マップだけ読み込み、エンティティはstore状態を使う
-      this.map = getMap(floor)
-      this.mapWidth = this.map[0].length
-      this.mapHeight = this.map.length
-    }
+    this.map = getMap(floor)
+    this.mapWidth = this.map[0].length
+    this.mapHeight = this.map.length
 
     // コンテナ作成（描画順序制御用）
     this.floorContainer = this.add.container(0, 0)
@@ -149,13 +144,6 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   // --- フロア管理 ---
-
-  private loadFloor(floor: number) {
-    this.map = getMap(floor)
-    this.mapWidth = this.map[0].length
-    this.mapHeight = this.map.length
-    this.gameLoop.initFloor(floor)
-  }
 
   private goNextFloor() {
     const messages = this.gameLoop.goNextFloor()

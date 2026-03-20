@@ -154,11 +154,16 @@ export const useGameStore = defineStore('game', {
 
     restoreFromSession(): boolean {
       const saved = sessionStorage.getItem('gameState')
-      if (!saved) return false
+      if (!saved) {
+        this.$reset()
+        return false
+      }
       try {
+        this.$reset()
         this.$patch(JSON.parse(saved))
         return true
       } catch {
+        this.$reset()
         sessionStorage.removeItem('gameState')
         return false
       }
