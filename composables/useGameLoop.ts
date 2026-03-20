@@ -2,7 +2,8 @@ import { useGameStore } from '~/stores/gameStore'
 import { TurnManager } from '~/game/systems/TurnManager'
 import { randomMove } from '~/game/systems/EnemyAI'
 import { ITEMS } from '~/game/data/items'
-import { getFloorConfig } from '~/game/data/maps'
+import { getFloorConfig, TILE } from '~/game/data/maps'
+import { findValidSpawnPosition } from '~/game/systems/SpawnValidator'
 
 const turnManager = new TurnManager()
 
@@ -93,11 +94,31 @@ export function useGameLoop() {
 
   function spawnFloorEntities(floor: number) {
     const config = getFloorConfig(floor)
-    for (const enemy of config.enemies) {
-      store.addEnemy(enemy)
+    const { map, playerStart } = config
+
+    // 階段の座標を占有リストに含める
+    const occupied: { x: number; y: number }[] = []
+    for (let y = 0; y < map.length; y++) {
+      for (let x = 0; x < map[0].length; x++) {
+        if (map[y][x] === TILE.STAIRS) {
+          occupied.push({ x, y })
+        }
+      }
     }
+
+    // アイテムを配置し、占有リストに追加
     for (const item of config.items) {
       store.addFloorItem(item)
+      occupied.push({ x: item.x, y: item.y })
+    }
+
+    // 敵を配置（バリデーション付き）
+    for (const enemy of config.enemies) {
+      const pos = findValidSpawnPosition(enemy.x, enemy.y, map, playerStart, occupied)
+      if (pos) {
+        store.addEnemy({ ...enemy, x: pos.x, y: pos.y })
+        occupied.push(pos)
+      }
     }
   }
 
