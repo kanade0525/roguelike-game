@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import { TILE } from '../../game/data/maps'
+import { getDungeon } from '../../game/dungeon'
 import type { CombatEvent, ActionResult } from '../../composables/useGameLoop'
 
 export class DungeonScene extends Phaser.Scene {
@@ -176,22 +177,77 @@ export class DungeonScene extends Phaser.Scene {
 
   private goNextFloor() {
     this.playSE('se_stairs')
-    const result = this.gameLoop.goNextFloor()
 
-    // ダンジョンクリア判定
-    if (result && typeof result === 'object' && 'cleared' in result) {
-      this.updateUI(result.messages)
-      return
-    }
+    // フェードアウト
+    const overlay = this.add.rectangle(
+      this.screenWidth / 2,
+      this.screenHeight / 2,
+      this.screenWidth,
+      this.screenHeight,
+      0x000000
+    )
+    overlay.setAlpha(0)
+    overlay.setDepth(3000)
 
-    if (!Array.isArray(result)) {
-      this.updateUI(['次の階へ移動できませんでした'])
-      return
-    }
+    this.tweens.add({
+      targets: overlay,
+      alpha: 1,
+      duration: 400,
+      ease: 'Power2',
+      onComplete: () => {
+        // 暗転中にフロア遷移処理
+        const result = this.gameLoop.goNextFloor()
 
-    this.syncMapFromStore()
-    this.drawScene()
-    this.updateUI(result)
+        // ダンジョンクリア判定
+        if (result && typeof result === 'object' && 'cleared' in result) {
+          overlay.destroy()
+          this.updateUI(result.messages)
+          return
+        }
+
+        if (!Array.isArray(result)) {
+          overlay.destroy()
+          this.updateUI(['次の階へ移動できませんでした'])
+          return
+        }
+
+        this.syncMapFromStore()
+        this.drawScene()
+
+        // フロア名表示
+        const dungeon = getDungeon(this.gameStore.dungeon.dungeonId)
+        const floor = this.gameStore.dungeon.floor
+        const floorLabel = this.add.text(
+          this.screenWidth / 2,
+          this.screenHeight / 2,
+          `${dungeon.name}  ~${floor}F~`,
+          {
+            fontSize: '22px',
+            fontFamily: 'monospace',
+            color: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 2,
+          }
+        )
+        floorLabel.setOrigin(0.5)
+        floorLabel.setDepth(3001)
+
+        // フロア名を表示してからフェードイン
+        this.time.delayedCall(800, () => {
+          this.tweens.add({
+            targets: [overlay, floorLabel],
+            alpha: 0,
+            duration: 500,
+            ease: 'Power2',
+            onComplete: () => {
+              overlay.destroy()
+              floorLabel.destroy()
+              this.updateUI(result)
+            },
+          })
+        })
+      },
+    })
   }
 
   // --- タイルサイズ計算 ---
@@ -506,7 +562,7 @@ export class DungeonScene extends Phaser.Scene {
     if (result !== null) {
       this.drawScene()
       this.updateUI(result.messages)
-      this.playCombatEffects(result.combatEvents)
+      this.playSequencedCombatEffects(result)
 
       if (result.messages.some((m) => m.includes('拾った'))) {
         this.playSE('se_item_get')
@@ -579,7 +635,7 @@ export class DungeonScene extends Phaser.Scene {
         if (result.combatEvents.length === 0) {
           this.playSE('se_swing')
         }
-        this.playCombatEffects(result.combatEvents)
+        this.playSequencedCombatEffects(result)
         break
       }
       case 'wait':
@@ -614,6 +670,19 @@ export class DungeonScene extends Phaser.Scene {
   private playSE(key: string) {
     if (this.cache.audio.exists(key)) {
       this.sound.play(key, { volume: 0.5 })
+    }
+  }
+
+  private playSequencedCombatEffects(result: ActionResult) {
+    // プレイヤーの攻撃を即時再生
+    this.playCombatEffects(result.playerEvents)
+
+    if (result.enemyEvents.length > 0) {
+      // 敵の攻撃を遅延再生（400ms後）
+      this.time.delayedCall(400, () => {
+        this.drawScene()
+        this.playCombatEffects(result.enemyEvents)
+      })
     }
   }
 

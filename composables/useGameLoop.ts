@@ -23,6 +23,8 @@ export interface CombatEvent {
 export interface ActionResult {
   messages: string[]
   combatEvents: CombatEvent[]
+  playerEvents: CombatEvent[]
+  enemyEvents: CombatEvent[]
 }
 
 const ENEMY_NAMES: Record<string, string> = {
@@ -110,19 +112,23 @@ export function useGameLoop() {
   }
 
   function playerAttack(): ActionResult {
-    if (!turnManager.isPlayerTurn) return { messages: [], combatEvents: [] }
+    const empty: ActionResult = {
+      messages: [],
+      combatEvents: [],
+      playerEvents: [],
+      enemyEvents: [],
+    }
+    if (!turnManager.isPlayerTurn) return empty
 
     const messages: string[] = []
-    const combatEvents: CombatEvent[] = []
+    const playerEvents: CombatEvent[] = []
     const { direction, position } = store.player
     const targetX = position.x + direction.dx
     const targetY = position.y + direction.dy
 
     const target = store.enemies.find((e) => e.x === targetX && e.y === targetY)
 
-    if (!target) {
-      messages.push('攻撃した！ しかし何もいなかった。')
-    } else {
+    if (target) {
       const name = getEnemyName(target.type)
       const result = combatSystem.calculateDamage(
         { attack: store.player.attack },
@@ -141,7 +147,6 @@ export function useGameLoop() {
           messages.push(`${name}に${result.damage}のダメージ！`)
         }
 
-        // 撃破判定（damageEnemy後のHPを確認）
         const updated = store.enemies.find((e) => e.id === target.id)
         if (!updated || updated.hp <= 0) {
           store.removeEnemy(target.id)
@@ -151,7 +156,7 @@ export function useGameLoop() {
         }
       }
 
-      combatEvents.push({
+      playerEvents.push({
         type: 'playerAttack',
         targetX,
         targetY,
@@ -166,13 +171,13 @@ export function useGameLoop() {
     turnManager.playerAction()
     const enemyTurn = processEnemyTurn()
     messages.push(...enemyTurn.messages)
-    combatEvents.push(...enemyTurn.events)
     turnManager.enemyAction()
     turnManager.endTurn()
     store.endTurn()
     store.decreaseSatiation(1)
 
-    return { messages, combatEvents }
+    const combatEvents = [...playerEvents, ...enemyTurn.events]
+    return { messages, combatEvents, playerEvents, enemyEvents: enemyTurn.events }
   }
 
   function playerMove(dx: number, dy: number): ActionResult | null {
@@ -219,11 +224,17 @@ export function useGameLoop() {
     store.endTurn()
     store.decreaseSatiation(1)
 
-    return { messages, combatEvents: enemyTurn.events }
+    return {
+      messages,
+      combatEvents: enemyTurn.events,
+      playerEvents: [],
+      enemyEvents: enemyTurn.events,
+    }
   }
 
   function playerWait(): ActionResult {
-    if (!turnManager.isPlayerTurn) return { messages: [], combatEvents: [] }
+    if (!turnManager.isPlayerTurn)
+      return { messages: [], combatEvents: [], playerEvents: [], enemyEvents: [] }
 
     const messages: string[] = ['その場で待機した。']
     turnManager.playerAction()
@@ -234,7 +245,12 @@ export function useGameLoop() {
     store.endTurn()
     store.decreaseSatiation(1)
 
-    return { messages, combatEvents: enemyTurn.events }
+    return {
+      messages,
+      combatEvents: enemyTurn.events,
+      playerEvents: [],
+      enemyEvents: enemyTurn.events,
+    }
   }
 
   function initFloor(floor: number) {
