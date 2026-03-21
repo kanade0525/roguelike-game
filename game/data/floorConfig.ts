@@ -13,7 +13,7 @@ export interface FloorDifficultyConfig {
 
 export function getFloorDifficulty(
   floor: number,
-  dungeonId: string = DEFAULT_DUNGEON_ID,
+  dungeonId: string = DEFAULT_DUNGEON_ID
 ): FloorDifficultyConfig {
   const dungeon = getDungeon(dungeonId)
   const normalizedFloor = Math.max(1, Math.floor(floor))

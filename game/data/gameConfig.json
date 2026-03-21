@@ -15,7 +15,7 @@
     "viewRange": 6
   },
   "enemyTypes": {
-    "slime": {
+    "skeleton": {
       "maxHealth": 20,
       "attack": 5,
       "exp": 10

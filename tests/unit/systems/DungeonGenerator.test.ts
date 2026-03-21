@@ -8,7 +8,7 @@ const defaultOptions = {
   floor: 1,
   enemyCount: 3,
   itemCount: 2,
-  enemyTypes: [{ type: 'slime', weight: 1 }],
+  enemyTypes: [{ type: 'skeleton', weight: 1 }],
   itemTypes: [{ itemId: 'sword', weight: 1 }],
 }
 
@@ -83,6 +83,17 @@ describe('DungeonGenerator', () => {
       const result = generateFloor(defaultOptions)
       for (const enemy of result.enemies) {
         expect(result.map[enemy.y][enemy.x]).toBe(TILE.FLOOR)
+      }
+    })
+
+    it('敵がステータスを持つ', () => {
+      const result = generateFloor(defaultOptions)
+      for (const enemy of result.enemies) {
+        expect(enemy.hp).toBeGreaterThan(0)
+        expect(enemy.maxHp).toBeGreaterThan(0)
+        expect(enemy.attack).toBeGreaterThan(0)
+        expect(enemy.defense).toBeGreaterThanOrEqual(0)
+        expect(enemy.exp).toBeGreaterThan(0)
       }
     })
 

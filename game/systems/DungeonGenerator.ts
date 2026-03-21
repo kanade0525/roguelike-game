@@ -1,6 +1,8 @@
 import { Map as RotMap } from 'rot-js'
 import { TILE } from '../data/maps'
 import type { TileType } from '../data/maps'
+import { createEnemy } from '../entities/createEnemy'
+import type { EnemyStoreState } from '../entities/Enemy'
 
 export interface RoomInfo {
   x: number
@@ -16,7 +18,7 @@ export interface GeneratedFloor {
   rooms: RoomInfo[]
   playerStart: { x: number; y: number }
   stairsPosition: { x: number; y: number }
-  enemies: { id: string; type: string; x: number; y: number }[]
+  enemies: EnemyStoreState[]
   items: { id: string; itemId: string; x: number; y: number }[]
 }
 
@@ -99,7 +101,8 @@ export function generateFloor(options: DungeonGeneratorOptions): GeneratedFloor 
   // プレイヤーと階段を別の部屋に配置
   const shuffledRooms = [...rooms].sort(() => Math.random() - 0.5)
   const playerRoom = shuffledRooms[0]
-  const stairsRoom = shuffledRooms.length >= 2 ? shuffledRooms[shuffledRooms.length - 1] : playerRoom
+  const stairsRoom =
+    shuffledRooms.length >= 2 ? shuffledRooms[shuffledRooms.length - 1] : playerRoom
 
   const playerStart = { x: playerRoom.centerX, y: playerRoom.centerY }
   // 1部屋のみの場合はプレイヤーからオフセットした位置に階段を配置
@@ -119,12 +122,8 @@ export function generateFloor(options: DungeonGeneratorOptions): GeneratedFloor 
   for (let i = 0; i < Math.min(options.enemyCount, enemyCandidates.length); i++) {
     const pos = enemyCandidates[i]
     const enemyType = pickWeighted(options.enemyTypes)
-    enemies.push({
-      id: `enemy-${floor}-${i}`,
-      type: enemyType.type,
-      x: pos.x,
-      y: pos.y,
-    })
+    const enemy = createEnemy(enemyType.type, pos, `enemy-${floor}-${i}`)
+    enemies.push(enemy.toStoreState())
     occupied.push(pos)
   }
 
@@ -147,7 +146,7 @@ export function generateFloor(options: DungeonGeneratorOptions): GeneratedFloor 
 
 function buildFixedFloor(
   preset: import('../dungeon/types').FixedMapPreset,
-  options: DungeonGeneratorOptions,
+  options: DungeonGeneratorOptions
 ): GeneratedFloor {
   const map = preset.map.map((row) => [...row])
   const playerStart = { ...preset.playerStart }
@@ -160,7 +159,8 @@ function buildFixedFloor(
   for (let i = 0; i < Math.min(options.enemyCount, enemyCandidates.length); i++) {
     const pos = enemyCandidates[i]
     const enemyType = pickWeighted(options.enemyTypes)
-    enemies.push({ id: `enemy-${options.floor}-${i}`, type: enemyType.type, x: pos.x, y: pos.y })
+    const enemy = createEnemy(enemyType.type, pos, `enemy-${options.floor}-${i}`)
+    enemies.push(enemy.toStoreState())
     occupied.push(pos)
   }
 

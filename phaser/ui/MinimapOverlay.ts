@@ -28,7 +28,7 @@ export class MinimapOverlay {
     player: { x: number; y: number },
     enemies: { x: number; y: number }[],
     items: { x: number; y: number }[],
-    exploredTiles: string[],
+    exploredTiles: string[]
   ) {
     this.container.removeAll(true)
 
@@ -40,7 +40,14 @@ export class MinimapOverlay {
     const gameAreaCenterY = gameAreaH / 2
 
     // 半透明背景（ゲームエリアのみ）
-    const bg = this.scene.add.rectangle(screenW / 2, gameAreaCenterY, screenW, gameAreaH, 0x000000, 0.85)
+    const bg = this.scene.add.rectangle(
+      screenW / 2,
+      gameAreaCenterY,
+      screenW,
+      gameAreaH,
+      0x000000,
+      0.85
+    )
     this.container.add(bg)
 
     const mapH = map.length

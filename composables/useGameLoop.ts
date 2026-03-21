@@ -1,5 +1,6 @@
 import { useGameStore } from '~/stores/gameStore'
 import { TurnManager } from '~/game/systems/TurnManager'
+import { CombatSystem } from '~/game/systems/CombatSystem'
 import { randomMove } from '~/game/systems/EnemyAI'
 import { ITEMS } from '~/game/data/items'
 import { generateFloor } from '~/game/systems/DungeonGenerator'
@@ -7,32 +8,183 @@ import { getFloorDifficulty } from '~/game/data/floorConfig'
 import { getDungeon, DEFAULT_DUNGEON_ID } from '~/game/dungeon'
 
 const turnManager = new TurnManager()
+const combatSystem = new CombatSystem()
+
+export interface CombatEvent {
+  type: 'playerAttack' | 'enemyAttack'
+  targetX: number
+  targetY: number
+  damage: number
+  isCritical: boolean
+  isDodged: boolean
+  killed: boolean
+}
+
+export interface ActionResult {
+  messages: string[]
+  combatEvents: CombatEvent[]
+}
+
+const ENEMY_NAMES: Record<string, string> = {
+  skeleton: 'スケルトン',
+  goblin: 'ゴブリン',
+}
+
+function getEnemyName(type: string): string {
+  return ENEMY_NAMES[type] ?? type
+}
 
 export function useGameLoop() {
   const store = useGameStore()
 
-  function processEnemyTurn() {
-    const map = store.currentMap
-    const playerPos = store.player.position
-    for (const enemy of store.enemies) {
-      const occupied = [
-        playerPos,
-        ...store.enemies.filter((e) => e.id !== enemy.id).map((e) => ({ x: e.x, y: e.y })),
-      ]
-      const newPos = randomMove({ x: enemy.x, y: enemy.y }, map, occupied)
-      if (newPos) {
-        store.moveEnemy(enemy.id, newPos.x, newPos.y)
+  function enemyAttackPlayer(enemy: {
+    type: string
+    x: number
+    y: number
+    attack: number
+    defense: number
+  }): { messages: string[]; event: CombatEvent } {
+    const messages: string[] = []
+    const name = getEnemyName(enemy.type)
+    const result = combatSystem.calculateDamage(
+      { attack: enemy.attack },
+      { attack: store.player.attack, defense: store.player.defense }
+    )
+
+    const event: CombatEvent = {
+      type: 'enemyAttack',
+      targetX: store.player.position.x,
+      targetY: store.player.position.y,
+      damage: result.damage,
+      isCritical: result.isCritical,
+      isDodged: result.isDodged,
+      killed: false,
+    }
+
+    if (result.isDodged) {
+      messages.push(`${name}の攻撃をかわした！`)
+    } else {
+      store.takeDamage(result.damage)
+      if (result.isCritical) {
+        messages.push(`${name}の痛恨の一撃！${result.damage}のダメージ！`)
+      } else {
+        messages.push(`${name}から${result.damage}のダメージ！`)
+      }
+      if (store.player.hp <= 0) {
+        messages.push('力尽きた...')
+        event.killed = true
       }
     }
+    return { messages, event }
   }
 
-  function playerMove(dx: number, dy: number): string[] | null {
+  function processEnemyTurn(): { messages: string[]; events: CombatEvent[] } {
+    const map = store.currentMap
+    const playerPos = store.player.position
+    const messages: string[] = []
+    const events: CombatEvent[] = []
+
+    for (const enemy of store.enemies) {
+      // 隣接判定（4方向）
+      const dx = Math.abs(enemy.x - playerPos.x)
+      const dy = Math.abs(enemy.y - playerPos.y)
+      const isAdjacent = (dx === 1 && dy === 0) || (dx === 0 && dy === 1)
+
+      if (isAdjacent) {
+        const { messages: msgs, event } = enemyAttackPlayer(enemy)
+        messages.push(...msgs)
+        events.push(event)
+        if (store.player.hp <= 0) break
+      } else {
+        const occupied = [
+          playerPos,
+          ...store.enemies.filter((e) => e.id !== enemy.id).map((e) => ({ x: e.x, y: e.y })),
+        ]
+        const newPos = randomMove({ x: enemy.x, y: enemy.y }, map, occupied)
+        if (newPos) {
+          store.moveEnemy(enemy.id, newPos.x, newPos.y)
+        }
+      }
+    }
+    return { messages, events }
+  }
+
+  function playerAttack(): ActionResult {
+    if (!turnManager.isPlayerTurn) return { messages: [], combatEvents: [] }
+
+    const messages: string[] = []
+    const combatEvents: CombatEvent[] = []
+    const { direction, position } = store.player
+    const targetX = position.x + direction.dx
+    const targetY = position.y + direction.dy
+
+    const target = store.enemies.find((e) => e.x === targetX && e.y === targetY)
+
+    if (!target) {
+      messages.push('攻撃した！ しかし何もいなかった。')
+    } else {
+      const name = getEnemyName(target.type)
+      const result = combatSystem.calculateDamage(
+        { attack: store.player.attack },
+        { attack: target.attack, defense: target.defense }
+      )
+
+      let killed = false
+
+      if (result.isDodged) {
+        messages.push(`${name}は攻撃をかわした！`)
+      } else {
+        store.damageEnemy(target.id, result.damage)
+        if (result.isCritical) {
+          messages.push(`会心の一撃！${name}に${result.damage}のダメージ！`)
+        } else {
+          messages.push(`${name}に${result.damage}のダメージ！`)
+        }
+
+        // 撃破判定（damageEnemy後のHPを確認）
+        const updated = store.enemies.find((e) => e.id === target.id)
+        if (!updated || updated.hp <= 0) {
+          store.removeEnemy(target.id)
+          messages.push(`${name}を倒した！`)
+          store.gainExp(target.exp)
+          killed = true
+        }
+      }
+
+      combatEvents.push({
+        type: 'playerAttack',
+        targetX,
+        targetY,
+        damage: result.damage,
+        isCritical: result.isCritical,
+        isDodged: result.isDodged,
+        killed,
+      })
+    }
+
+    // ターン消費
+    turnManager.playerAction()
+    const enemyTurn = processEnemyTurn()
+    messages.push(...enemyTurn.messages)
+    combatEvents.push(...enemyTurn.events)
+    turnManager.enemyAction()
+    turnManager.endTurn()
+    store.endTurn()
+    store.decreaseSatiation(1)
+
+    return { messages, combatEvents }
+  }
+
+  function playerMove(dx: number, dy: number): ActionResult | null {
     if (!turnManager.isPlayerTurn) return null
 
     const map = store.currentMap
     const messages: string[] = []
     const newX = store.player.position.x + dx
     const newY = store.player.position.y + dy
+
+    // 向きを更新
+    store.setDirection(dx, dy)
 
     if (
       newY < 0 ||
@@ -60,26 +212,29 @@ export function useGameLoop() {
     }
 
     turnManager.playerAction()
-    processEnemyTurn()
+    const enemyTurn = processEnemyTurn()
+    messages.push(...enemyTurn.messages)
     turnManager.enemyAction()
     turnManager.endTurn()
     store.endTurn()
     store.decreaseSatiation(1)
 
-    return messages
+    return { messages, combatEvents: enemyTurn.events }
   }
 
-  function playerWait(): string[] {
-    if (!turnManager.isPlayerTurn) return []
+  function playerWait(): ActionResult {
+    if (!turnManager.isPlayerTurn) return { messages: [], combatEvents: [] }
 
+    const messages: string[] = ['その場で待機した。']
     turnManager.playerAction()
-    processEnemyTurn()
+    const enemyTurn = processEnemyTurn()
+    messages.push(...enemyTurn.messages)
     turnManager.enemyAction()
     turnManager.endTurn()
     store.endTurn()
     store.decreaseSatiation(1)
 
-    return ['その場で待機した。']
+    return { messages, combatEvents: enemyTurn.events }
   }
 
   function initFloor(floor: number) {
@@ -144,6 +299,7 @@ export function useGameLoop() {
 
   return {
     playerMove,
+    playerAttack,
     playerWait,
     initFloor,
     initDungeon,

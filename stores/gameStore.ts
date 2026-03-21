@@ -9,6 +9,7 @@ interface PlayerState {
   maxSatiation: number
   attack: number
   defense: number
+  direction: { dx: number; dy: number }
   position: { x: number; y: number }
 }
 
@@ -17,6 +18,11 @@ interface EnemyState {
   type: string
   x: number
   y: number
+  hp: number
+  maxHp: number
+  attack: number
+  defense: number
+  exp: number
 }
 
 interface FloorItem {
@@ -60,6 +66,7 @@ export const useGameStore = defineStore('game', {
       maxSatiation: 100,
       attack: 10,
       defense: 5,
+      direction: { dx: 0, dy: 1 },
       position: { x: 7, y: 7 },
     },
     dungeon: {
@@ -93,8 +100,11 @@ export const useGameStore = defineStore('game', {
     },
 
     takeDamage(damage: number) {
-      const actualDamage = Math.max(1, damage - this.player.defense)
-      this.player.hp = Math.max(0, this.player.hp - actualDamage)
+      this.player.hp = Math.max(0, this.player.hp - damage)
+    },
+
+    setDirection(dx: number, dy: number) {
+      this.player.direction = { dx, dy }
     },
 
     heal(amount: number) {
@@ -126,8 +136,19 @@ export const useGameStore = defineStore('game', {
       }
     },
 
-    addEnemy(enemy: { id: string; type: string; x: number; y: number }) {
+    addEnemy(enemy: EnemyState) {
       this.enemies.push(enemy)
+    },
+
+    removeEnemy(id: string) {
+      this.enemies = this.enemies.filter((e) => e.id !== id)
+    },
+
+    damageEnemy(id: string, damage: number) {
+      const enemy = this.enemies.find((e) => e.id === id)
+      if (enemy) {
+        enemy.hp = Math.max(0, enemy.hp - damage)
+      }
     },
 
     moveEnemy(id: string, x: number, y: number) {

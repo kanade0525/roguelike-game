@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import { TILE } from '../../game/data/maps'
+import type { CombatEvent, ActionResult } from '../../composables/useGameLoop'
 
 export class DungeonScene extends Phaser.Scene {
   // 表示するタイル数（ビューポート）
@@ -27,6 +28,7 @@ export class DungeonScene extends Phaser.Scene {
   private floorContainer!: Phaser.GameObjects.Container
   private wallContainer!: Phaser.GameObjects.Container
   private entityContainer!: Phaser.GameObjects.Container
+  private effectContainer!: Phaser.GameObjects.Container
   private debugContainer!: Phaser.GameObjects.Container
   private debugGridVisible = false
 
@@ -83,6 +85,16 @@ export class DungeonScene extends Phaser.Scene {
     }
     // アイテム
     this.load.image('weapon_sword', '/assets/tiles/weapon_anime_sword.png')
+
+    // SE（ファイルが存在しない場合はロードエラーを無視）
+    this.load.on('loaderror', () => {})
+    this.load.audio('se_attack', '/assets/se/attack.mp3')
+    this.load.audio('se_enemy_attack', '/assets/se/enemy_attack.mp3')
+    this.load.audio('se_miss', '/assets/se/miss.mp3')
+    this.load.audio('se_critical', '/assets/se/critical.mp3')
+    this.load.audio('se_swing', '/assets/se/swing.mp3')
+    this.load.audio('se_item_get', '/assets/se/item_get.mp3')
+    this.load.audio('se_stairs', '/assets/se/stairs.mp3')
   }
 
   create() {
@@ -101,6 +113,7 @@ export class DungeonScene extends Phaser.Scene {
     this.floorContainer = this.add.container(0, 0)
     this.wallContainer = this.add.container(0, 0)
     this.entityContainer = this.add.container(0, 0)
+    this.effectContainer = this.add.container(0, 0)
     this.debugContainer = this.add.container(0, 0)
     this.debugContainer.setVisible(this.debugGridVisible)
 
@@ -162,6 +175,7 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private goNextFloor() {
+    this.playSE('se_stairs')
     const result = this.gameLoop.goNextFloor()
 
     // ダンジョンクリア判定
@@ -441,6 +455,9 @@ export class DungeonScene extends Phaser.Scene {
         case 'KeyD':
           dx = 1
           break
+        case 'Enter':
+          this.handleAction('confirm')
+          return
       }
 
       if (dx !== 0 || dy !== 0) {
@@ -465,7 +482,7 @@ export class DungeonScene extends Phaser.Scene {
         player: { x: number; y: number },
         enemies: { x: number; y: number }[],
         items: { x: number; y: number }[],
-        exploredTiles: string[],
+        exploredTiles: string[]
       ) => void
       hideMinimap: () => void
     }
@@ -484,11 +501,16 @@ export class DungeonScene extends Phaser.Scene {
 
     const dir = dx === -1 ? '左' : dx === 1 ? '右' : dy === -1 ? '上' : '下'
     console.log(`[Move] ${dir}`)
-    const messages = this.gameLoop.playerMove(dx, dy)
+    const result: ActionResult | null = this.gameLoop.playerMove(dx, dy)
 
-    if (messages !== null) {
+    if (result !== null) {
       this.drawScene()
-      this.updateUI(messages)
+      this.updateUI(result.messages)
+      this.playCombatEffects(result.combatEvents)
+
+      if (result.messages.some((m) => m.includes('拾った'))) {
+        this.playSE('se_item_get')
+      }
 
       const pos = this.gameStore.player.position
       if (this.map[pos.y][pos.x] === TILE.STAIRS) {
@@ -530,7 +552,7 @@ export class DungeonScene extends Phaser.Scene {
               this.gameStore.player.position,
               this.gameStore.enemies.map((e: { x: number; y: number }) => ({ x: e.x, y: e.y })),
               this.gameStore.floorItems.map((i: { x: number; y: number }) => ({ x: i.x, y: i.y })),
-              this.gameStore.exploredTiles,
+              this.gameStore.exploredTiles
             )
           } else {
             this.updateUI([`${selected}（未実装）`])
@@ -550,8 +572,16 @@ export class DungeonScene extends Phaser.Scene {
     }
 
     switch (action) {
-      case 'confirm':
+      case 'confirm': {
+        const result: ActionResult = this.gameLoop.playerAttack()
+        this.drawScene()
+        this.updateUI(result.messages)
+        if (result.combatEvents.length === 0) {
+          this.playSE('se_swing')
+        }
+        this.playCombatEffects(result.combatEvents)
         break
+      }
       case 'wait':
         this.updateUI(['その場で待機した（未実装）'])
         break
@@ -568,6 +598,108 @@ export class DungeonScene extends Phaser.Scene {
         this.updateUI(['次のアイテム（未実装）'])
         break
     }
+  }
+
+  // --- 戦闘演出 ---
+
+  private tileToScreen(tileX: number, tileY: number): { x: number; y: number } {
+    const screenTileX = tileX - this.viewStartX
+    const screenTileY = tileY - this.viewStartY
+    return {
+      x: this.offsetX + screenTileX * this.tileWidth + this.tileWidth / 2,
+      y: this.offsetY + screenTileY * this.tileHeight + this.tileHeight * 0.8,
+    }
+  }
+
+  private playSE(key: string) {
+    if (this.cache.audio.exists(key)) {
+      this.sound.play(key, { volume: 0.5 })
+    }
+  }
+
+  private playCombatEffects(events: CombatEvent[]) {
+    for (const event of events) {
+      if (event.isDodged) {
+        this.showMissText(event.targetX, event.targetY)
+        this.playSE('se_miss')
+      } else if (event.type === 'playerAttack') {
+        this.showDamageNumber(event.targetX, event.targetY, event.damage, event.isCritical)
+        this.flashTarget(event.targetX, event.targetY, false)
+        this.playSE(event.isCritical ? 'se_critical' : 'se_attack')
+      } else {
+        this.showDamageNumber(event.targetX, event.targetY, event.damage, event.isCritical)
+        this.flashTarget(event.targetX, event.targetY, true)
+        this.playSE('se_enemy_attack')
+      }
+    }
+  }
+
+  private showDamageNumber(tileX: number, tileY: number, damage: number, isCritical: boolean) {
+    const pos = this.tileToScreen(tileX, tileY)
+    const text = this.add.text(pos.x, pos.y - 20, `${damage}`, {
+      fontSize: isCritical ? '20px' : '16px',
+      fontFamily: 'monospace',
+      color: isCritical ? '#ffff00' : '#ffffff',
+      stroke: '#000000',
+      strokeThickness: 3,
+    })
+    text.setOrigin(0.5, 1)
+    text.setDepth(2000)
+    this.effectContainer.add(text)
+
+    this.tweens.add({
+      targets: text,
+      y: pos.y - 60,
+      alpha: 0,
+      duration: 800,
+      ease: 'Power2',
+      onComplete: () => text.destroy(),
+    })
+  }
+
+  private showMissText(tileX: number, tileY: number) {
+    const pos = this.tileToScreen(tileX, tileY)
+    const text = this.add.text(pos.x, pos.y - 20, 'MISS', {
+      fontSize: '14px',
+      fontFamily: 'monospace',
+      color: '#aaaaaa',
+      stroke: '#000000',
+      strokeThickness: 2,
+    })
+    text.setOrigin(0.5, 1)
+    text.setDepth(2000)
+    this.effectContainer.add(text)
+
+    this.tweens.add({
+      targets: text,
+      y: pos.y - 50,
+      alpha: 0,
+      duration: 600,
+      ease: 'Power2',
+      onComplete: () => text.destroy(),
+    })
+  }
+
+  private flashTarget(tileX: number, tileY: number, isPlayer: boolean) {
+    const pos = this.tileToScreen(tileX, tileY)
+    const flash = this.add.rectangle(
+      pos.x,
+      pos.y - this.tileHeight * 0.4,
+      this.tileWidth,
+      this.tileHeight,
+      isPlayer ? 0xff0000 : 0xffffff
+    )
+    flash.setAlpha(0.6)
+    flash.setDepth(1500)
+    this.effectContainer.add(flash)
+
+    this.tweens.add({
+      targets: flash,
+      alpha: 0,
+      duration: 200,
+      ease: 'Power2',
+      onComplete: () => flash.destroy(),
+    })
   }
 
   // --- UI更新 ---

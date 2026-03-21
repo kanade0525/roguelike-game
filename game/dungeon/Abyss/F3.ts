@@ -5,7 +5,7 @@ const floor: FloorConfig = {
   enemies: {
     count: 7,
     types: [
-      { type: 'slime', weight: 2 },
+      { type: 'skeleton', weight: 2 },
       { type: 'goblin', weight: 1 },
     ],
   },
