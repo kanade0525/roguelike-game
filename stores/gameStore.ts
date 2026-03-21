@@ -163,9 +163,14 @@ export const useGameStore = defineStore('game', {
     },
 
     revealAround(cx: number, cy: number, radius: number = 3) {
+      const mapH = this.currentMap.length
+      const mapW = mapH > 0 ? this.currentMap[0].length : 0
       for (let dy = -radius; dy <= radius; dy++) {
         for (let dx = -radius; dx <= radius; dx++) {
-          const key = `${cx + dx},${cy + dy}`
+          const x = cx + dx
+          const y = cy + dy
+          if (x < 0 || x >= mapW || y < 0 || y >= mapH) continue
+          const key = `${x},${y}`
           if (!this.exploredTiles.includes(key)) {
             this.exploredTiles.push(key)
           }

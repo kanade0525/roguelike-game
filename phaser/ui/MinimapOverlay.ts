@@ -32,6 +32,8 @@ export class MinimapOverlay {
   ) {
     this.container.removeAll(true)
 
+    if (map.length === 0 || map[0].length === 0) return
+
     const screenW = this.scene.scale.width
     // ゲームエリアのみ（コントローラー領域を除外）
     const gameAreaH = 486
@@ -40,8 +42,6 @@ export class MinimapOverlay {
     // 半透明背景（ゲームエリアのみ）
     const bg = this.scene.add.rectangle(screenW / 2, gameAreaCenterY, screenW, gameAreaH, 0x000000, 0.85)
     this.container.add(bg)
-
-    if (map.length === 0 || map[0].length === 0) return
 
     const mapH = map.length
     const mapW = map[0].length
