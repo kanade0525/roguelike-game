@@ -51,6 +51,10 @@ export class UIScene extends Phaser.Scene {
     this.statusBar.updateLevel(level)
   }
 
+  updateExp(current: number, needed: number) {
+    this.statusBar.updateExp(current, needed)
+  }
+
   updateSatiation(current: number, max: number) {
     this.statusBar.updateSatiation(current, max)
   }
