@@ -223,7 +223,7 @@ export class DungeonScene extends Phaser.Scene {
           `${dungeon.name}  ~${floor}F~`,
           {
             fontSize: '22px',
-            fontFamily: 'monospace',
+            fontFamily: '"DotGothic16", monospace',
             color: '#ffffff',
             stroke: '#000000',
             strokeThickness: 2,
@@ -707,7 +707,7 @@ export class DungeonScene extends Phaser.Scene {
     const pos = this.tileToScreen(tileX, tileY)
     const text = this.add.text(pos.x, pos.y - 20, `${damage}`, {
       fontSize: isCritical ? '20px' : '16px',
-      fontFamily: 'monospace',
+      fontFamily: '"DotGothic16", monospace',
       color: isCritical ? '#ffff00' : '#ffffff',
       stroke: '#000000',
       strokeThickness: 3,
@@ -730,7 +730,7 @@ export class DungeonScene extends Phaser.Scene {
     const pos = this.tileToScreen(tileX, tileY)
     const text = this.add.text(pos.x, pos.y - 20, 'MISS', {
       fontSize: '14px',
-      fontFamily: 'monospace',
+      fontFamily: '"DotGothic16", monospace',
       color: '#aaaaaa',
       stroke: '#000000',
       strokeThickness: 2,
