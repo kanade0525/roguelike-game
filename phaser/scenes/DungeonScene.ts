@@ -217,9 +217,10 @@ export class DungeonScene extends Phaser.Scene {
         // フロア名表示
         const dungeon = getDungeon(this.gameStore.dungeon.dungeonId)
         const floor = this.gameStore.dungeon.floor
+        const gameAreaCenterY = (this.gameAreaTop + this.gameAreaBottom) / 2
         const floorLabel = this.add.text(
           this.screenWidth / 2,
-          this.screenHeight / 2,
+          gameAreaCenterY,
           `${dungeon.name}  ~${floor}F~`,
           {
             fontSize: '22px',
