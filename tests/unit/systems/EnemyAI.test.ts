@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { randomMove } from '../../../game/systems/EnemyAI'
+import { randomMove, moveToward, isAdjacent, decideAction } from '../../../game/systems/EnemyAI'
 
 const map = [
   [1, 1, 1, 1, 1],
@@ -20,7 +20,6 @@ describe('EnemyAI', () => {
     })
 
     it('壁には移動しない', () => {
-      // (1,1)の左と上は壁
       for (let i = 0; i < 50; i++) {
         const result = randomMove({ x: 1, y: 1 }, map, [])
         if (result) {
@@ -53,6 +52,103 @@ describe('EnemyAI', () => {
     it('空マップでnullを返す', () => {
       const result = randomMove({ x: 0, y: 0 }, [], [])
       expect(result).toBeNull()
+    })
+  })
+
+  describe('isAdjacent', () => {
+    it('隣接マスでtrue', () => {
+      expect(isAdjacent({ x: 2, y: 2 }, { x: 3, y: 2 })).toBe(true)
+      expect(isAdjacent({ x: 2, y: 2 }, { x: 2, y: 3 })).toBe(true)
+      expect(isAdjacent({ x: 2, y: 2 }, { x: 1, y: 2 })).toBe(true)
+      expect(isAdjacent({ x: 2, y: 2 }, { x: 2, y: 1 })).toBe(true)
+    })
+
+    it('斜めはfalse', () => {
+      expect(isAdjacent({ x: 2, y: 2 }, { x: 3, y: 3 })).toBe(false)
+    })
+
+    it('離れていたらfalse', () => {
+      expect(isAdjacent({ x: 2, y: 2 }, { x: 4, y: 2 })).toBe(false)
+    })
+
+    it('同じ位置はfalse', () => {
+      expect(isAdjacent({ x: 2, y: 2 }, { x: 2, y: 2 })).toBe(false)
+    })
+  })
+
+  describe('moveToward', () => {
+    it('ターゲット方向に近づく', () => {
+      const result = moveToward({ x: 1, y: 1 }, { x: 3, y: 1 }, map, [])
+      expect(result).toEqual({ x: 2, y: 1 })
+    })
+
+    it('壁で塞がれたらもう一方の軸を試す', () => {
+      // 右が壁の場合、下に移動
+      const narrowMap = [
+        [1, 1, 1, 1, 1],
+        [1, 0, 1, 0, 1],
+        [1, 0, 0, 0, 1],
+        [1, 1, 1, 1, 1],
+      ]
+      const result = moveToward({ x: 1, y: 1 }, { x: 3, y: 2 }, narrowMap, [])
+      expect(result).toEqual({ x: 1, y: 2 })
+    })
+
+    it('完全に塞がれたらnull', () => {
+      const occupied = [
+        { x: 2, y: 1 },
+        { x: 1, y: 2 },
+      ]
+      const result = moveToward({ x: 1, y: 1 }, { x: 3, y: 3 }, map, occupied)
+      expect(result).toBeNull()
+    })
+  })
+
+  describe('decideAction', () => {
+    it('idle + 検知範囲内 → chase + move', () => {
+      const enemy = { x: 1, y: 1, type: 'skeleton', aiState: 'idle' as const }
+      const action = decideAction(enemy, { x: 3, y: 1 }, map, [])
+      expect(action.newAIState).toBe('chase')
+      expect(action.type).toBe('move')
+    })
+
+    it('idle + 検知範囲外 → idle', () => {
+      const bigMap = Array.from({ length: 20 }, () => Array(20).fill(0))
+      const enemy = { x: 1, y: 1, type: 'skeleton', aiState: 'idle' as const }
+      const action = decideAction(enemy, { x: 15, y: 15 }, bigMap, [])
+      expect(action.newAIState).toBe('idle')
+    })
+
+    it('隣接 → attack', () => {
+      const enemy = { x: 2, y: 2, type: 'skeleton', aiState: 'idle' as const }
+      const action = decideAction(enemy, { x: 3, y: 2 }, map, [])
+      expect(action.type).toBe('attack')
+    })
+
+    it('chase + 範囲外 → idle', () => {
+      const bigMap = Array.from({ length: 20 }, () => Array(20).fill(0))
+      const enemy = { x: 1, y: 1, type: 'skeleton', aiState: 'chase' as const }
+      const action = decideAction(enemy, { x: 15, y: 15 }, bigMap, [])
+      expect(action.newAIState).toBe('idle')
+    })
+
+    it('ゴブリンはスケルトンより広い検知範囲', () => {
+      const bigMap = Array.from({ length: 20 }, () => Array(20).fill(0))
+      // 距離5: スケルトン検知外(4)、ゴブリン検知内(6)
+      const skeletonAction = decideAction(
+        { x: 1, y: 1, type: 'skeleton', aiState: 'idle' as const },
+        { x: 6, y: 1 },
+        bigMap,
+        []
+      )
+      const goblinAction = decideAction(
+        { x: 1, y: 1, type: 'goblin', aiState: 'idle' as const },
+        { x: 6, y: 1 },
+        bigMap,
+        []
+      )
+      expect(skeletonAction.newAIState).toBe('idle')
+      expect(goblinAction.newAIState).toBe('chase')
     })
   })
 })

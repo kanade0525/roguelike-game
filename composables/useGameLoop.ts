@@ -1,7 +1,7 @@
 import { useGameStore } from '~/stores/gameStore'
 import { TurnManager } from '~/game/systems/TurnManager'
 import { CombatSystem } from '~/game/systems/CombatSystem'
-import { randomMove } from '~/game/systems/EnemyAI'
+import { decideAction } from '~/game/systems/EnemyAI'
 import { ITEMS } from '~/game/data/items'
 import { generateFloor } from '~/game/systems/DungeonGenerator'
 import { getFloorDifficulty } from '~/game/data/floorConfig'
@@ -87,25 +87,31 @@ export function useGameLoop() {
     const events: CombatEvent[] = []
 
     for (const enemy of store.enemies) {
-      // 隣接判定（4方向）
-      const dx = Math.abs(enemy.x - playerPos.x)
-      const dy = Math.abs(enemy.y - playerPos.y)
-      const isAdjacent = (dx === 1 && dy === 0) || (dx === 0 && dy === 1)
+      const occupied = [
+        playerPos,
+        ...store.enemies.filter((e) => e.id !== enemy.id).map((e) => ({ x: e.x, y: e.y })),
+      ]
+      const action = decideAction(
+        {
+          x: enemy.x,
+          y: enemy.y,
+          type: enemy.type,
+          aiState: (enemy.aiState ?? 'idle') as 'idle' | 'chase' | 'attack',
+        },
+        playerPos,
+        map,
+        occupied
+      )
 
-      if (isAdjacent) {
+      store.setEnemyAIState(enemy.id, action.newAIState)
+
+      if (action.type === 'attack') {
         const { messages: msgs, event } = enemyAttackPlayer(enemy)
         messages.push(...msgs)
         events.push(event)
         if (store.player.hp <= 0) break
-      } else {
-        const occupied = [
-          playerPos,
-          ...store.enemies.filter((e) => e.id !== enemy.id).map((e) => ({ x: e.x, y: e.y })),
-        ]
-        const newPos = randomMove({ x: enemy.x, y: enemy.y }, map, occupied)
-        if (newPos) {
-          store.moveEnemy(enemy.id, newPos.x, newPos.y)
-        }
+      } else if (action.type === 'move') {
+        store.moveEnemy(enemy.id, action.position.x, action.position.y)
       }
     }
     return { messages, events }

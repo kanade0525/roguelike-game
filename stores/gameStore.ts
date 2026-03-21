@@ -23,6 +23,7 @@ interface EnemyState {
   attack: number
   defense: number
   exp: number
+  aiState: string
 }
 
 interface FloorItem {
@@ -156,6 +157,13 @@ export const useGameStore = defineStore('game', {
       if (enemy) {
         enemy.x = x
         enemy.y = y
+      }
+    },
+
+    setEnemyAIState(id: string, state: string) {
+      const enemy = this.enemies.find((e) => e.id === id)
+      if (enemy) {
+        enemy.aiState = state
       }
     },
 
