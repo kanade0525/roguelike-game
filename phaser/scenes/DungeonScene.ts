@@ -162,10 +162,22 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private goNextFloor() {
-    const messages = this.gameLoop.goNextFloor()
+    const result = this.gameLoop.goNextFloor()
+
+    // ダンジョンクリア判定
+    if (result && typeof result === 'object' && 'cleared' in result) {
+      this.updateUI(result.messages)
+      return
+    }
+
+    if (!Array.isArray(result)) {
+      this.updateUI(['次の階へ移動できませんでした'])
+      return
+    }
+
     this.syncMapFromStore()
     this.drawScene()
-    this.updateUI(messages)
+    this.updateUI(result)
   }
 
   // --- タイルサイズ計算 ---

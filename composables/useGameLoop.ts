@@ -4,6 +4,7 @@ import { randomMove } from '~/game/systems/EnemyAI'
 import { ITEMS } from '~/game/data/items'
 import { generateFloor } from '~/game/systems/DungeonGenerator'
 import { getFloorDifficulty } from '~/game/data/floorConfig'
+import { getDungeon, DEFAULT_DUNGEON_ID } from '~/game/dungeon'
 
 const turnManager = new TurnManager()
 
@@ -33,7 +34,6 @@ export function useGameLoop() {
     const newX = store.player.position.x + dx
     const newY = store.player.position.y + dy
 
-    // 壁・範囲チェック
     if (
       newY < 0 ||
       newY >= map.length ||
@@ -44,15 +44,12 @@ export function useGameLoop() {
       return null
     }
 
-    // 敵チェック
     if (store.enemies.some((e) => e.x === newX && e.y === newY)) {
       return null
     }
 
-    // 移動
     store.setPlayerPosition(newX, newY)
 
-    // アイテム拾得チェック
     const item = store.floorItems.find((i) => i.x === newX && i.y === newY)
     if (item) {
       const def = ITEMS[item.itemId]
@@ -61,7 +58,6 @@ export function useGameLoop() {
       messages.push(`${def.name}を拾った！`)
     }
 
-    // ターン進行
     turnManager.playerAction()
     processEnemyTurn()
     turnManager.enemyAction()
@@ -86,7 +82,12 @@ export function useGameLoop() {
   }
 
   function initFloor(floor: number) {
-    const difficulty = getFloorDifficulty(floor)
+    const dungeonId = store.dungeon.dungeonId
+    const dungeon = getDungeon(dungeonId)
+    const difficulty = getFloorDifficulty(floor, dungeonId)
+    const floorIndex = Math.min(floor - 1, dungeon.floors.length - 1)
+    const fixedFloor = dungeon.floors[floorIndex].fixedMap
+
     const generated = generateFloor({
       width: difficulty.mapWidth,
       height: difficulty.mapHeight,
@@ -95,6 +96,7 @@ export function useGameLoop() {
       itemCount: difficulty.itemCount,
       enemyTypes: difficulty.enemyTypes,
       itemTypes: difficulty.itemTypes,
+      fixedFloor,
     })
 
     store.setCurrentMap(generated.map)
@@ -111,17 +113,37 @@ export function useGameLoop() {
     }
   }
 
-  function goNextFloor(): string[] {
+  function initDungeon(dungeonId: string = DEFAULT_DUNGEON_ID) {
+    const dungeon = getDungeon(dungeonId)
+    store.resetGame()
+    store.setDungeon(dungeonId, dungeon.floors.length)
+    initFloor(1)
+  }
+
+  function goNextFloor(): string[] | { cleared: true; messages: string[] } {
+    const { floor, totalFloors } = store.dungeon
+
+    if (floor >= totalFloors) {
+      return { cleared: true, messages: ['ダンジョンを踏破した！'] }
+    }
+
     store.nextFloor()
-    const floor = store.dungeon.floor
-    initFloor(floor)
-    return [`${floor}Fに到着した！`]
+    const nextFloor = store.dungeon.floor
+    initFloor(nextFloor)
+
+    const difficulty = getFloorDifficulty(nextFloor, store.dungeon.dungeonId)
+    const floorMsg = difficulty.isBossFloor
+      ? `${nextFloor}F — ボスフロアに到達した！`
+      : `${nextFloor}Fに到着した！`
+
+    return [floorMsg]
   }
 
   return {
     playerMove,
     playerWait,
     initFloor,
+    initDungeon,
     goNextFloor,
   }
 }

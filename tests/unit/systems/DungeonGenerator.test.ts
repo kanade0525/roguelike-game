@@ -121,4 +121,53 @@ describe('DungeonGenerator', () => {
       expect(result.items.length).toBe(0)
     })
   })
+
+  describe('固定マップ生成', () => {
+    const fixedFloor = {
+      map: [
+        [1, 1, 1, 1, 1],
+        [1, 0, 0, 0, 1],
+        [1, 0, 0, 0, 1],
+        [1, 0, 0, 2, 1],
+        [1, 1, 1, 1, 1],
+      ],
+      playerStart: { x: 1, y: 1 },
+      stairsPosition: { x: 3, y: 3 },
+    }
+
+    const fixedOptions = { ...defaultOptions, enemyCount: 1, itemCount: 0, fixedFloor }
+
+    it('固定マップが正しく返される', () => {
+      const result = generateFloor(fixedOptions)
+      expect(result.map.length).toBe(5)
+      expect(result.map[0].length).toBe(5)
+    })
+
+    it('プレイヤー位置が固定マップの指定通り', () => {
+      const result = generateFloor(fixedOptions)
+      expect(result.playerStart).toEqual({ x: 1, y: 1 })
+    })
+
+    it('階段位置が固定マップの指定通り', () => {
+      const result = generateFloor(fixedOptions)
+      expect(result.stairsPosition).toEqual({ x: 3, y: 3 })
+    })
+
+    it('敵がoptions経由で配置される（候補がない場合は0）', () => {
+      const result = generateFloor(fixedOptions)
+      // 5x5マップではプレイヤー周辺除外で候補がないため0
+      expect(result.enemies.length).toBe(0)
+    })
+
+    it('アイテム数0で空配列が返される', () => {
+      const result = generateFloor(fixedOptions)
+      expect(result.items.length).toBe(0)
+    })
+
+    it('固定マップの元配列を変更しない（コピー）', () => {
+      const original = fixedFloor.map[1][1]
+      generateFloor(fixedOptions)
+      expect(fixedFloor.map[1][1]).toBe(original)
+    })
+  })
 })

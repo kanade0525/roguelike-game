@@ -28,6 +28,7 @@ export interface DungeonGeneratorOptions {
   itemCount: number
   enemyTypes: { type: string; weight: number }[]
   itemTypes: { itemId: string; weight: number }[]
+  fixedFloor?: import('../dungeon/types').FixedMapPreset
 }
 
 function pickWeighted<T extends { weight: number }>(items: T[]): T {
@@ -58,6 +59,11 @@ function getSpawnableTiles(
 }
 
 export function generateFloor(options: DungeonGeneratorOptions): GeneratedFloor {
+  // 固定マップが指定されている場合はそれを使用
+  if (options.fixedFloor) {
+    return buildFixedFloor(options.fixedFloor, options)
+  }
+
   const { width, height, floor } = options
 
   // 全セルを壁で初期化
@@ -137,4 +143,34 @@ export function generateFloor(options: DungeonGeneratorOptions): GeneratedFloor 
   }
 
   return { map, rooms, playerStart, stairsPosition, enemies, items }
+}
+
+function buildFixedFloor(
+  preset: import('../dungeon/types').FixedMapPreset,
+  options: DungeonGeneratorOptions,
+): GeneratedFloor {
+  const map = preset.map.map((row) => [...row])
+  const playerStart = { ...preset.playerStart }
+  const stairsPosition = preset.stairsPosition ? { ...preset.stairsPosition } : { x: 0, y: 0 }
+
+  // 敵・アイテムはoptions経由で配置（FloorConfigのcount/typesに基づく）
+  const occupied: { x: number; y: number }[] = [stairsPosition]
+  const enemyCandidates = getSpawnableTiles(map, playerStart, occupied)
+  const enemies: GeneratedFloor['enemies'] = []
+  for (let i = 0; i < Math.min(options.enemyCount, enemyCandidates.length); i++) {
+    const pos = enemyCandidates[i]
+    const enemyType = pickWeighted(options.enemyTypes)
+    enemies.push({ id: `enemy-${options.floor}-${i}`, type: enemyType.type, x: pos.x, y: pos.y })
+    occupied.push(pos)
+  }
+
+  const itemCandidates = getSpawnableTiles(map, playerStart, occupied)
+  const items: GeneratedFloor['items'] = []
+  for (let i = 0; i < Math.min(options.itemCount, itemCandidates.length); i++) {
+    const pos = itemCandidates[i]
+    const itemType = pickWeighted(options.itemTypes)
+    items.push({ id: `item-${options.floor}-${i}`, itemId: itemType.itemId, x: pos.x, y: pos.y })
+  }
+
+  return { map, rooms: [], playerStart, stairsPosition, enemies, items }
 }
