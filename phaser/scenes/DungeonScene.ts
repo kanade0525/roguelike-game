@@ -91,7 +91,7 @@ export class DungeonScene extends Phaser.Scene {
     this.load.on('loaderror', () => {})
     this.load.audio('se_attack', '/assets/se/attack.mp3')
     this.load.audio('se_enemy_attack', '/assets/se/enemy_attack.mp3')
-    this.load.audio('se_miss', '/assets/se/miss.mp3')
+    this.load.audio('se_dodge', '/assets/se/dodge.mp3')
     this.load.audio('se_critical', '/assets/se/critical.mp3')
     this.load.audio('se_swing', '/assets/se/swing.mp3')
     this.load.audio('se_item_get', '/assets/se/item_get.mp3')
@@ -690,7 +690,7 @@ export class DungeonScene extends Phaser.Scene {
     for (const event of events) {
       if (event.isDodged) {
         this.showMissText(event.targetX, event.targetY)
-        this.playSE('se_miss')
+        this.playSE('se_dodge')
       } else if (event.type === 'playerAttack') {
         this.showDamageNumber(event.targetX, event.targetY, event.damage, event.isCritical)
         this.flashTarget(event.targetX, event.targetY, false)
