@@ -47,6 +47,9 @@ export class DungeonScene extends Phaser.Scene {
   private gameAreaTop = 52
   private gameAreaBottom = 420
 
+  // レベルアップ検知用
+  private lastPlayerLevel = 1
+
   constructor() {
     super({ key: 'DungeonScene' })
   }
@@ -96,6 +99,7 @@ export class DungeonScene extends Phaser.Scene {
     this.load.audio('se_swing', '/assets/se/swing.mp3')
     this.load.audio('se_item_get', '/assets/se/item_get.mp3')
     this.load.audio('se_stairs', '/assets/se/stairs.mp3')
+    this.load.audio('se_levelup', '/assets/se/levelup.mp3')
   }
 
   create() {
@@ -794,5 +798,71 @@ export class DungeonScene extends Phaser.Scene {
     uiScene.updateLevel(player.level)
     uiScene.updateExp(player.exp, player.level * 30)
     uiScene.updateSatiation(player.satiation, player.maxSatiation)
+
+    if (player.level > this.lastPlayerLevel) {
+      this.lastPlayerLevel = player.level
+      this.showLevelUpEffect()
+    }
+  }
+
+  private showLevelUpEffect() {
+    this.playSE('se_levelup')
+
+    const gameAreaCenterY = (this.gameAreaTop + this.gameAreaBottom) / 2
+    const label = this.add.text(this.screenWidth / 2, gameAreaCenterY, 'LEVEL UP!', {
+      fontSize: '28px',
+      fontFamily: '"DotGothic16", monospace',
+      color: '#ffdd00',
+      stroke: '#000000',
+      strokeThickness: 4,
+    })
+    label.setOrigin(0.5)
+    label.setDepth(2000)
+    label.setAlpha(0)
+    this.effectContainer.add(label)
+
+    this.tweens.add({
+      targets: label,
+      alpha: 1,
+      y: gameAreaCenterY - 30,
+      duration: 400,
+      ease: 'Power2',
+      onComplete: () => {
+        this.time.delayedCall(600, () => {
+          this.tweens.add({
+            targets: label,
+            alpha: 0,
+            y: gameAreaCenterY - 60,
+            duration: 400,
+            ease: 'Power2',
+            onComplete: () => label.destroy(),
+          })
+        })
+      },
+    })
+
+    // プレイヤー位置にフラッシュ
+    const playerPos = this.gameStore.player.position
+    const pos = this.tileToScreen(playerPos.x, playerPos.y)
+    const flash = this.add.rectangle(
+      pos.x,
+      pos.y - this.tileHeight * 0.4,
+      this.tileWidth * 1.5,
+      this.tileHeight * 1.5,
+      0xffdd00
+    )
+    flash.setAlpha(0.5)
+    flash.setDepth(1500)
+    this.effectContainer.add(flash)
+
+    this.tweens.add({
+      targets: flash,
+      alpha: 0,
+      scaleX: 2,
+      scaleY: 2,
+      duration: 500,
+      ease: 'Power2',
+      onComplete: () => flash.destroy(),
+    })
   }
 }
