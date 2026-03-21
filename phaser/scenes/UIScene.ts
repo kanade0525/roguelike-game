@@ -4,12 +4,14 @@ import { MessageLog } from '../ui/MessageLog'
 import { Controller } from '../ui/Controller'
 import { MenuOverlay } from '../ui/MenuOverlay'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
+import { MinimapOverlay } from '../ui/MinimapOverlay'
 
 export class UIScene extends Phaser.Scene {
   private statusBar!: StatusBar
   private messageLog!: MessageLog
   private menu!: MenuOverlay
   private confirm!: ConfirmDialog
+  private minimap!: MinimapOverlay
 
   constructor() {
     super({ key: 'UIScene' })
@@ -25,6 +27,7 @@ export class UIScene extends Phaser.Scene {
     )
     this.menu = new MenuOverlay(this)
     this.confirm = new ConfirmDialog(this)
+    this.minimap = new MinimapOverlay(this)
 
     // 初期メッセージ
     this.addMessage('ダンジョンに足を踏み入れた！')
@@ -90,6 +93,25 @@ export class UIScene extends Phaser.Scene {
 
   confirmSelect() {
     this.confirm.select()
+  }
+
+  // --- ミニマップ ---
+
+  showMinimap(
+    map: number[][],
+    player: { x: number; y: number },
+    enemies: { x: number; y: number }[],
+    items: { x: number; y: number }[],
+  ) {
+    this.minimap.show(map, player, enemies, items)
+  }
+
+  hideMinimap() {
+    this.minimap.hide()
+  }
+
+  isMinimapOpen(): boolean {
+    return this.minimap.isOpen()
   }
 
   // --- イベント転送 ---

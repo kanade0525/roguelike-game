@@ -453,12 +453,20 @@ export class DungeonScene extends Phaser.Scene {
     return this.scene.get('UIScene') as unknown as {
       isConfirmOpen: () => boolean
       isMenuOpen: () => boolean
+      isMinimapOpen: () => boolean
       showConfirm: (message: string, onYes: () => void) => void
       toggleMenu: () => void
       moveMenuCursor: (dx: number, dy: number) => void
       selectMenuItem: () => string | null
       moveConfirmCursor: (dx: number) => void
       confirmSelect: () => void
+      showMinimap: (
+        map: number[][],
+        player: { x: number; y: number },
+        enemies: { x: number; y: number }[],
+        items: { x: number; y: number }[],
+      ) => void
+      hideMinimap: () => void
     }
   }
 
@@ -503,12 +511,28 @@ export class DungeonScene extends Phaser.Scene {
     console.log(`[Action] ${action}`)
     const ui = this.getUiScene()
 
+    if (ui.isMinimapOpen()) {
+      if (action === 'confirm' || action === 'inventory') {
+        ui.hideMinimap()
+      }
+      return
+    }
+
     if (ui.isMenuOpen()) {
       if (action === 'confirm') {
         const selected = ui.selectMenuItem()
         if (selected) {
           ui.toggleMenu()
-          this.updateUI([`${selected}（未実装）`])
+          if (selected === 'マップ') {
+            ui.showMinimap(
+              this.gameStore.currentMap,
+              this.gameStore.player.position,
+              this.gameStore.enemies.map((e: { x: number; y: number }) => ({ x: e.x, y: e.y })),
+              this.gameStore.floorItems.map((i: { x: number; y: number }) => ({ x: i.x, y: i.y })),
+            )
+          } else {
+            this.updateUI([`${selected}（未実装）`])
+          }
         }
       } else if (action === 'inventory') {
         ui.toggleMenu()
