@@ -46,6 +46,7 @@ interface GameState {
   turn: number
   messageLog: string[]
   currentMap: number[][]
+  exploredTiles: string[] // "x,y" 形式の探索済み座標
 }
 
 export const useGameStore = defineStore('game', {
@@ -72,6 +73,7 @@ export const useGameStore = defineStore('game', {
     turn: 0,
     messageLog: [],
     currentMap: [],
+    exploredTiles: [],
   }),
 
   getters: {
@@ -158,6 +160,30 @@ export const useGameStore = defineStore('game', {
 
     setCurrentMap(map: number[][]) {
       this.currentMap = map.map((row) => [...row])
+    },
+
+    revealAround(cx: number, cy: number, radius: number = 3) {
+      const mapH = this.currentMap.length
+      const mapW = mapH > 0 ? this.currentMap[0].length : 0
+      for (let dy = -radius; dy <= radius; dy++) {
+        for (let dx = -radius; dx <= radius; dx++) {
+          const x = cx + dx
+          const y = cy + dy
+          if (x < 0 || x >= mapW || y < 0 || y >= mapH) continue
+          const key = `${x},${y}`
+          if (!this.exploredTiles.includes(key)) {
+            this.exploredTiles.push(key)
+          }
+        }
+      }
+    },
+
+    clearExplored() {
+      this.exploredTiles = []
+    },
+
+    isExplored(x: number, y: number): boolean {
+      return this.exploredTiles.includes(`${x},${y}`)
     },
 
     decreaseSatiation(amount: number) {
