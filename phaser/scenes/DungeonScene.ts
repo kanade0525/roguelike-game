@@ -792,7 +792,7 @@ export class DungeonScene extends Phaser.Scene {
     uiScene.updateHP(player.hp, player.maxHp)
     uiScene.updateFloor(dungeon.floor)
     uiScene.updateLevel(player.level)
-    uiScene.updateExp(player.exp, player.level * 100)
+    uiScene.updateExp(player.exp, player.level * 30)
     uiScene.updateSatiation(player.satiation, player.maxSatiation)
   }
 }

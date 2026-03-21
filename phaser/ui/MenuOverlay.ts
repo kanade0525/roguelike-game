@@ -144,7 +144,7 @@ export class MenuOverlay {
     if (!store) return
     const p = store.player
     const d = store.dungeon
-    const expNeeded = p.level * 100
+    const expNeeded = p.level * 30
     this.statTexts[0].setText(`名前: 冒険者    Lv: ${p.level}     HP: ${p.hp}/${p.maxHp}`)
     this.statTexts[1].setText(
       `攻撃: ${p.attack}   防御: ${p.defense}    満腹度: ${p.satiation}/${p.maxSatiation}`
