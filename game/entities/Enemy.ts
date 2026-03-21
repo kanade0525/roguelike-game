@@ -33,6 +33,7 @@ export interface EnemyStoreState {
   attack: number
   defense: number
   exp: number
+  aiState: string
 }
 
 export class Enemy {
@@ -118,6 +119,7 @@ export class Enemy {
       attack: this.data.attack,
       defense: this.data.defense,
       exp: this.data.exp,
+      aiState: this.data.aiState,
     }
   }
 
