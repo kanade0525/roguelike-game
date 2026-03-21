@@ -465,6 +465,7 @@ export class DungeonScene extends Phaser.Scene {
         player: { x: number; y: number },
         enemies: { x: number; y: number }[],
         items: { x: number; y: number }[],
+        exploredTiles: string[],
       ) => void
       hideMinimap: () => void
     }
@@ -529,6 +530,7 @@ export class DungeonScene extends Phaser.Scene {
               this.gameStore.player.position,
               this.gameStore.enemies.map((e: { x: number; y: number }) => ({ x: e.x, y: e.y })),
               this.gameStore.floorItems.map((i: { x: number; y: number }) => ({ x: i.x, y: i.y })),
+              this.gameStore.exploredTiles,
             )
           } else {
             this.updateUI([`${selected}（未実装）`])

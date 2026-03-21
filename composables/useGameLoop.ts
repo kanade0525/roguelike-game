@@ -49,6 +49,7 @@ export function useGameLoop() {
     }
 
     store.setPlayerPosition(newX, newY)
+    store.revealAround(newX, newY)
 
     const item = store.floorItems.find((i) => i.x === newX && i.y === newY)
     if (item) {
@@ -103,7 +104,9 @@ export function useGameLoop() {
     store.setPlayerPosition(generated.playerStart.x, generated.playerStart.y)
     store.clearEnemies()
     store.clearFloorItems()
+    store.clearExplored()
     turnManager.reset()
+    store.revealAround(generated.playerStart.x, generated.playerStart.y)
 
     for (const item of generated.items) {
       store.addFloorItem(item)

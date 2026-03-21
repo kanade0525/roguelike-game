@@ -28,6 +28,7 @@ export class MinimapOverlay {
     player: { x: number; y: number },
     enemies: { x: number; y: number }[],
     items: { x: number; y: number }[],
+    exploredTiles: string[],
   ) {
     this.container.removeAll(true)
 
@@ -66,15 +67,24 @@ export class MinimapOverlay {
     title.setOrigin(0.5, 0.5)
     this.container.add(title)
 
-    // マップ描画
+    // 探索済み座標をSetに変換（高速検索用）
+    const explored = new Set(exploredTiles)
+
+    // マップ描画（探索済みのみ）
     const gfx = this.scene.add.graphics()
 
     for (let y = 0; y < mapH; y++) {
       for (let x = 0; x < mapW; x++) {
         const px = offsetX + x * clampedTileSize
         const py = offsetY + y * clampedTileSize
-        const tile = map[y][x]
 
+        if (!explored.has(`${x},${y}`)) {
+          gfx.fillStyle(COLORS.background, 1)
+          gfx.fillRect(px, py, clampedTileSize, clampedTileSize)
+          continue
+        }
+
+        const tile = map[y][x]
         let color: number
         if (tile === TILE.WALL) {
           color = COLORS.wall
@@ -89,23 +99,25 @@ export class MinimapOverlay {
       }
     }
 
-    // アイテム
+    // アイテム（探索済みのみ）
     for (const item of items) {
+      if (!explored.has(`${item.x},${item.y}`)) continue
       const px = offsetX + item.x * clampedTileSize
       const py = offsetY + item.y * clampedTileSize
       gfx.fillStyle(COLORS.item, 1)
       gfx.fillRect(px, py, clampedTileSize, clampedTileSize)
     }
 
-    // 敵
+    // 敵（探索済みのみ）
     for (const enemy of enemies) {
+      if (!explored.has(`${enemy.x},${enemy.y}`)) continue
       const px = offsetX + enemy.x * clampedTileSize
       const py = offsetY + enemy.y * clampedTileSize
       gfx.fillStyle(COLORS.enemy, 1)
       gfx.fillRect(px, py, clampedTileSize, clampedTileSize)
     }
 
-    // プレイヤー
+    // プレイヤー（常に表示）
     const ppx = offsetX + player.x * clampedTileSize
     const ppy = offsetY + player.y * clampedTileSize
     gfx.fillStyle(COLORS.player, 1)

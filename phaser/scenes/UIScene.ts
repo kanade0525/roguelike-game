@@ -102,8 +102,9 @@ export class UIScene extends Phaser.Scene {
     player: { x: number; y: number },
     enemies: { x: number; y: number }[],
     items: { x: number; y: number }[],
+    exploredTiles: string[],
   ) {
-    this.minimap.show(map, player, enemies, items)
+    this.minimap.show(map, player, enemies, items, exploredTiles)
   }
 
   hideMinimap() {
