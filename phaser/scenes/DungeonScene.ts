@@ -50,6 +50,9 @@ export class DungeonScene extends Phaser.Scene {
   // レベルアップ検知用
   private lastPlayerLevel = 1
 
+  // 演出中の入力ロック
+  private inputLocked = false
+
   constructor() {
     super({ key: 'DungeonScene' })
   }
@@ -180,6 +183,7 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private goNextFloor() {
+    this.inputLocked = true
     this.playSE('se_stairs')
 
     // フェードアウト
@@ -248,6 +252,7 @@ export class DungeonScene extends Phaser.Scene {
               overlay.destroy()
               floorLabel.destroy()
               this.updateUI(result)
+              this.inputLocked = false
             },
           })
         })
@@ -550,6 +555,7 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private tryMove(dx: number, dy: number) {
+    if (this.inputLocked) return
     const ui = this.getUiScene()
     if (ui.isMenuOpen()) {
       ui.moveMenuCursor(dx, dy)
@@ -592,6 +598,7 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private handleAction(action: string) {
+    if (this.inputLocked) return
     console.log(`[Action] ${action}`)
     const ui = this.getUiScene()
 
@@ -679,6 +686,10 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private playSequencedCombatEffects(result: ActionResult) {
+    if (result.combatEvents.length === 0) return
+
+    this.inputLocked = true
+
     // プレイヤーの攻撃を即時再生
     this.playCombatEffects(result.playerEvents)
 
@@ -687,6 +698,13 @@ export class DungeonScene extends Phaser.Scene {
       this.time.delayedCall(400, () => {
         this.drawScene()
         this.playCombatEffects(result.enemyEvents)
+        this.time.delayedCall(300, () => {
+          this.inputLocked = false
+        })
+      })
+    } else {
+      this.time.delayedCall(300, () => {
+        this.inputLocked = false
       })
     }
   }
@@ -806,6 +824,7 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private showLevelUpEffect() {
+    this.inputLocked = true
     this.playSE('se_levelup')
 
     const gameAreaCenterY = (this.gameAreaTop + this.gameAreaBottom) / 2
@@ -835,7 +854,10 @@ export class DungeonScene extends Phaser.Scene {
             y: gameAreaCenterY - 60,
             duration: 400,
             ease: 'Power2',
-            onComplete: () => label.destroy(),
+            onComplete: () => {
+              label.destroy()
+              this.inputLocked = false
+            },
           })
         })
       },
