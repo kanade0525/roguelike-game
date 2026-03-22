@@ -5,8 +5,7 @@ test.describe('タイトル画面', () => {
     await page.goto('/')
 
     // タイトルテキスト
-    await expect(page.locator('h1')).toContainText('ローグライク')
-    await expect(page.locator('h2')).toContainText('ダンジョン')
+    await expect(page.locator('h1')).toContainText('Katabasis')
 
     // メニューボタン
     await expect(page.getByText('はじめから')).toBeVisible()
