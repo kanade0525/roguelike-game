@@ -53,6 +53,10 @@ export class DungeonScene extends Phaser.Scene {
   // 演出中の入力ロック
   private inputLocked = false
 
+  // BGM
+  private currentBgm: Phaser.Sound.BaseSound | null = null
+  private currentBgmKey = ''
+
   constructor() {
     super({ key: 'DungeonScene' })
   }
@@ -140,6 +144,7 @@ export class DungeonScene extends Phaser.Scene {
     this.setupTouchInput()
 
     this.scene.launch('UIScene')
+    this.playDungeonBgm()
   }
 
   private createAnimations() {
@@ -253,6 +258,7 @@ export class DungeonScene extends Phaser.Scene {
               overlay.destroy()
               floorLabel.destroy()
               this.updateUI(result)
+              this.playDungeonBgm()
               this.inputLocked = false
             },
           })
@@ -795,6 +801,79 @@ export class DungeonScene extends Phaser.Scene {
     })
   }
 
+  // --- BGM ---
+
+  private playDungeonBgm() {
+    const dungeonId = this.gameStore.dungeon.dungeonId
+    const dungeon = getDungeon(dungeonId)
+    const bgmKey = `bgm_${dungeonId}`
+
+    // 同じBGMが再生中ならスキップ
+    if (this.currentBgmKey === bgmKey && this.currentBgm?.isPlaying) return
+
+    // 前のBGMを停止
+    this.stopBgm()
+
+    // 動的ロード＋再生
+    if (!this.cache.audio.exists(bgmKey)) {
+      this.load.audio(bgmKey, dungeon.bgm)
+      this.load.once('complete', () => {
+        this.startBgm(bgmKey)
+      })
+      this.load.once('loaderror', () => {})
+      this.load.start()
+    } else {
+      this.startBgm(bgmKey)
+    }
+  }
+
+  private startBgm(key: string) {
+    if (!this.cache.audio.exists(key)) return
+    this.currentBgm = this.sound.add(key, { loop: true, volume: 0 })
+    this.currentBgm.play()
+    this.currentBgmKey = key
+    // フェードイン
+    this.tweens.add({
+      targets: this.currentBgm,
+      volume: 0.3,
+      duration: 1000,
+      ease: 'Linear',
+    })
+  }
+
+  private stopBgm() {
+    if (this.currentBgm) {
+      this.currentBgm.stop()
+      this.currentBgm.destroy()
+      this.currentBgm = null
+      this.currentBgmKey = ''
+    }
+  }
+
+  private pauseBgmForEffect() {
+    if (!this.currentBgm || !this.currentBgm.isPlaying) return
+    this.tweens.add({
+      targets: this.currentBgm,
+      volume: 0,
+      duration: 300,
+      ease: 'Linear',
+      onComplete: () => {
+        this.currentBgm?.pause()
+      },
+    })
+  }
+
+  private resumeBgmAfterEffect() {
+    if (!this.currentBgm) return
+    this.currentBgm.resume()
+    this.tweens.add({
+      targets: this.currentBgm,
+      volume: 0.3,
+      duration: 800,
+      ease: 'Linear',
+    })
+  }
+
   // --- UI更新 ---
 
   private updateUI(messages: string[]) {
@@ -824,6 +903,7 @@ export class DungeonScene extends Phaser.Scene {
 
   private showLevelUpEffect() {
     this.inputLocked = true
+    this.pauseBgmForEffect()
     this.playSE('se_levelup')
 
     const gameAreaCenterY = (this.gameAreaTop + this.gameAreaBottom) / 2
@@ -856,6 +936,7 @@ export class DungeonScene extends Phaser.Scene {
             onComplete: () => {
               label.destroy()
               this.inputLocked = false
+              this.resumeBgmAfterEffect()
             },
           })
         })
