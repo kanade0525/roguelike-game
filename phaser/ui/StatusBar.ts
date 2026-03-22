@@ -12,7 +12,6 @@ export class StatusBar {
   private floorText: Phaser.GameObjects.Text
   private levelText: Phaser.GameObjects.Text
   private hpText: Phaser.GameObjects.Text
-  private expText: Phaser.GameObjects.Text
   private satiationText: Phaser.GameObjects.Text
 
   constructor(scene: Phaser.Scene) {
@@ -26,9 +25,8 @@ export class StatusBar {
 
     this.floorText = scene.add.text(20, 16, '1F', statusStyle)
     this.levelText = scene.add.text(80, 16, 'Lv: 1', statusStyle)
-    this.hpText = scene.add.text(170, 16, 'HP: 100/100', statusStyle)
-    this.expText = scene.add.text(320, 16, 'EXP: 0/100', statusStyle)
-    this.satiationText = scene.add.text(430, 16, '腹: 100', { ...statusStyle, fontSize: '13px' })
+    this.hpText = scene.add.text(180, 16, 'HP: 100/100', statusStyle)
+    this.satiationText = scene.add.text(340, 16, '腹: 100', statusStyle)
   }
 
   updateHP(current: number, max: number) {
@@ -41,10 +39,6 @@ export class StatusBar {
 
   updateLevel(level: number) {
     this.levelText.setText(`Lv: ${level}`)
-  }
-
-  updateExp(current: number, needed: number) {
-    this.expText.setText(`EXP: ${current}/${needed}`)
   }
 
   updateSatiation(current: number, _max: number) {

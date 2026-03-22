@@ -132,6 +132,7 @@ export class DungeonScene extends Phaser.Scene {
       console.log(`Debug grid: ${this.debugGridVisible ? 'ON' : 'OFF'}`)
     }
 
+    this.lastPlayerLevel = this.gameStore.player.level
     this.createAnimations()
     this.drawScene()
     this.drawDebugGrid()
@@ -802,7 +803,6 @@ export class DungeonScene extends Phaser.Scene {
       updateHP: (current: number, max: number) => void
       updateFloor: (floor: number) => void
       updateLevel: (level: number) => void
-      updateExp: (current: number, needed: number) => void
       updateSatiation: (current: number, max: number) => void
     }
 
@@ -814,7 +814,6 @@ export class DungeonScene extends Phaser.Scene {
     uiScene.updateHP(player.hp, player.maxHp)
     uiScene.updateFloor(dungeon.floor)
     uiScene.updateLevel(player.level)
-    uiScene.updateExp(player.exp, player.level * 30)
     uiScene.updateSatiation(player.satiation, player.maxSatiation)
 
     if (player.level > this.lastPlayerLevel) {
