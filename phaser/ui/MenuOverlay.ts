@@ -22,8 +22,10 @@ export class MenuOverlay {
     this.container.setVisible(false)
     this.container.setDepth(500)
 
-    // 半透明背景
-    const overlay = scene.add.rectangle(240, 243, 480, 486, 0x000000, 0.6)
+    // 半透明背景（ゲームエリアのみ覆う: Y52〜466）
+    const gameAreaY = 52
+    const gameAreaH = 414
+    const overlay = scene.add.rectangle(240, gameAreaY + gameAreaH / 2, 480, gameAreaH, 0x000000, 0.6)
     this.container.add(overlay)
 
     // 左上: メニューボタン（道具/マップ/足元/作戦）
@@ -77,23 +79,23 @@ export class MenuOverlay {
     nameText.setOrigin(0.5, 0.5)
     this.container.add(nameText)
 
-    // 下部: 詳細ステータス
+    // 下部: 詳細ステータス（ゲームエリア内に収める）
     const statBg = scene.add.graphics()
     statBg.fillStyle(UI_COLOR.panelBg, 0.95)
-    statBg.fillRoundedRect(16, 340, 448, 70, 6)
+    statBg.fillRoundedRect(16, 320, 448, 70, 6)
     statBg.lineStyle(1, UI_COLOR.panelBorder, 1)
-    statBg.strokeRoundedRect(16, 340, 448, 70, 6)
+    statBg.strokeRoundedRect(16, 320, 448, 70, 6)
     this.container.add(statBg)
 
     this.statTexts = []
     for (let i = 0; i < 3; i++) {
-      const t = scene.add.text(28, 350 + i * 20, '', { ...BASE_STYLE })
+      const t = scene.add.text(28, 330 + i * 20, '', { ...BASE_STYLE })
       this.container.add(t)
       this.statTexts.push(t)
     }
 
     // 閉じるヒント
-    const hint = scene.add.text(240, 420, 'B: 閉じる', {
+    const hint = scene.add.text(240, 400, 'B: 閉じる', {
       ...BASE_STYLE,
       fontSize: '12px',
       color: TEXT_COLOR.dim,
