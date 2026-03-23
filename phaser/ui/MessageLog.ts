@@ -14,8 +14,8 @@ export class MessageLog {
   private maxVisibleMessages = 2
 
   constructor(scene: Phaser.Scene) {
-    const panelY = 420
-    const panelH = 44
+    const panelY = 418
+    const panelH = 48
     const bg = scene.add.graphics()
     bg.fillStyle(UI_COLOR.panelBg, 0.9)
     bg.fillRoundedRect(8, panelY, 464, panelH, 4)
@@ -23,9 +23,9 @@ export class MessageLog {
     bg.strokeRoundedRect(8, panelY, 464, panelH, 4)
 
     for (let i = 0; i < this.maxVisibleMessages; i++) {
-      const text = scene.add.text(20, panelY + 8 + i * 16, '', {
+      const text = scene.add.text(20, panelY + 8 + i * 18, '', {
         ...BASE_STYLE,
-        fontSize: '12px',
+        fontSize: '14px',
       })
       this.messageTexts.push(text)
     }
