@@ -54,7 +54,7 @@ export class Controller {
   ) {
     this.scene = scene
     const screenWidth = 480
-    const controllerY = 470
+    const controllerY = 466
     const controllerHeight = 294
 
     const controllerBg = scene.add.graphics()
