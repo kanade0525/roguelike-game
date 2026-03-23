@@ -21,7 +21,7 @@ export class MessageLog {
     bg.strokeRoundedRect(8, 428, 464, 50, 4)
 
     for (let i = 0; i < this.maxVisibleMessages; i++) {
-      const text = scene.add.text(16, 436 + i * 20, '', {
+      const text = scene.add.text(20, 436 + i * 20, '', {
         ...BASE_STYLE,
         fontSize: '14px',
       })
