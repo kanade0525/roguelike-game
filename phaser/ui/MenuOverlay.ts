@@ -22,10 +22,10 @@ export class MenuOverlay {
     this.container.setVisible(false)
     this.container.setDepth(500)
 
-    // 半透明背景（ゲームエリアのみ覆う: Y52〜466）
-    const gameAreaY = 52
-    const gameAreaH = 414
-    const overlay = scene.add.rectangle(240, gameAreaY + gameAreaH / 2, 480, gameAreaH, 0x000000, 0.6)
+    // 半透明背景（ステータスバー直下〜コントローラー上端: Y44〜466）
+    const overlayY = 44
+    const overlayH = 422
+    const overlay = scene.add.rectangle(240, overlayY + overlayH / 2, 480, overlayH, 0x000000, 0.6)
     this.container.add(overlay)
 
     // 左上: メニューボタン（道具/マップ/足元/作戦）
