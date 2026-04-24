@@ -234,7 +234,8 @@ export const useGameStore = defineStore('game', {
 
     gainExp(amount: number) {
       this.player.exp += amount
-      const expNeeded = this.player.level * 100
+      this.addMessage(`${amount}の経験値を獲得した！`)
+      const expNeeded = this.player.level * 30
       if (this.player.exp >= expNeeded) {
         this.player.exp -= expNeeded
         this.player.level++
@@ -243,6 +244,7 @@ export const useGameStore = defineStore('game', {
         this.player.attack += 2
         this.player.defense += 1
         this.addMessage(`レベルが${this.player.level}に上がった！`)
+        this.addMessage(`最大HPが${this.player.maxHp}になった！`)
       }
     },
   },

@@ -8,6 +8,7 @@ import F5 from './F5'
 const silentForest: DungeonDefinition = {
   id: 'silentForest',
   name: '静寂の森',
+  bgm: '/assets/bgm/silent_forest.mp3',
   floors: [F1, F2, F3, F4, F5],
 }
 
