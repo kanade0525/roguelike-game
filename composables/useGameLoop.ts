@@ -2,7 +2,6 @@ import { useGameStore } from '~/stores/gameStore'
 import { TurnManager } from '~/game/systems/TurnManager'
 import { CombatSystem } from '~/game/systems/CombatSystem'
 import { decideAction } from '~/game/systems/EnemyAI'
-import { ITEMS } from '~/game/data/items'
 import { generateFloor } from '~/game/systems/DungeonGenerator'
 import { getFloorDifficulty } from '~/game/data/floorConfig'
 import { getDungeon, DEFAULT_DUNGEON_ID } from '~/game/dungeon'
@@ -217,10 +216,11 @@ export function useGameLoop() {
 
     const item = store.floorItems.find((i) => i.x === newX && i.y === newY)
     if (item) {
-      const def = ITEMS[item.itemId]
-      store.addToInventory({ itemId: item.itemId, name: def.name })
+      const pickup = store.pickupItem(item.itemId)
       store.removeFloorItem(item.id)
-      messages.push(`${def.name}を拾った！`)
+      if (pickup.message) {
+        messages.push(pickup.message)
+      }
     }
 
     turnManager.playerAction()

@@ -1,10 +1,11 @@
 import { defineStore } from 'pinia'
-import { ITEMS } from '~/game/data/items'
+import { ITEMS, type EquipmentData } from '~/game/data/items'
 import {
   useItem as applyUseItem,
   equipItem as calcEquip,
   unequipItem as calcUnequip,
 } from '~/game/systems/ItemSystem'
+import gameConfig from '~/game/data/gameConfig.json'
 
 interface PlayerState {
   hp: number
@@ -15,6 +16,7 @@ interface PlayerState {
   maxSatiation: number
   attack: number
   defense: number
+  gold: number
   direction: { dx: number; dy: number }
   position: { x: number; y: number }
 }
@@ -43,6 +45,8 @@ interface InventoryItem {
   itemId: string
   name: string
   equipped?: boolean
+  stack?: number
+  equipmentData?: EquipmentData
 }
 
 interface DungeonState {
@@ -79,6 +83,7 @@ export const useGameStore = defineStore('game', {
       maxSatiation: 100,
       attack: 10,
       defense: 5,
+      gold: 0,
       direction: { dx: 0, dy: 1 },
       position: { x: 7, y: 7 },
     },
@@ -209,6 +214,38 @@ export const useGameStore = defineStore('game', {
       this.inventory.push(item)
     },
 
+    pickupItem(itemId: string, amount: number = 1): { message: string; toGold: boolean } {
+      const def = ITEMS[itemId]
+      if (!def) return { message: '', toGold: false }
+
+      // ゴールドはプレイヤーの所持金に加算
+      if (def.type === 'gold') {
+        const goldAmount =
+          amount > 1 ? amount : gameConfig.goldConfig?.defaultDropAmount ?? 10
+        this.player.gold += goldAmount
+        return { message: `${goldAmount}Gを拾った！`, toGold: true }
+      }
+
+      // スタック可能アイテムは既存スタックに合算
+      if (def.stackable) {
+        const existing = this.inventory.find(
+          (i) => i.itemId === itemId && !i.equipped
+        )
+        if (existing) {
+          existing.stack = (existing.stack ?? 1) + amount
+          return { message: `${def.name}を拾った！`, toGold: false }
+        }
+      }
+
+      // それ以外は新規スロット
+      const entry: InventoryItem = { itemId, name: def.name }
+      if (def.stackable) {
+        entry.stack = amount
+      }
+      this.inventory.push(entry)
+      return { message: `${def.name}を拾った！`, toGold: false }
+    },
+
     clearFloorItems() {
       this.floorItems = []
     },
@@ -220,7 +257,12 @@ export const useGameStore = defineStore('game', {
       if (!def) return { success: false, message: '' }
       const result = applyUseItem(def, this.player)
       if (result.consumed) {
-        this.inventory.splice(index, 1)
+        const currentStack = entry.stack ?? 1
+        if (currentStack > 1) {
+          entry.stack = currentStack - 1
+        } else {
+          this.inventory.splice(index, 1)
+        }
       }
       return { success: result.success, message: result.message }
     },
