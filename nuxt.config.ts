@@ -12,14 +12,14 @@ export default defineNuxtConfig({
 
   app: {
     head: {
-      title: 'ローグライクゲーム',
+      title: 'Katabasis',
       meta: [
         { charset: 'utf-8' },
         {
           name: 'viewport',
           content: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no',
         },
-        { name: 'description', content: '不思議のダンジョン風ローグライクゲーム' },
+        { name: 'description', content: 'Katabasis — 不思議のダンジョン風ターン制ローグライク' },
       ],
       link: [
         { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },

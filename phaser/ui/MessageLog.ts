@@ -14,14 +14,16 @@ export class MessageLog {
   private maxVisibleMessages = 2
 
   constructor(scene: Phaser.Scene) {
+    const panelY = 413
+    const panelH = 44
     const bg = scene.add.graphics()
     bg.fillStyle(UI_COLOR.panelBg, 0.9)
-    bg.fillRoundedRect(8, 428, 464, 50, 4)
+    bg.fillRoundedRect(8, panelY, 464, panelH, 4)
     bg.lineStyle(2, UI_COLOR.panelBorder, 1)
-    bg.strokeRoundedRect(8, 428, 464, 50, 4)
+    bg.strokeRoundedRect(8, panelY, 464, panelH, 4)
 
     for (let i = 0; i < this.maxVisibleMessages; i++) {
-      const text = scene.add.text(16, 436 + i * 20, '', {
+      const text = scene.add.text(20, panelY + 4 + i * 16, '', {
         ...BASE_STYLE,
         fontSize: '14px',
       })

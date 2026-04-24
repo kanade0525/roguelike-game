@@ -20,9 +20,8 @@
   <div class="title-screen">
     <!-- タイトルロゴ -->
     <div class="title-area">
-      <h1 class="title">ローグライク</h1>
-      <h2 class="title-sub">ダンジョン</h2>
-      <p class="nes-text is-disabled subtitle">〜 不思議の迷宮 〜</p>
+      <h1 class="title">Katabasis</h1>
+      <p class="nes-text is-disabled subtitle">〜 深淵への下降 〜</p>
     </div>
 
     <!-- メニューボタン -->
@@ -64,11 +63,6 @@
     margin: 0 0 0.3rem;
   }
 
-  .title-sub {
-    font-size: 1.2rem;
-    margin: 0;
-  }
-
   .subtitle {
     margin-top: 0.8rem;
     font-size: 0.6rem;
@@ -92,10 +86,6 @@
   @media (min-width: 480px) {
     .title {
       font-size: 2rem;
-    }
-
-    .title-sub {
-      font-size: 1.5rem;
     }
 
     .subtitle {

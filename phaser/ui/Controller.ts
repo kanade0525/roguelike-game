@@ -54,17 +54,17 @@ export class Controller {
   ) {
     this.scene = scene
     const screenWidth = 480
-    const controllerY = 486
-    const controllerHeight = 274
+    const controllerY = 466
+    const controllerHeight = 294
 
     const controllerBg = scene.add.graphics()
     controllerBg.fillStyle(UI_COLOR.controllerBg, 1)
     controllerBg.fillRect(0, controllerY, screenWidth, controllerHeight)
 
     this.createLRButtons(controllerY + 24, onAction)
-    this.createDPad(110, controllerY + 140, onMove)
-    this.createABButtons(380, controllerY + 140, onAction)
-    this.createSelectStartButtons(controllerY + 252, onAction)
+    this.createDPad(110, controllerY + 150, onMove)
+    this.createABButtons(380, controllerY + 150, onAction)
+    this.createSelectStartButtons(controllerY + 272, onAction)
   }
 
   private addButtonFeedback(
@@ -88,7 +88,7 @@ export class Controller {
   }
 
   private createDPad(centerX: number, centerY: number, onMove: (dx: number, dy: number) => void) {
-    const btnSize = 46
+    const btnSize = 52
     const gap = 4
 
     const directions = [
@@ -163,13 +163,13 @@ export class Controller {
   }
 
   private createABButtons(centerX: number, centerY: number, onAction: (action: string) => void) {
-    const radius = 38
+    const radius = 44
 
-    const btnA = this.scene.add.circle(centerX + 32, centerY - 30, radius, UI_COLOR.abButton)
+    const btnA = this.scene.add.circle(centerX + 36, centerY - 34, radius, UI_COLOR.abButton)
     btnA.setStrokeStyle(2, UI_COLOR.abButtonBorder)
     btnA.setInteractive({ useHandCursor: true })
     this.scene.add
-      .text(centerX + 32, centerY - 30, 'A', {
+      .text(centerX + 36, centerY - 34, 'A', {
         fontSize: '24px',
         color: TEXT_COLOR.light,
         fontStyle: 'bold',
@@ -179,11 +179,11 @@ export class Controller {
     this.addButtonFeedback(btnA, UI_COLOR.abButton, UI_COLOR.abButtonBorder)
     btnA.on('pointerdown', () => onAction('confirm'))
 
-    const btnB = this.scene.add.circle(centerX - 32, centerY + 30, radius, UI_COLOR.abButton)
+    const btnB = this.scene.add.circle(centerX - 36, centerY + 34, radius, UI_COLOR.abButton)
     btnB.setStrokeStyle(2, UI_COLOR.abButtonBorder)
     btnB.setInteractive({ useHandCursor: true })
     this.scene.add
-      .text(centerX - 32, centerY + 30, 'B', {
+      .text(centerX - 36, centerY + 34, 'B', {
         fontSize: '24px',
         color: TEXT_COLOR.light,
         fontStyle: 'bold',
@@ -195,8 +195,8 @@ export class Controller {
   }
 
   private createLRButtons(y: number, onAction: (action: string) => void) {
-    const btnWidth = 85
-    const btnHeight = 32
+    const btnWidth = 95
+    const btnHeight = 36
 
     const btnL = this.scene.add.rectangle(
       15 + btnWidth / 2,
@@ -241,8 +241,8 @@ export class Controller {
   }
 
   private createSelectStartButtons(y: number, onAction: (action: string) => void) {
-    const btnWidth = 65
-    const btnHeight = 24
+    const btnWidth = 72
+    const btnHeight = 28
     const gap = 12
     const centerX = 240
 
