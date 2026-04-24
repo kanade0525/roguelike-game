@@ -214,8 +214,8 @@ export class DungeonScene extends Phaser.Scene {
 
         // ダンジョンクリア判定
         if (result && typeof result === 'object' && 'cleared' in result) {
-          overlay.destroy()
           this.updateUI(result.messages)
+          this.playClearSequence(overlay)
           return
         }
 
@@ -706,7 +706,11 @@ export class DungeonScene extends Phaser.Scene {
         this.drawScene()
         this.playCombatEffects(result.enemyEvents)
         this.time.delayedCall(300, () => {
-          this.inputLocked = false
+          if (this.gameStore.player.hp <= 0 && this.gameStore.gameResult === 'active') {
+            this.playDeathSequence()
+          } else {
+            this.inputLocked = false
+          }
         })
       })
     } else {
@@ -714,6 +718,100 @@ export class DungeonScene extends Phaser.Scene {
         this.inputLocked = false
       })
     }
+  }
+
+  private playDeathSequence() {
+    this.inputLocked = true
+    this.stopBgm()
+
+    // プレイヤー位置に赤フラッシュ
+    const playerPos = this.gameStore.player.position
+    const pos = this.tileToScreen(playerPos.x, playerPos.y)
+    const redFlash = this.add.rectangle(
+      this.screenWidth / 2,
+      this.screenHeight / 2,
+      this.screenWidth,
+      this.screenHeight,
+      0x880000
+    )
+    redFlash.setAlpha(0)
+    redFlash.setDepth(2500)
+
+    const centerFlash = this.add.rectangle(
+      pos.x,
+      pos.y - this.tileHeight * 0.4,
+      this.tileWidth * 2,
+      this.tileHeight * 2,
+      0xff2222
+    )
+    centerFlash.setAlpha(0.7)
+    centerFlash.setDepth(1500)
+
+    this.tweens.add({
+      targets: redFlash,
+      alpha: 0.6,
+      duration: 400,
+      ease: 'Power2',
+    })
+    this.tweens.add({
+      targets: centerFlash,
+      alpha: 0,
+      scaleX: 2.5,
+      scaleY: 2.5,
+      duration: 500,
+      ease: 'Power2',
+      onComplete: () => centerFlash.destroy(),
+    })
+
+    // 暗転オーバーレイ
+    const blackout = this.add.rectangle(
+      this.screenWidth / 2,
+      this.screenHeight / 2,
+      this.screenWidth,
+      this.screenHeight,
+      0x000000
+    )
+    blackout.setAlpha(0)
+    blackout.setDepth(3000)
+
+    // メッセージ
+    this.time.delayedCall(600, () => {
+      this.tweens.add({
+        targets: blackout,
+        alpha: 1,
+        duration: 800,
+        ease: 'Power2',
+        onComplete: () => {
+          const deathText = this.add.text(
+            this.screenWidth / 2,
+            this.screenHeight / 2,
+            '力尽きた...',
+            {
+              fontSize: '28px',
+              fontFamily: '"DotGothic16", monospace',
+              color: '#ff4444',
+              stroke: '#000000',
+              strokeThickness: 4,
+            }
+          )
+          deathText.setOrigin(0.5)
+          deathText.setDepth(3001)
+          deathText.setAlpha(0)
+
+          this.tweens.add({
+            targets: deathText,
+            alpha: 1,
+            duration: 500,
+            ease: 'Power2',
+            onComplete: () => {
+              this.time.delayedCall(1200, () => {
+                this.gameStore.setGameResult('dead')
+              })
+            },
+          })
+        },
+      })
+    })
   }
 
   private playCombatEffects(events: CombatEvent[]) {
@@ -798,6 +896,39 @@ export class DungeonScene extends Phaser.Scene {
       duration: 200,
       ease: 'Power2',
       onComplete: () => flash.destroy(),
+    })
+  }
+
+  private playClearSequence(overlay: Phaser.GameObjects.Rectangle) {
+    this.stopBgm()
+
+    const clearText = this.add.text(
+      this.screenWidth / 2,
+      this.screenHeight / 2,
+      'ダンジョン踏破！',
+      {
+        fontSize: '28px',
+        fontFamily: '"DotGothic16", monospace',
+        color: '#ffdd00',
+        stroke: '#000000',
+        strokeThickness: 4,
+      }
+    )
+    clearText.setOrigin(0.5)
+    clearText.setDepth(3001)
+    clearText.setAlpha(0)
+
+    this.tweens.add({
+      targets: clearText,
+      alpha: 1,
+      duration: 600,
+      ease: 'Power2',
+      onComplete: () => {
+        this.time.delayedCall(1500, () => {
+          this.gameStore.setGameResult('cleared')
+          overlay.destroy()
+        })
+      },
     })
   }
 
