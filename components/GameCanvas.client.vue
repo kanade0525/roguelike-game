@@ -1,6 +1,6 @@
 <script setup lang="ts">
   import Phaser from 'phaser'
-  import { markRaw, nextTick, onMounted, onUnmounted, ref } from 'vue'
+  import { markRaw, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
   import { DungeonScene } from '~/phaser/scenes/DungeonScene'
   import { UIScene } from '~/phaser/scenes/UIScene'
   import { useGameStore } from '~/stores/gameStore'
@@ -10,6 +10,7 @@
   let game: Phaser.Game | null = null
   const gameStore = useGameStore()
   const gameLoop = useGameLoop()
+  const router = useRouter()
 
   function createGame(parent: HTMLDivElement): Phaser.Game {
     return new Phaser.Game({
@@ -43,10 +44,26 @@
       gameLoop.initDungeon(gameStore.dungeon.dungeonId)
     }
 
+    // 復元時にゲーム終了状態ならリザルトへ直接遷移
+    if (gameStore.gameResult !== 'active') {
+      router.replace('/gameover')
+      return
+    }
+
     // 状態変更時にsessionStorageへ自動保存（Game生成前に開始）
     gameStore.$subscribe(() => {
       gameStore.saveToSession()
     })
+
+    // ゲームオーバー・クリア時にリザルト画面へ遷移
+    watch(
+      () => gameStore.gameResult,
+      (result) => {
+        if (result === 'dead' || result === 'cleared') {
+          router.push('/gameover')
+        }
+      }
+    )
 
     game = markRaw(createGame(gameContainer.value))
   })
