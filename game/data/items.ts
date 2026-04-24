@@ -1,4 +1,4 @@
-export type ItemType = 'weapon' | 'armor' | 'potion' | 'food' | 'other'
+export type ItemType = 'weapon' | 'armor' | 'potion' | 'food' | 'scroll' | 'gold' | 'special' | 'other'
 
 export interface ItemEffect {
   hp?: number
@@ -6,6 +6,7 @@ export interface ItemEffect {
   attack?: number
   defense?: number
   cureStatus?: string[]
+  scrollAction?: 'teleport' | 'revealMap' | 'escape'
 }
 
 export interface ItemDef {
@@ -16,6 +17,46 @@ export interface ItemDef {
   effect?: ItemEffect
   usable: boolean
   equippable: boolean
+  stackable?: boolean // 重ねて所持可能（ポーション・食料・スクロール・ゴールド）
+}
+
+export interface EquipmentData {
+  baseItemId: string
+  enhanceLevel: number
+  attackBonus: number
+  defenseBonus: number
+}
+
+export function computeEquipmentStats(
+  baseItem: ItemDef,
+  enhanceLevel: number,
+  enhanceBonusPerLevel: number
+): { attackBonus: number; defenseBonus: number } {
+  const baseAttack = baseItem.effect?.attack ?? 0
+  const baseDefense = baseItem.effect?.defense ?? 0
+  const enhance = Math.max(0, enhanceLevel) * enhanceBonusPerLevel
+  return {
+    attackBonus: baseAttack + (baseAttack > 0 ? enhance : 0),
+    defenseBonus: baseDefense + (baseDefense > 0 ? enhance : 0),
+  }
+}
+
+export function makeEquipmentData(
+  baseItem: ItemDef,
+  enhanceLevel: number = 0,
+  enhanceBonusPerLevel: number = 1
+): EquipmentData {
+  const { attackBonus, defenseBonus } = computeEquipmentStats(
+    baseItem,
+    enhanceLevel,
+    enhanceBonusPerLevel
+  )
+  return {
+    baseItemId: baseItem.id,
+    enhanceLevel,
+    attackBonus,
+    defenseBonus,
+  }
 }
 
 export const ITEMS: Record<string, ItemDef> = {
@@ -63,6 +104,7 @@ export const ITEMS: Record<string, ItemDef> = {
     effect: { hp: 30 },
     usable: true,
     equippable: false,
+    stackable: true,
   },
   super_herb: {
     id: 'super_herb',
@@ -72,6 +114,7 @@ export const ITEMS: Record<string, ItemDef> = {
     effect: { hp: 60 },
     usable: true,
     equippable: false,
+    stackable: true,
   },
   antidote: {
     id: 'antidote',
@@ -81,6 +124,7 @@ export const ITEMS: Record<string, ItemDef> = {
     effect: { cureStatus: ['poison'] },
     usable: true,
     equippable: false,
+    stackable: true,
   },
   bread: {
     id: 'bread',
@@ -90,6 +134,7 @@ export const ITEMS: Record<string, ItemDef> = {
     effect: { satiation: 50 },
     usable: true,
     equippable: false,
+    stackable: true,
   },
   big_bread: {
     id: 'big_bread',
@@ -99,6 +144,45 @@ export const ITEMS: Record<string, ItemDef> = {
     effect: { satiation: 100 },
     usable: true,
     equippable: false,
+    stackable: true,
+  },
+  scroll_escape: {
+    id: 'scroll_escape',
+    name: 'リレミトの巻物',
+    description: 'ダンジョンから脱出する',
+    type: 'scroll',
+    effect: { scrollAction: 'escape' },
+    usable: true,
+    equippable: false,
+    stackable: true,
+  },
+  scroll_map: {
+    id: 'scroll_map',
+    name: '地形の巻物',
+    description: 'フロア全体の地形を表示',
+    type: 'scroll',
+    effect: { scrollAction: 'revealMap' },
+    usable: true,
+    equippable: false,
+    stackable: true,
+  },
+  gold: {
+    id: 'gold',
+    name: 'ゴールド',
+    description: '通貨',
+    type: 'gold',
+    usable: false,
+    equippable: false,
+    stackable: true,
+  },
+  strange_safe: {
+    id: 'strange_safe',
+    name: '謎の金庫',
+    description: '中身は鑑定しないとわからない',
+    type: 'special',
+    usable: false,
+    equippable: false,
+    stackable: false,
   },
 }
 
