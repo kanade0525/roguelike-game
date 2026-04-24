@@ -1,7 +1,15 @@
 import type { Position } from './Player'
 
-export type EnemyType = 'slime' | 'goblin'
+export type EnemyType = 'skeleton' | 'goblin'
 export type AIState = 'idle' | 'chase' | 'attack'
+
+export interface EnemyStats {
+  hp: number
+  maxHp: number
+  attack: number
+  defense: number
+  exp: number
+}
 
 export interface EnemyData {
   id: string
@@ -9,39 +17,36 @@ export interface EnemyData {
   hp: number
   maxHp: number
   attack: number
+  defense: number
+  exp: number
   position: Position
   aiState: AIState
 }
 
-export const ENEMY_DEFINITIONS: Record<
-  EnemyType,
-  Omit<EnemyData, 'id' | 'position' | 'aiState'>
-> = {
-  slime: {
-    type: 'slime',
-    hp: 20,
-    maxHp: 20,
-    attack: 5,
-  },
-  goblin: {
-    type: 'goblin',
-    hp: 30,
-    maxHp: 30,
-    attack: 8,
-  },
+export interface EnemyStoreState {
+  id: string
+  type: string
+  x: number
+  y: number
+  hp: number
+  maxHp: number
+  attack: number
+  defense: number
+  exp: number
 }
 
 export class Enemy {
-  private data: EnemyData
+  protected data: EnemyData
 
-  constructor(type: EnemyType, position: Position, id?: string) {
-    const definition = ENEMY_DEFINITIONS[type]
+  constructor(type: EnemyType, stats: EnemyStats, position: Position, id?: string) {
     this.data = {
       id: id ?? crypto.randomUUID(),
       type,
-      hp: definition.hp,
-      maxHp: definition.maxHp,
-      attack: definition.attack,
+      hp: stats.hp,
+      maxHp: stats.maxHp,
+      attack: stats.attack,
+      defense: stats.defense,
+      exp: stats.exp,
       position: { ...position },
       aiState: 'idle',
     }
@@ -61,6 +66,14 @@ export class Enemy {
 
   get attack(): number {
     return this.data.attack
+  }
+
+  get defense(): number {
+    return this.data.defense
+  }
+
+  get exp(): number {
+    return this.data.exp
   }
 
   get position(): Position {
@@ -92,6 +105,20 @@ export class Enemy {
     const dx = Math.abs(this.data.position.x - target.x)
     const dy = Math.abs(this.data.position.y - target.y)
     return Math.max(dx, dy) // チェビシェフ距離（8方向移動）
+  }
+
+  toStoreState(): EnemyStoreState {
+    return {
+      id: this.data.id,
+      type: this.data.type,
+      x: this.data.position.x,
+      y: this.data.position.y,
+      hp: this.data.hp,
+      maxHp: this.data.maxHp,
+      attack: this.data.attack,
+      defense: this.data.defense,
+      exp: this.data.exp,
+    }
   }
 
   toJSON(): EnemyData {

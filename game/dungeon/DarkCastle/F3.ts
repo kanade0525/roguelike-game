@@ -4,7 +4,7 @@ const floor: FloorConfig = {
   mapSize: { w: 39, h: 39 },
   enemies: {
     count: 5,
-    types: [{ type: 'slime', weight: 1 }],
+    types: [{ type: 'skeleton', weight: 1 }],
   },
   items: {
     count: 2,

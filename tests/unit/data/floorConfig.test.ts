@@ -29,10 +29,11 @@ describe('floorConfig', () => {
       expect(getFloorDifficulty(5, 'silentForest').isFixedFloor).toBe(true)
     })
 
-    it('全フロアでスライムのみ', () => {
+    it('全フロアでスケルトンのみ', () => {
       for (let f = 1; f <= 5; f++) {
         const config = getFloorDifficulty(f, 'silentForest')
-        expect(config.enemyTypes.every((e) => e.type === 'slime')).toBe(true)
+        expect(config.enemyTypes.length).toBeGreaterThan(0)
+        expect(config.enemyTypes.every((e) => e.type === 'skeleton')).toBe(true)
       }
     })
   })

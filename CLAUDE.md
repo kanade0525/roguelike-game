@@ -58,7 +58,8 @@ npm run test:e2e  # E2Eテスト実行（Playwright）
 ### クラス構成
 
 - **game/entities/Player.ts**: プレイヤーデータ・ロジック
-- **game/entities/Enemy.ts**: 敵データ・ロジック（スライム、ゴブリン）
+- **game/entities/Enemy.ts**: 敵基底クラス（サブクラス: Skeleton.ts, Goblin.ts）
+- **game/entities/createEnemy.ts**: 敵ファクトリ関数（type文字列→サブクラスインスタンス）
 - **game/systems/TurnManager.ts**: ターン制管理（player → enemy → end）
 - **game/systems/CombatSystem.ts**: ダメージ計算
 - **game/systems/DungeonGenerator.ts**: rot.jsによるマップ自動生成
@@ -100,14 +101,14 @@ game/dungeon/
 // ランダム生成フロア
 const floor: FloorConfig = {
   mapSize: { w: 30, h: 30 },
-  enemies: { count: 3, types: [{ type: 'slime', weight: 1 }] },
+  enemies: { count: 3, types: [{ type: 'skeleton', weight: 1 }] },
   items: { count: 1, types: [{ itemId: 'sword', weight: 1 }] },
 }
 
 // ボスフロア（固定マップ）
 const floor: FloorConfig = {
   mapSize: { w: 13, h: 13 },
-  enemies: { count: 1, types: [{ type: 'slime', weight: 1 }] },
+  enemies: { count: 1, types: [{ type: 'skeleton', weight: 1 }] },
   items: { count: 0, types: [] },
   isBossFloor: true,
   fixedMap: arenaSmall, // プリセット参照
@@ -140,7 +141,8 @@ const floor: FloorConfig = {
 ### 操作
 
 - 4方向移動（WASD または 矢印キー）
-- スマホ: 仮想方向パッド（未実装）
+- 攻撃: Enterキー（向いている方向に攻撃、空振りも1ターン消費）
+- スマホ: 仮想コントローラー（方向パッド + A/Bボタン）
 
 ### UI構成
 
@@ -170,6 +172,7 @@ Phaserは使わず、純粋なTypeScriptで。
 - `phaser/` ディレクトリでゲームロジックを書く
 - Pinia を経由せずに状態を変更する
 - 複数の責務を1ファイルに詰め込む
+- Phaser 内のテキストで `fontFamily: 'monospace'` を単体使用する（必ず `'"DotGothic16", monospace'` を使う）
 - 嘘をつく、または知らないことを知っているかのように説明する
 - 不確実なことを断定する（「〜かもしれません」「確認が必要です」と明示すること）
 - 「正直に言うと」など人間の感情を模倣する表現を使う
@@ -187,20 +190,24 @@ Phaserは使わず、純粋なTypeScriptで。
 - Docker開発環境
 - タイトル画面
 - スプライト描画（床8種・壁オートタイル・キャラクターアニメーション）
-- プレイヤー移動（4方向）
+- プレイヤー移動（4方向）+ 向き管理
 - ステータスバー（階層、Lv、HP、満腹度）
 - メッセージログ
 - rot.jsによるダンジョン自動生成（部屋+通路）
 - 複数ダンジョンタイプ（静寂の森5F・暗黒城8F・深淵10F）
 - ボスフロア固定マップ（共通プリセット）
 - 敵スポーンバリデーション（プレイヤー周辺除外・重複防止）
-- 階層移動（階段確認ダイアログ）
+- 敵パラメータ（HP・攻撃力・防御力・経験値）+ サブクラス構成（Skeleton, Goblin）
+- 戦闘システム統合（プレイヤー攻撃・敵攻撃・撃破→経験値）
+- 戦闘演出（ダメージ数字ポップアップ・被ダメフラッシュ・MISSテキスト）
+- SE基盤（attack, enemy_attack, dodge, critical, swing, item_get, stairs）
+- 階層移動（確認ダイアログ + フェードアウト→フロア名表示→フェードイン）
 - sessionStorageによる状態保持（リロード対応）
 
 ### 未実装
 
-- 戦闘システム統合
 - 敵AI強化（追跡・タイプ別行動）
+- 経験値・レベルアップ演出強化
 - アイテムシステム
 - FOV（視界）
 - セーブ/ロード

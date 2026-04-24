@@ -15,14 +15,16 @@
     "viewRange": 6
   },
   "enemyTypes": {
-    "slime": {
+    "skeleton": {
       "maxHealth": 20,
       "attack": 5,
+      "defense": 2,
       "exp": 10
     },
     "goblin": {
       "maxHealth": 30,
       "attack": 8,
+      "defense": 3,
       "exp": 20
     }
   },
