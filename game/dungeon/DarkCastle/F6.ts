@@ -11,7 +11,13 @@ const floor: FloorConfig = {
   },
   items: {
     count: 3,
-    types: [{ itemId: 'sword', weight: 1 }],
+    types: [
+      { itemId: 'super_herb', weight: 2 },
+      { itemId: 'big_bread', weight: 1 },
+      { itemId: 'great_sword', weight: 1 },
+      { itemId: 'heavy_armor', weight: 1 },
+      { itemId: 'antidote', weight: 1 },
+    ],
   },
 }
 

@@ -1,7 +1,16 @@
 import Phaser from 'phaser'
 import { TILE } from '../../game/data/maps'
 import { getDungeon } from '../../game/dungeon'
+import { ITEMS } from '../../game/data/items'
 import type { CombatEvent, ActionResult } from '../../composables/useGameLoop'
+
+const ITEM_TINT: Record<string, number> = {
+  weapon: 0xffffff,
+  armor: 0x66aaff,
+  potion: 0x66ff66,
+  food: 0xffcc66,
+  other: 0xcccccc,
+}
 
 export class DungeonScene extends Phaser.Scene {
   // 表示するタイル数（ビューポート）
@@ -472,6 +481,8 @@ export class DungeonScene extends Phaser.Scene {
       const y = this.offsetY + screenTileY * this.tileHeight + this.tileHeight / 2
       const sprite = this.add.image(x, y, 'weapon_sword')
       sprite.setScale(this.tileScale * 0.35)
+      const type = ITEMS[item.itemId]?.type ?? 'other'
+      sprite.setTint(ITEM_TINT[type] ?? 0xffffff)
       this.entityContainer.add(sprite)
     }
   }
@@ -544,6 +555,7 @@ export class DungeonScene extends Phaser.Scene {
       isConfirmOpen: () => boolean
       isMenuOpen: () => boolean
       isMinimapOpen: () => boolean
+      isInventoryOpen: () => boolean
       showConfirm: (message: string, onYes: () => void) => void
       toggleMenu: () => void
       moveMenuCursor: (dx: number, dy: number) => void
@@ -558,12 +570,25 @@ export class DungeonScene extends Phaser.Scene {
         exploredTiles: string[]
       ) => void
       hideMinimap: () => void
+      showInventory: (
+        inventory: { itemId: string; name: string; equipped?: boolean }[]
+      ) => void
+      hideInventory: () => void
+      refreshInventory: (
+        inventory: { itemId: string; name: string; equipped?: boolean }[]
+      ) => void
+      moveInventoryCursor: (dx: number, dy: number) => void
+      getInventorySelectedIndex: () => number
     }
   }
 
   private tryMove(dx: number, dy: number) {
     if (this.inputLocked) return
     const ui = this.getUiScene()
+    if (ui.isInventoryOpen()) {
+      ui.moveInventoryCursor(dx, dy)
+      return
+    }
     if (ui.isMenuOpen()) {
       ui.moveMenuCursor(dx, dy)
       return
@@ -616,6 +641,11 @@ export class DungeonScene extends Phaser.Scene {
       return
     }
 
+    if (ui.isInventoryOpen()) {
+      this.handleInventoryAction(action)
+      return
+    }
+
     if (ui.isMenuOpen()) {
       if (action === 'confirm') {
         const selected = ui.selectMenuItem()
@@ -629,6 +659,8 @@ export class DungeonScene extends Phaser.Scene {
               this.gameStore.floorItems.map((i: { x: number; y: number }) => ({ x: i.x, y: i.y })),
               this.gameStore.exploredTiles
             )
+          } else if (selected === '道具') {
+            ui.showInventory(this.gameStore.inventory)
           } else {
             this.updateUI([`${selected}（未実装）`])
           }
@@ -673,6 +705,52 @@ export class DungeonScene extends Phaser.Scene {
         this.updateUI(['次のアイテム（未実装）'])
         break
     }
+  }
+
+  private handleInventoryAction(action: string) {
+    const ui = this.getUiScene()
+    const index = ui.getInventorySelectedIndex()
+
+    if (action === 'inventory') {
+      ui.hideInventory()
+      return
+    }
+
+    if (action === 'confirm') {
+      const entry = this.gameStore.inventory[index]
+      if (!entry) return
+      const useResult = this.gameStore.useInventoryItem(index)
+      if (useResult.success) {
+        this.updateUI([useResult.message])
+        ui.refreshInventory(this.gameStore.inventory)
+        this.consumeTurnAfterItem()
+        return
+      }
+      const equipResult = this.gameStore.equipInventoryItem(index)
+      if (equipResult.success) {
+        this.updateUI([equipResult.message])
+        ui.refreshInventory(this.gameStore.inventory)
+        return
+      }
+      return
+    }
+
+    if (action === 'prevItem') {
+      const dropResult = this.gameStore.dropInventoryItem(index)
+      if (dropResult.success) {
+        this.updateUI([dropResult.message])
+        ui.refreshInventory(this.gameStore.inventory)
+      }
+      return
+    }
+  }
+
+  private consumeTurnAfterItem() {
+    // アイテム使用で1ターン消費（待機メッセージは出さない）
+    const result: ActionResult = this.gameLoop.passTurn()
+    this.drawScene()
+    this.updateUI(result.messages)
+    this.playSequencedCombatEffects(result)
   }
 
   // --- 戦闘演出 ---

@@ -5,6 +5,7 @@ import { Controller } from '../ui/Controller'
 import { MenuOverlay } from '../ui/MenuOverlay'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
 import { MinimapOverlay } from '../ui/MinimapOverlay'
+import { InventoryOverlay } from '../ui/InventoryOverlay'
 
 export class UIScene extends Phaser.Scene {
   private statusBar!: StatusBar
@@ -12,6 +13,7 @@ export class UIScene extends Phaser.Scene {
   private menu!: MenuOverlay
   private confirm!: ConfirmDialog
   private minimap!: MinimapOverlay
+  private inventory!: InventoryOverlay
 
   constructor() {
     super({ key: 'UIScene' })
@@ -28,6 +30,7 @@ export class UIScene extends Phaser.Scene {
     this.menu = new MenuOverlay(this)
     this.confirm = new ConfirmDialog(this)
     this.minimap = new MinimapOverlay(this)
+    this.inventory = new InventoryOverlay(this)
 
     // 初期メッセージ
     this.addMessage('ダンジョンに足を踏み入れた！')
@@ -113,6 +116,32 @@ export class UIScene extends Phaser.Scene {
 
   isMinimapOpen(): boolean {
     return this.minimap.isOpen()
+  }
+
+  // --- インベントリ ---
+
+  showInventory(inventory: { itemId: string; name: string; equipped?: boolean }[]) {
+    this.inventory.show(inventory)
+  }
+
+  hideInventory() {
+    this.inventory.hide()
+  }
+
+  refreshInventory(inventory: { itemId: string; name: string; equipped?: boolean }[]) {
+    this.inventory.refresh(inventory)
+  }
+
+  isInventoryOpen(): boolean {
+    return this.inventory.isOpen()
+  }
+
+  moveInventoryCursor(dx: number, dy: number) {
+    this.inventory.moveCursor(dx, dy)
+  }
+
+  getInventorySelectedIndex(): number {
+    return this.inventory.getSelectedIndex()
   }
 
   // --- イベント転送 ---
