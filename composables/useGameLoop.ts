@@ -260,26 +260,6 @@ export function useGameLoop() {
     }
   }
 
-  // メッセージを出さずに1ターン経過させる（アイテム使用後など、呼び出し元で独自メッセージを出す場合）
-  function passTurn(): ActionResult {
-    if (!turnManager.isPlayerTurn)
-      return { messages: [], combatEvents: [], playerEvents: [], enemyEvents: [] }
-
-    turnManager.playerAction()
-    const enemyTurn = processEnemyTurn()
-    turnManager.enemyAction()
-    turnManager.endTurn()
-    store.endTurn()
-    store.decreaseSatiation(1)
-
-    return {
-      messages: enemyTurn.messages,
-      combatEvents: enemyTurn.events,
-      playerEvents: [],
-      enemyEvents: enemyTurn.events,
-    }
-  }
-
   function initFloor(floor: number) {
     const dungeonId = store.dungeon.dungeonId
     const dungeon = getDungeon(dungeonId)
@@ -344,7 +324,6 @@ export function useGameLoop() {
     playerMove,
     playerAttack,
     playerWait,
-    passTurn,
     initFloor,
     initDungeon,
     goNextFloor,
