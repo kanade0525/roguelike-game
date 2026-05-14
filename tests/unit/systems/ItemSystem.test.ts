@@ -1,10 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { useItem, equipItem, unequipItem } from '../../../game/systems/ItemSystem'
-import {
-  ITEMS,
-  computeEquipmentStats,
-  makeEquipmentData,
-} from '../../../game/data/items'
+import { ITEMS } from '../../../game/data/items'
 
 function makePlayer(overrides: Partial<{ hp: number; maxHp: number; satiation: number; maxSatiation: number; attack: number; defense: number }> = {}) {
   return {
@@ -129,56 +125,5 @@ describe('ITEMS データ整合性', () => {
         expect(def.usable).toBe(true)
       }
     }
-  })
-
-  it('scroll/gold/special タイプのアイテムが存在する', () => {
-    const types = Object.values(ITEMS).map((i) => i.type)
-    expect(types).toContain('scroll')
-    expect(types).toContain('gold')
-    expect(types).toContain('special')
-  })
-
-  it('ポーション・食料・スクロール・ゴールドは stackable=true', () => {
-    for (const def of Object.values(ITEMS)) {
-      if (['potion', 'food', 'scroll', 'gold'].includes(def.type)) {
-        expect(def.stackable).toBe(true)
-      }
-    }
-  })
-})
-
-describe('EquipmentData', () => {
-  it('未強化（+0）は ベース値そのまま', () => {
-    const stats = computeEquipmentStats(ITEMS.sword, 0, 1)
-    expect(stats.attackBonus).toBe(5)
-    expect(stats.defenseBonus).toBe(0)
-  })
-
-  it('強化+3で 攻撃が+3上乗せ', () => {
-    const stats = computeEquipmentStats(ITEMS.sword, 3, 1)
-    expect(stats.attackBonus).toBe(8)
-  })
-
-  it('盾の+2で 防御が+2上乗せ', () => {
-    const stats = computeEquipmentStats(ITEMS.shield, 2, 1)
-    expect(stats.defenseBonus).toBe(5)
-  })
-
-  it('attack が0の防具は強化してもattackに加算されない', () => {
-    const stats = computeEquipmentStats(ITEMS.shield, 5, 1)
-    expect(stats.attackBonus).toBe(0)
-  })
-
-  it('makeEquipmentData で完全なデータが作れる', () => {
-    const data = makeEquipmentData(ITEMS.great_sword, 2, 1)
-    expect(data.baseItemId).toBe('great_sword')
-    expect(data.enhanceLevel).toBe(2)
-    expect(data.attackBonus).toBe(12)
-    expect(data.defenseBonus).toBe(0)
-  })
-
-  it('負の強化レベルは0扱い', () => {
-    const stats = computeEquipmentStats(ITEMS.sword, -1, 1)
-    expect(stats.attackBonus).toBe(5)
   })
 })

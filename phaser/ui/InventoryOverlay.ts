@@ -13,8 +13,6 @@ interface InventoryEntry {
   itemId: string
   name: string
   equipped?: boolean
-  stack?: number
-  equipmentData?: { enhanceLevel: number }
 }
 
 export class InventoryOverlay {
@@ -142,12 +140,7 @@ export class InventoryOverlay {
         continue
       }
       const equippedMark = entry.equipped ? 'E ' : '  '
-      const enhanceText =
-        entry.equipmentData && entry.equipmentData.enhanceLevel > 0
-          ? ` +${entry.equipmentData.enhanceLevel}`
-          : ''
-      const stackText = entry.stack && entry.stack > 1 ? ` x${entry.stack}` : ''
-      t.setText(`${equippedMark}${entry.name}${enhanceText}${stackText}`)
+      t.setText(`${equippedMark}${entry.name}`)
     }
 
     if (hasItems) {
