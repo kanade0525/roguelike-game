@@ -23,6 +23,5 @@ export interface FloorConfig {
 export interface DungeonDefinition {
   id: string
   name: string
-  bgm: string
   floors: FloorConfig[]
 }
