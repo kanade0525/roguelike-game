@@ -5,6 +5,7 @@
 <template>
   <div class="game-screen">
     <GameCanvas />
+    <DebugPanel />
   </div>
 </template>
 

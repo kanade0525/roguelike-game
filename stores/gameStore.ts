@@ -122,6 +122,23 @@ export const useGameStore = defineStore('game', {
       this.dungeon.floor = 1
     },
 
+    setDungeonState(dungeonId: string, totalFloors: number, floor: number) {
+      this.dungeon.dungeonId = dungeonId
+      this.dungeon.totalFloors = totalFloors
+      this.dungeon.floor = floor
+    },
+
+    setPlayerStats(stats: Partial<PlayerState>) {
+      Object.assign(this.player, stats)
+    },
+
+    setEnemyStats(id: string, stats: Partial<Omit<EnemyState, 'id'>>) {
+      const enemy = this.enemies.find((e) => e.id === id)
+      if (enemy) {
+        Object.assign(enemy, stats)
+      }
+    },
+
     endTurn() {
       this.turn++
     },

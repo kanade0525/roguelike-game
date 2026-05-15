@@ -6,6 +6,7 @@ import { ITEMS } from '~/game/data/items'
 import { generateFloor } from '~/game/systems/DungeonGenerator'
 import { getFloorDifficulty } from '~/game/data/floorConfig'
 import { getDungeon, DEFAULT_DUNGEON_ID } from '~/game/dungeon'
+import { useDebugMode } from '~/composables/useDebugMode'
 
 const turnManager = new TurnManager()
 const combatSystem = new CombatSystem()
@@ -38,6 +39,7 @@ function getEnemyName(type: string): string {
 
 export function useGameLoop() {
   const store = useGameStore()
+  const debug = useDebugMode()
 
   function enemyAttackPlayer(enemy: {
     type: string
@@ -52,6 +54,10 @@ export function useGameLoop() {
       { attack: enemy.attack },
       { attack: store.player.attack, defense: store.player.defense }
     )
+
+    if (debug.invincible.value && !result.isDodged) {
+      result.damage = 0
+    }
 
     const event: CombatEvent = {
       type: 'enemyAttack',
@@ -140,6 +146,11 @@ export function useGameLoop() {
         { attack: store.player.attack },
         { attack: target.attack, defense: target.defense }
       )
+
+      if (debug.oneShot.value) {
+        result.damage = target.hp
+        result.isDodged = false
+      }
 
       let killed = false
 
