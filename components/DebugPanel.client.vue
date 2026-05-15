@@ -1,5 +1,5 @@
 <script setup lang="ts">
-  import { computed, ref } from 'vue'
+  import { computed, reactive, ref, watch } from 'vue'
   import { useGameStore } from '~/stores/gameStore'
   import { useGameLoop } from '~/composables/useGameLoop'
   import { useDebugMode } from '~/composables/useDebugMode'
@@ -19,6 +19,114 @@
     }))
   )
 
+  const playerDraft = reactive({
+    hp: 0,
+    maxHp: 0,
+    attack: 0,
+    defense: 0,
+    dodgePct: 0,
+    level: 1,
+    exp: 0,
+    satiation: 0,
+    maxSatiation: 0,
+    posX: 0,
+    posY: 0,
+  })
+
+  function syncPlayerDraft() {
+    playerDraft.hp = store.player.hp
+    playerDraft.maxHp = store.player.maxHp
+    playerDraft.attack = store.player.attack
+    playerDraft.defense = store.player.defense
+    playerDraft.dodgePct = Math.round((store.player.dodge ?? 0) * 1000) / 10
+    playerDraft.level = store.player.level
+    playerDraft.exp = store.player.exp
+    playerDraft.satiation = store.player.satiation
+    playerDraft.maxSatiation = store.player.maxSatiation
+    playerDraft.posX = store.player.position.x
+    playerDraft.posY = store.player.position.y
+  }
+
+  function savePlayer() {
+    store.setPlayerStats({
+      hp: playerDraft.hp,
+      maxHp: playerDraft.maxHp,
+      attack: playerDraft.attack,
+      defense: playerDraft.defense,
+      dodge: Math.max(0, Math.min(100, playerDraft.dodgePct)) / 100,
+      level: playerDraft.level,
+      exp: playerDraft.exp,
+      satiation: playerDraft.satiation,
+      maxSatiation: playerDraft.maxSatiation,
+      position: { x: playerDraft.posX, y: playerDraft.posY },
+    })
+    store.addMessage('[DEBUG] プレイヤーを保存')
+  }
+
+  interface EnemyDraft {
+    hp: number
+    attack: number
+    defense: number
+    dodgePct: number
+  }
+  const enemyDrafts = reactive<Record<string, EnemyDraft>>({})
+
+  function enemyToDraft(e: { hp: number; attack: number; defense: number; dodge?: number }): EnemyDraft {
+    return {
+      hp: e.hp,
+      attack: e.attack,
+      defense: e.defense,
+      dodgePct: Math.round((e.dodge ?? 0) * 1000) / 10,
+    }
+  }
+
+  function syncEnemyDrafts() {
+    for (const e of store.enemies) {
+      if (!enemyDrafts[e.id]) {
+        enemyDrafts[e.id] = enemyToDraft(e)
+      }
+    }
+    for (const id of Object.keys(enemyDrafts)) {
+      if (!store.enemies.some((e) => e.id === id)) {
+        Reflect.deleteProperty(enemyDrafts, id)
+      }
+    }
+  }
+
+  function resetEnemyDraft(id: string) {
+    const e = store.enemies.find((e) => e.id === id)
+    if (!e) return
+    enemyDrafts[id] = enemyToDraft(e)
+  }
+
+  function saveEnemy(id: string) {
+    const draft = enemyDrafts[id]
+    if (!draft) return
+    store.setEnemyStats(id, {
+      hp: draft.hp,
+      attack: draft.attack,
+      defense: draft.defense,
+      dodge: Math.max(0, Math.min(100, draft.dodgePct)) / 100,
+    })
+    store.addMessage('[DEBUG] 敵を保存')
+  }
+
+  watch(
+    () => debug.enabled.value,
+    (v) => {
+      if (v) {
+        syncPlayerDraft()
+        syncEnemyDrafts()
+      }
+    },
+    { immediate: true }
+  )
+
+  watch(
+    () => store.enemies.map((e) => e.id).join(','),
+    () => syncEnemyDrafts()
+  )
+
   const jumpDungeonId = ref(store.dungeon.dungeonId)
   const jumpFloor = ref(store.dungeon.floor)
 
@@ -27,6 +135,8 @@
     const floor = Math.max(1, Math.min(jumpFloor.value, def.floors.length))
     store.setDungeonState(jumpDungeonId.value, def.floors.length, floor)
     gameLoop.initFloor(floor)
+    syncPlayerDraft()
+    syncEnemyDrafts()
     store.addMessage(`[DEBUG] ${def.name} ${floor}Fへジャンプ`)
   }
 
@@ -38,6 +148,7 @@
 
   function fullHeal() {
     store.setPlayerStats({ hp: store.player.maxHp, satiation: store.player.maxSatiation })
+    syncPlayerDraft()
     store.addMessage('[DEBUG] HP・満腹度を全回復')
   }
 
@@ -59,36 +170,53 @@
 
     <div v-if="!collapsed" class="body">
       <section class="section">
-        <h3>Player</h3>
+        <div class="section-header">
+          <h3>Player</h3>
+          <div class="actions">
+            <button
+              class="btn-xs"
+              type="button"
+              title="現在の値を再読込"
+              @click="syncPlayerDraft"
+            >
+              ↻
+            </button>
+            <button class="btn-sm primary" type="button" @click="savePlayer">保存</button>
+          </div>
+        </div>
         <div class="row">
           <label>HP</label>
-          <input v-model.number="store.player.hp" type="number" min="0" >
+          <input v-model.number="playerDraft.hp" type="number" min="0" >
           <label>/ Max</label>
-          <input v-model.number="store.player.maxHp" type="number" min="1" >
+          <input v-model.number="playerDraft.maxHp" type="number" min="1" >
         </div>
         <div class="row">
           <label>ATK</label>
-          <input v-model.number="store.player.attack" type="number" min="0" >
+          <input v-model.number="playerDraft.attack" type="number" min="0" >
           <label>DEF</label>
-          <input v-model.number="store.player.defense" type="number" min="0" >
+          <input v-model.number="playerDraft.defense" type="number" min="0" >
+        </div>
+        <div class="row">
+          <label>回避%</label>
+          <input v-model.number="playerDraft.dodgePct" type="number" min="0" max="100" step="0.5" >
         </div>
         <div class="row">
           <label>Lv</label>
-          <input v-model.number="store.player.level" type="number" min="1" >
+          <input v-model.number="playerDraft.level" type="number" min="1" >
           <label>EXP</label>
-          <input v-model.number="store.player.exp" type="number" min="0" >
+          <input v-model.number="playerDraft.exp" type="number" min="0" >
         </div>
         <div class="row">
           <label>満腹</label>
-          <input v-model.number="store.player.satiation" type="number" min="0" >
+          <input v-model.number="playerDraft.satiation" type="number" min="0" >
           <label>/ Max</label>
-          <input v-model.number="store.player.maxSatiation" type="number" min="1" >
+          <input v-model.number="playerDraft.maxSatiation" type="number" min="1" >
         </div>
         <div class="row">
           <label>X</label>
-          <input v-model.number="store.player.position.x" type="number" >
+          <input v-model.number="playerDraft.posX" type="number" >
           <label>Y</label>
-          <input v-model.number="store.player.position.y" type="number" >
+          <input v-model.number="playerDraft.posY" type="number" >
         </div>
         <div class="row toggles">
           <label class="toggle">
@@ -132,29 +260,27 @@
             <button class="btn-xs" type="button" @click="warpEnemyToPlayer(e.id)">→Player</button>
             <button class="btn-xs danger" type="button" @click="store.removeEnemy(e.id)">削</button>
           </div>
-          <div class="row">
-            <label>HP</label>
-            <input
-              :value="e.hp"
-              type="number"
-              min="0"
-              @input="(ev) => store.setEnemyStats(e.id, { hp: Number((ev.target as HTMLInputElement).value) })"
-            >
-            <label>ATK</label>
-            <input
-              :value="e.attack"
-              type="number"
-              min="0"
-              @input="(ev) => store.setEnemyStats(e.id, { attack: Number((ev.target as HTMLInputElement).value) })"
-            >
-            <label>DEF</label>
-            <input
-              :value="e.defense"
-              type="number"
-              min="0"
-              @input="(ev) => store.setEnemyStats(e.id, { defense: Number((ev.target as HTMLInputElement).value) })"
-            >
-          </div>
+          <template v-if="enemyDrafts[e.id]">
+            <div class="row">
+              <label>HP</label>
+              <input v-model.number="enemyDrafts[e.id].hp" type="number" min="0" >
+              <label>ATK</label>
+              <input v-model.number="enemyDrafts[e.id].attack" type="number" min="0" >
+            </div>
+            <div class="row">
+              <label>DEF</label>
+              <input v-model.number="enemyDrafts[e.id].defense" type="number" min="0" >
+              <label>回避%</label>
+              <input v-model.number="enemyDrafts[e.id].dodgePct" type="number" min="0" max="100" step="0.5" >
+            </div>
+            <div class="row enemy-actions">
+              <span class="current">
+                現在 HP{{ e.hp }} / ATK{{ e.attack }} / DEF{{ e.defense }} / 回避{{ Math.round((e.dodge ?? 0) * 1000) / 10 }}%
+              </span>
+              <button class="btn-xs" type="button" title="現在値を再読込" @click="resetEnemyDraft(e.id)">↻</button>
+              <button class="btn-xs primary" type="button" @click="saveEnemy(e.id)">保存</button>
+            </div>
+          </template>
         </div>
       </section>
     </div>
@@ -247,6 +373,11 @@
     margin: 0;
   }
 
+  .actions {
+    display: flex;
+    gap: 4px;
+  }
+
   .row {
     display: flex;
     align-items: center;
@@ -311,7 +442,8 @@
     background: rgba(90, 140, 190, 0.9);
   }
 
-  .btn-sm.primary {
+  .btn-sm.primary,
+  .btn-xs.primary {
     background: rgba(80, 140, 90, 0.8);
     border-color: #88bb88;
   }
@@ -351,5 +483,20 @@
     color: #888899;
     flex: 1;
     font-size: 10px;
+  }
+
+  .enemy-actions {
+    margin-top: 2px;
+    margin-bottom: 0;
+  }
+
+  .current {
+    flex: 1;
+    color: #888899;
+    font-size: 10px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 </style>

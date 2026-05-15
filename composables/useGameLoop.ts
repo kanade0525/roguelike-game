@@ -52,7 +52,7 @@ export function useGameLoop() {
     const name = getEnemyName(enemy.type)
     const result = combatSystem.calculateDamage(
       { attack: enemy.attack },
-      { attack: store.player.attack, defense: store.player.defense }
+      { attack: store.player.attack, defense: store.player.defense, dodge: store.player.dodge }
     )
 
     if (debug.invincible.value && !result.isDodged) {
@@ -144,7 +144,7 @@ export function useGameLoop() {
       const name = getEnemyName(target.type)
       const result = combatSystem.calculateDamage(
         { attack: store.player.attack },
-        { attack: target.attack, defense: target.defense }
+        { attack: target.attack, defense: target.defense, dodge: target.dodge }
       )
 
       if (debug.oneShot.value) {
