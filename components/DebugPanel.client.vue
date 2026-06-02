@@ -47,6 +47,12 @@
     playerDraft.posY = store.player.position.y
   }
 
+  function notify(msg?: string) {
+    if (typeof window !== 'undefined') {
+      window.__katabasis?.refresh?.(msg)
+    }
+  }
+
   function savePlayer() {
     store.setPlayerStats({
       hp: playerDraft.hp,
@@ -60,7 +66,7 @@
       maxSatiation: playerDraft.maxSatiation,
       position: { x: playerDraft.posX, y: playerDraft.posY },
     })
-    store.addMessage('[DEBUG] プレイヤーを保存')
+    notify('[DEBUG] プレイヤーを保存')
   }
 
   interface EnemyDraft {
@@ -108,7 +114,7 @@
       defense: draft.defense,
       dodge: Math.max(0, Math.min(100, draft.dodgePct)) / 100,
     })
-    store.addMessage('[DEBUG] 敵を保存')
+    notify('[DEBUG] 敵を保存')
   }
 
   watch(
@@ -130,6 +136,18 @@
   const jumpDungeonId = ref(store.dungeon.dungeonId)
   const jumpFloor = ref(store.dungeon.floor)
 
+  const jumpFloorOptions = computed(() => {
+    const def = getDungeon(jumpDungeonId.value)
+    return Array.from({ length: def.floors.length }, (_, i) => i + 1)
+  })
+
+  watch(jumpDungeonId, (id) => {
+    const def = getDungeon(id)
+    if (jumpFloor.value > def.floors.length) {
+      jumpFloor.value = 1
+    }
+  })
+
   function jumpToFloor() {
     const def = getDungeon(jumpDungeonId.value)
     const floor = Math.max(1, Math.min(jumpFloor.value, def.floors.length))
@@ -137,41 +155,47 @@
     gameLoop.initFloor(floor)
     syncPlayerDraft()
     syncEnemyDrafts()
-    store.addMessage(`[DEBUG] ${def.name} ${floor}Fへジャンプ`)
+    notify(`[DEBUG] ${def.name} ${floor}Fへジャンプ`)
   }
 
   function killAllEnemies() {
     const count = store.enemies.length
     store.clearEnemies()
-    store.addMessage(`[DEBUG] ${count}体の敵を消した`)
+    notify(`[DEBUG] ${count}体の敵を消した`)
   }
 
   function fullHeal() {
     store.setPlayerStats({ hp: store.player.maxHp, satiation: store.player.maxSatiation })
     syncPlayerDraft()
-    store.addMessage('[DEBUG] HP・満腹度を全回復')
+    notify('[DEBUG] HP・満腹度を全回復')
   }
 
   function warpEnemyToPlayer(id: string) {
     const p = store.player.position
     store.setEnemyStats(id, { x: p.x, y: p.y - 1 })
+    notify()
+  }
+
+  function removeEnemy(id: string) {
+    store.removeEnemy(id)
+    notify()
   }
 </script>
 
 <template>
   <div v-if="debug.enabled.value" class="debug-panel" :class="{ collapsed }">
     <header class="header">
-      <span class="title">🛠 DEBUG</span>
-      <button class="btn-icon" type="button" @click="collapsed = !collapsed">
+      <span class="title">🛠 デバッグ</span>
+      <button class="btn-icon" type="button" title="折りたたみ" @click="collapsed = !collapsed">
         {{ collapsed ? '▼' : '▲' }}
       </button>
-      <button class="btn-icon" type="button" @click="debug.disable()">✕</button>
+      <button class="btn-icon" type="button" title="閉じる" @click="debug.disable()">✕</button>
     </header>
 
     <div v-if="!collapsed" class="body">
       <section class="section">
         <div class="section-header">
-          <h3>Player</h3>
+          <h3>プレイヤー</h3>
           <div class="actions">
             <button
               class="btn-xs"
@@ -187,13 +211,13 @@
         <div class="row">
           <label>HP</label>
           <input v-model.number="playerDraft.hp" type="number" min="0" >
-          <label>/ Max</label>
+          <label>/ 最大</label>
           <input v-model.number="playerDraft.maxHp" type="number" min="1" >
         </div>
         <div class="row">
-          <label>ATK</label>
+          <label>攻撃</label>
           <input v-model.number="playerDraft.attack" type="number" min="0" >
-          <label>DEF</label>
+          <label>防御</label>
           <input v-model.number="playerDraft.defense" type="number" min="0" >
         </div>
         <div class="row">
@@ -203,13 +227,13 @@
         <div class="row">
           <label>Lv</label>
           <input v-model.number="playerDraft.level" type="number" min="1" >
-          <label>EXP</label>
+          <label>経験値</label>
           <input v-model.number="playerDraft.exp" type="number" min="0" >
         </div>
         <div class="row">
           <label>満腹</label>
           <input v-model.number="playerDraft.satiation" type="number" min="0" >
-          <label>/ Max</label>
+          <label>/ 最大</label>
           <input v-model.number="playerDraft.maxSatiation" type="number" min="1" >
         </div>
         <div class="row">
@@ -219,21 +243,25 @@
           <input v-model.number="playerDraft.posY" type="number" >
         </div>
         <div class="row toggles">
-          <label class="toggle">
+          <label class="toggle" title="敵の攻撃を受けてもダメージを受けない">
             <input v-model="debug.invincible.value" type="checkbox" >
             <span>無敵</span>
           </label>
-          <label class="toggle">
+          <label class="toggle" title="自分の攻撃で必ず一撃で敵を倒す">
             <input v-model="debug.oneShot.value" type="checkbox" >
             <span>ワンパン</span>
           </label>
           <button class="btn-sm" type="button" @click="fullHeal">全回復</button>
         </div>
+        <p class="help">
+          無敵: ダメージ無効化 / ワンパン: 攻撃で必ず一撃必殺
+        </p>
       </section>
 
       <section class="section">
-        <h3>Floor Jump</h3>
+        <h3>階層ジャンプ</h3>
         <div class="row">
+          <label>ダンジョン</label>
           <select v-model="jumpDungeonId">
             <option v-for="d in dungeonOptions" :key="d.id" :value="d.id">
               {{ d.name }} ({{ d.floors }}F)
@@ -241,15 +269,17 @@
           </select>
         </div>
         <div class="row">
-          <label>F</label>
-          <input v-model.number="jumpFloor" type="number" min="1" >
-          <button class="btn-sm primary" type="button" @click="jumpToFloor">Jump</button>
+          <label>階層</label>
+          <select v-model.number="jumpFloor">
+            <option v-for="f in jumpFloorOptions" :key="f" :value="f">{{ f }}F</option>
+          </select>
+          <button class="btn-sm primary" type="button" @click="jumpToFloor">ジャンプ</button>
         </div>
       </section>
 
       <section class="section">
         <div class="section-header">
-          <h3>Enemies ({{ store.enemies.length }})</h3>
+          <h3>敵一覧（{{ store.enemies.length }}体）</h3>
           <button class="btn-sm danger" type="button" @click="killAllEnemies">全消去</button>
         </div>
         <div v-if="store.enemies.length === 0" class="empty">敵はいません</div>
@@ -257,25 +287,25 @@
           <div class="enemy-head">
             <span class="enemy-type">{{ e.type }}</span>
             <span class="enemy-pos">({{ e.x }},{{ e.y }})</span>
-            <button class="btn-xs" type="button" @click="warpEnemyToPlayer(e.id)">→Player</button>
-            <button class="btn-xs danger" type="button" @click="store.removeEnemy(e.id)">削</button>
+            <button class="btn-xs" type="button" title="プレイヤーの隣に移動" @click="warpEnemyToPlayer(e.id)">寄せる</button>
+            <button class="btn-xs danger" type="button" @click="removeEnemy(e.id)">削除</button>
           </div>
           <template v-if="enemyDrafts[e.id]">
             <div class="row">
               <label>HP</label>
               <input v-model.number="enemyDrafts[e.id].hp" type="number" min="0" >
-              <label>ATK</label>
+              <label>攻撃</label>
               <input v-model.number="enemyDrafts[e.id].attack" type="number" min="0" >
             </div>
             <div class="row">
-              <label>DEF</label>
+              <label>防御</label>
               <input v-model.number="enemyDrafts[e.id].defense" type="number" min="0" >
               <label>回避%</label>
               <input v-model.number="enemyDrafts[e.id].dodgePct" type="number" min="0" max="100" step="0.5" >
             </div>
             <div class="row enemy-actions">
               <span class="current">
-                現在 HP{{ e.hp }} / ATK{{ e.attack }} / DEF{{ e.defense }} / 回避{{ Math.round((e.dodge ?? 0) * 1000) / 10 }}%
+                現在 HP{{ e.hp }} / 攻撃{{ e.attack }} / 防御{{ e.defense }} / 回避{{ Math.round((e.dodge ?? 0) * 1000) / 10 }}%
               </span>
               <button class="btn-xs" type="button" title="現在値を再読込" @click="resetEnemyDraft(e.id)">↻</button>
               <button class="btn-xs primary" type="button" @click="saveEnemy(e.id)">保存</button>
@@ -387,8 +417,16 @@
 
   .row label {
     color: #aaaacc;
-    min-width: 28px;
+    min-width: 40px;
     font-size: 11px;
+    white-space: nowrap;
+  }
+
+  .help {
+    margin: 4px 0 0;
+    color: #777799;
+    font-size: 10px;
+    line-height: 1.4;
   }
 
   .row input[type='number'],

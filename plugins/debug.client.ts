@@ -13,6 +13,8 @@ declare global {
         setInvincible: (v: boolean) => void
         setOneShot: (v: boolean) => void
       }
+      /** Phaser シーンが登録する全画面再描画フック (DungeonScene.create で設定) */
+      refresh?: (message?: string) => void
     }
   }
 }
