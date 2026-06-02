@@ -23,6 +23,8 @@ export default defineNuxtPlugin(() => {
 
   if (typeof window === 'undefined') return
 
+  console.log('↑ ↑ ↓ ↓ ← → ← → B A')
+
   window.__katabasis = {
     debug: {
       enable: debug.enable,
