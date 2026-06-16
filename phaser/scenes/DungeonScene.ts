@@ -47,6 +47,16 @@ export class DungeonScene extends Phaser.Scene {
   private gameAreaTop = 52
   private gameAreaBottom = 420
 
+  // レベルアップ検知用
+  private lastPlayerLevel = 1
+
+  // 演出中の入力ロック
+  private inputLocked = false
+
+  // BGM
+  private currentBgm: Phaser.Sound.BaseSound | null = null
+  private currentBgmKey = ''
+
   constructor() {
     super({ key: 'DungeonScene' })
   }
@@ -96,6 +106,7 @@ export class DungeonScene extends Phaser.Scene {
     this.load.audio('se_swing', '/assets/se/swing.mp3')
     this.load.audio('se_item_get', '/assets/se/item_get.mp3')
     this.load.audio('se_stairs', '/assets/se/stairs.mp3')
+    this.load.audio('se_levelup', '/assets/se/levelup.mp3')
   }
 
   create() {
@@ -125,6 +136,7 @@ export class DungeonScene extends Phaser.Scene {
       console.log(`Debug grid: ${this.debugGridVisible ? 'ON' : 'OFF'}`)
     }
 
+    this.lastPlayerLevel = this.gameStore.player.level
     this.createAnimations()
     this.drawScene()
     this.drawDebugGrid()
@@ -132,6 +144,7 @@ export class DungeonScene extends Phaser.Scene {
     this.setupTouchInput()
 
     this.scene.launch('UIScene')
+    this.playDungeonBgm()
 
     // デバッグパネルからの全画面再描画フックを登録（plugins/debug.client.ts で __katabasis 初期化済み）
     if (window.__katabasis) {
@@ -188,6 +201,7 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private goNextFloor() {
+    this.inputLocked = true
     this.playSE('se_stairs')
 
     // フェードアウト
@@ -256,6 +270,8 @@ export class DungeonScene extends Phaser.Scene {
               overlay.destroy()
               floorLabel.destroy()
               this.updateUI(result)
+              this.playDungeonBgm()
+              this.inputLocked = false
             },
           })
         })
@@ -558,6 +574,7 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private tryMove(dx: number, dy: number) {
+    if (this.inputLocked) return
     const ui = this.getUiScene()
     if (ui.isMenuOpen()) {
       ui.moveMenuCursor(dx, dy)
@@ -600,6 +617,7 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private handleAction(action: string) {
+    if (this.inputLocked) return
     console.log(`[Action] ${action}`)
     const ui = this.getUiScene()
 
@@ -687,6 +705,10 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private playSequencedCombatEffects(result: ActionResult) {
+    if (result.combatEvents.length === 0) return
+
+    this.inputLocked = true
+
     // プレイヤーの攻撃を即時再生
     this.playCombatEffects(result.playerEvents)
 
@@ -695,6 +717,13 @@ export class DungeonScene extends Phaser.Scene {
       this.time.delayedCall(400, () => {
         this.drawScene()
         this.playCombatEffects(result.enemyEvents)
+        this.time.delayedCall(300, () => {
+          this.inputLocked = false
+        })
+      })
+    } else {
+      this.time.delayedCall(300, () => {
+        this.inputLocked = false
       })
     }
   }
@@ -784,6 +813,79 @@ export class DungeonScene extends Phaser.Scene {
     })
   }
 
+  // --- BGM ---
+
+  private playDungeonBgm() {
+    const dungeonId = this.gameStore.dungeon.dungeonId
+    const dungeon = getDungeon(dungeonId)
+    const bgmKey = `bgm_${dungeonId}`
+
+    // 同じBGMが再生中ならスキップ
+    if (this.currentBgmKey === bgmKey && this.currentBgm?.isPlaying) return
+
+    // 前のBGMを停止
+    this.stopBgm()
+
+    // 動的ロード＋再生
+    if (!this.cache.audio.exists(bgmKey)) {
+      this.load.audio(bgmKey, dungeon.bgm)
+      this.load.once('complete', () => {
+        this.startBgm(bgmKey)
+      })
+      this.load.once('loaderror', () => {})
+      this.load.start()
+    } else {
+      this.startBgm(bgmKey)
+    }
+  }
+
+  private startBgm(key: string) {
+    if (!this.cache.audio.exists(key)) return
+    this.currentBgm = this.sound.add(key, { loop: true, volume: 0 })
+    this.currentBgm.play()
+    this.currentBgmKey = key
+    // フェードイン
+    this.tweens.add({
+      targets: this.currentBgm,
+      volume: 0.3,
+      duration: 1000,
+      ease: 'Linear',
+    })
+  }
+
+  private stopBgm() {
+    if (this.currentBgm) {
+      this.currentBgm.stop()
+      this.currentBgm.destroy()
+      this.currentBgm = null
+      this.currentBgmKey = ''
+    }
+  }
+
+  private pauseBgmForEffect() {
+    if (!this.currentBgm || !this.currentBgm.isPlaying) return
+    this.tweens.add({
+      targets: this.currentBgm,
+      volume: 0,
+      duration: 300,
+      ease: 'Linear',
+      onComplete: () => {
+        this.currentBgm?.pause()
+      },
+    })
+  }
+
+  private resumeBgmAfterEffect() {
+    if (!this.currentBgm) return
+    this.currentBgm.resume()
+    this.tweens.add({
+      targets: this.currentBgm,
+      volume: 0.3,
+      duration: 800,
+      ease: 'Linear',
+    })
+  }
+
   // --- UI更新 ---
 
   private updateUI(messages: string[]) {
@@ -804,5 +906,77 @@ export class DungeonScene extends Phaser.Scene {
     uiScene.updateFloor(dungeon.floor)
     uiScene.updateLevel(player.level)
     uiScene.updateSatiation(player.satiation, player.maxSatiation)
+
+    if (player.level > this.lastPlayerLevel) {
+      this.lastPlayerLevel = player.level
+      this.showLevelUpEffect()
+    }
+  }
+
+  private showLevelUpEffect() {
+    this.inputLocked = true
+    this.pauseBgmForEffect()
+    this.playSE('se_levelup')
+
+    const gameAreaCenterY = (this.gameAreaTop + this.gameAreaBottom) / 2
+    const label = this.add.text(this.screenWidth / 2, gameAreaCenterY, 'LEVEL UP!', {
+      fontSize: '28px',
+      fontFamily: '"DotGothic16", monospace',
+      color: '#ffdd00',
+      stroke: '#000000',
+      strokeThickness: 4,
+    })
+    label.setOrigin(0.5)
+    label.setDepth(2000)
+    label.setAlpha(0)
+    this.effectContainer.add(label)
+
+    this.tweens.add({
+      targets: label,
+      alpha: 1,
+      y: gameAreaCenterY - 30,
+      duration: 400,
+      ease: 'Power2',
+      onComplete: () => {
+        this.time.delayedCall(600, () => {
+          this.tweens.add({
+            targets: label,
+            alpha: 0,
+            y: gameAreaCenterY - 60,
+            duration: 400,
+            ease: 'Power2',
+            onComplete: () => {
+              label.destroy()
+              this.inputLocked = false
+              this.resumeBgmAfterEffect()
+            },
+          })
+        })
+      },
+    })
+
+    // プレイヤー位置にフラッシュ
+    const playerPos = this.gameStore.player.position
+    const pos = this.tileToScreen(playerPos.x, playerPos.y)
+    const flash = this.add.rectangle(
+      pos.x,
+      pos.y - this.tileHeight * 0.4,
+      this.tileWidth * 1.5,
+      this.tileHeight * 1.5,
+      0xffdd00
+    )
+    flash.setAlpha(0.5)
+    flash.setDepth(1500)
+    this.effectContainer.add(flash)
+
+    this.tweens.add({
+      targets: flash,
+      alpha: 0,
+      scaleX: 2,
+      scaleY: 2,
+      duration: 500,
+      ease: 'Power2',
+      onComplete: () => flash.destroy(),
+    })
   }
 }
