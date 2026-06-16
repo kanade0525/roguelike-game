@@ -1,4 +1,10 @@
 import { defineStore } from 'pinia'
+import { ITEMS } from '~/game/data/items'
+import {
+  useItem as applyUseItem,
+  equipItem as calcEquip,
+  unequipItem as calcUnequip,
+} from '~/game/systems/ItemSystem'
 
 interface PlayerState {
   hp: number
@@ -38,6 +44,7 @@ interface FloorItem {
 interface InventoryItem {
   itemId: string
   name: string
+  equipped?: boolean
 }
 
 interface DungeonState {
@@ -224,6 +231,67 @@ export const useGameStore = defineStore('game', {
 
     clearFloorItems() {
       this.floorItems = []
+    },
+
+    useInventoryItem(index: number): { success: boolean; message: string } {
+      const entry = this.inventory[index]
+      if (!entry) return { success: false, message: '' }
+      const def = ITEMS[entry.itemId]
+      if (!def) return { success: false, message: '' }
+      const result = applyUseItem(def, this.player)
+      if (result.consumed) {
+        this.inventory.splice(index, 1)
+      }
+      return { success: result.success, message: result.message }
+    },
+
+    equipInventoryItem(index: number): { success: boolean; message: string } {
+      const entry = this.inventory[index]
+      if (!entry) return { success: false, message: '' }
+      const def = ITEMS[entry.itemId]
+      if (!def) return { success: false, message: '' }
+
+      // 既に装備済みなら外す
+      if (entry.equipped) {
+        const unequipped = calcUnequip(def)
+        this.player.attack += unequipped.attackDelta
+        this.player.defense += unequipped.defenseDelta
+        entry.equipped = false
+        return { success: true, message: unequipped.message }
+      }
+
+      // 同タイプの装備中アイテムを検索（1スロット1装備）
+      const currentIndex = this.inventory.findIndex(
+        (i, idx) => idx !== index && i.equipped && ITEMS[i.itemId]?.type === def.type
+      )
+      const currentId = currentIndex >= 0 ? this.inventory[currentIndex].itemId : null
+      const result = calcEquip(def, currentId)
+      if (!result.success) {
+        return { success: false, message: result.message }
+      }
+      if (currentIndex >= 0) {
+        this.inventory[currentIndex].equipped = false
+      }
+      this.player.attack += result.attackDelta
+      this.player.defense += result.defenseDelta
+      entry.equipped = true
+      return { success: true, message: result.message }
+    },
+
+    dropInventoryItem(index: number): { success: boolean; message: string; itemId: string | null } {
+      const entry = this.inventory[index]
+      if (!entry) return { success: false, message: '', itemId: null }
+      const def = ITEMS[entry.itemId]
+      // 装備中なら先に外す
+      if (entry.equipped && def) {
+        const u = calcUnequip(def)
+        this.player.attack += u.attackDelta
+        this.player.defense += u.defenseDelta
+      }
+      const name = entry.name
+      const itemId = entry.itemId
+      this.inventory.splice(index, 1)
+      return { success: true, message: `${name}を捨てた`, itemId }
     },
 
     setCurrentMap(map: number[][]) {
