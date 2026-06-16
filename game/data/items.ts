@@ -18,6 +18,7 @@ export interface ItemDef {
   usable: boolean
   equippable: boolean
   stackable?: boolean // 重ねて所持可能（ポーション・食料・スクロール・ゴールド）
+  sprite?: string // フロア描画に使う Phaser テクスチャキー。未指定は既定スプライト
 }
 
 export interface EquipmentData {
@@ -98,13 +99,14 @@ export const ITEMS: Record<string, ItemDef> = {
   },
   herb: {
     id: 'herb',
-    name: '回復草',
-    description: 'HPを30回復',
+    name: 'ポーション',
+    description: 'HPを25回復',
     type: 'potion',
-    effect: { hp: 30 },
+    effect: { hp: 25 },
     usable: true,
     equippable: false,
     stackable: true,
+    sprite: 'flask_green',
   },
   super_herb: {
     id: 'super_herb',

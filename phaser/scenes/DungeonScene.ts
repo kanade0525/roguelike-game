@@ -105,6 +105,7 @@ export class DungeonScene extends Phaser.Scene {
     }
     // アイテム
     this.load.image('weapon_sword', '/assets/tiles/weapon_anime_sword.png')
+    this.load.image('flask_green', '/assets/tiles/flask_green.png')
 
     // SE（ファイルが存在しない場合はロードエラーを無視）
     this.load.on('loaderror', () => {})
@@ -114,6 +115,7 @@ export class DungeonScene extends Phaser.Scene {
     this.load.audio('se_critical', '/assets/se/critical.mp3')
     this.load.audio('se_swing', '/assets/se/swing.mp3')
     this.load.audio('se_item_get', '/assets/se/item_get.mp3')
+    this.load.audio('se_item_use', '/assets/se/item_use.mp3')
     this.load.audio('se_stairs', '/assets/se/stairs.mp3')
     this.load.audio('se_levelup', '/assets/se/levelup.mp3')
   }
@@ -491,10 +493,15 @@ export class DungeonScene extends Phaser.Scene {
       const screenTileY = item.y - viewStartY
       const x = this.offsetX + screenTileX * this.tileWidth + this.tileWidth / 2
       const y = this.offsetY + screenTileY * this.tileHeight + this.tileHeight / 2
-      const sprite = this.add.image(x, y, 'weapon_sword')
+      const def = ITEMS[item.itemId]
+      const spriteKey = def?.sprite && this.textures.exists(def.sprite) ? def.sprite : 'weapon_sword'
+      const sprite = this.add.image(x, y, spriteKey)
       sprite.setScale(this.tileScale * 0.35)
-      const type = ITEMS[item.itemId]?.type ?? 'other'
-      sprite.setTint(ITEM_TINT[type] ?? 0xffffff)
+      const type = def?.type ?? 'other'
+      // 専用スプライトは tint しない（色被りを防ぐ）
+      if (spriteKey === 'weapon_sword') {
+        sprite.setTint(ITEM_TINT[type] ?? 0xffffff)
+      }
       this.entityContainer.add(sprite)
     }
   }
@@ -731,17 +738,32 @@ export class DungeonScene extends Phaser.Scene {
     if (action === 'confirm') {
       const entry = this.gameStore.inventory[index]
       if (!entry) return
-      const useResult = this.gameStore.useInventoryItem(index)
-      if (useResult.success) {
-        this.updateUI([useResult.message])
-        ui.refreshInventory(this.gameStore.inventory)
-        this.consumeTurnAfterItem()
+      const def = ITEMS[entry.itemId]
+      if (!def) return
+
+      if (def.usable) {
+        ui.showConfirm(`${def.name} を使用しますか？`, () => {
+          const useResult = this.gameStore.useInventoryItem(index)
+          if (useResult.success) {
+            this.updateUI([useResult.message])
+            ui.refreshInventory(this.gameStore.inventory)
+            if (useResult.message.includes('HP') || useResult.message.includes('満腹')) {
+              this.playSE('se_item_use')
+            }
+            this.consumeTurnAfterItem()
+          }
+        })
         return
       }
-      const equipResult = this.gameStore.equipInventoryItem(index)
-      if (equipResult.success) {
-        this.updateUI([equipResult.message])
-        ui.refreshInventory(this.gameStore.inventory)
+
+      if (def.equippable) {
+        ui.showConfirm(`${def.name} を装備しますか？`, () => {
+          const equipResult = this.gameStore.equipInventoryItem(index)
+          if (equipResult.success) {
+            this.updateUI([equipResult.message])
+            ui.refreshInventory(this.gameStore.inventory)
+          }
+        })
         return
       }
       return

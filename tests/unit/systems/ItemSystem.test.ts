@@ -19,13 +19,13 @@ function makePlayer(overrides: Partial<{ hp: number; maxHp: number; satiation: n
 }
 
 describe('ItemSystem.useItem', () => {
-  it('herb は HP を30回復する', () => {
+  it('herb は HP を25回復する', () => {
     const player = makePlayer({ hp: 50 })
     const result = useItem(ITEMS.herb, player)
     expect(result.success).toBe(true)
     expect(result.consumed).toBe(true)
-    expect(player.hp).toBe(80)
-    expect(result.message).toContain('30')
+    expect(player.hp).toBe(75)
+    expect(result.message).toContain('25')
   })
 
   it('HP が最大値を超えない', () => {
