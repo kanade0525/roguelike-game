@@ -12,6 +12,7 @@
     "maxHealth": 100,
     "attack": 10,
     "defense": 5,
+    "dodge": 0.05,
     "viewRange": 6
   },
   "enemyTypes": {
@@ -19,13 +20,15 @@
       "maxHealth": 20,
       "attack": 5,
       "defense": 2,
-      "exp": 10
+      "exp": 10,
+      "dodge": 0.05
     },
     "goblin": {
       "maxHealth": 30,
       "attack": 8,
       "defense": 3,
-      "exp": 20
+      "exp": 20,
+      "dodge": 0.08
     }
   },
   "itemTypes": {

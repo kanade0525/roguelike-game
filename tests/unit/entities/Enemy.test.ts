@@ -98,6 +98,7 @@ describe('Enemy（共通機能）', () => {
         attack: 5,
         defense: 2,
         exp: 10,
+        dodge: 0.05,
         aiState: 'idle',
       })
     })

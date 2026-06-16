@@ -9,6 +9,7 @@ export interface EnemyStats {
   attack: number
   defense: number
   exp: number
+  dodge?: number
 }
 
 export interface EnemyData {
@@ -19,6 +20,7 @@ export interface EnemyData {
   attack: number
   defense: number
   exp: number
+  dodge: number
   position: Position
   aiState: AIState
 }
@@ -33,6 +35,7 @@ export interface EnemyStoreState {
   attack: number
   defense: number
   exp: number
+  dodge: number
   aiState: string
 }
 
@@ -48,6 +51,7 @@ export class Enemy {
       attack: stats.attack,
       defense: stats.defense,
       exp: stats.exp,
+      dodge: stats.dodge ?? 0.05,
       position: { ...position },
       aiState: 'idle',
     }
@@ -75,6 +79,10 @@ export class Enemy {
 
   get exp(): number {
     return this.data.exp
+  }
+
+  get dodge(): number {
+    return this.data.dodge
   }
 
   get position(): Position {
@@ -119,6 +127,7 @@ export class Enemy {
       attack: this.data.attack,
       defense: this.data.defense,
       exp: this.data.exp,
+      dodge: this.data.dodge,
       aiState: this.data.aiState,
     }
   }

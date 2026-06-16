@@ -8,7 +8,14 @@ export class Goblin extends Enemy {
   constructor(position: Position, id?: string) {
     super(
       'goblin',
-      { hp: cfg.maxHealth, maxHp: cfg.maxHealth, attack: cfg.attack, defense: cfg.defense, exp: cfg.exp },
+      {
+        hp: cfg.maxHealth,
+        maxHp: cfg.maxHealth,
+        attack: cfg.attack,
+        defense: cfg.defense,
+        exp: cfg.exp,
+        dodge: cfg.dodge,
+      },
       position,
       id
     )

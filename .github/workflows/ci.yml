@@ -42,6 +42,10 @@ jobs:
 
   e2e-test:
     runs-on: ubuntu-latest
+    # Chromium + system deps が同梱された公式イメージを使い、playwright install をスキップする
+    container:
+      image: mcr.microsoft.com/playwright:v1.58.2-noble
+      options: --user 1001
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -49,7 +53,6 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
       - uses: actions/upload-artifact@v4
         if: always()

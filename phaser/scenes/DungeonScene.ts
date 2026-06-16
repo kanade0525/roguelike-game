@@ -132,6 +132,18 @@ export class DungeonScene extends Phaser.Scene {
     this.setupTouchInput()
 
     this.scene.launch('UIScene')
+
+    // デバッグパネルからの全画面再描画フックを登録（plugins/debug.client.ts で __katabasis 初期化済み）
+    if (window.__katabasis) {
+      window.__katabasis.refresh = (message?: string) => {
+        this.syncMapFromStore()
+        this.drawScene()
+        this.updateUI(message ? [message] : [])
+      }
+    }
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      if (window.__katabasis) window.__katabasis.refresh = undefined
+    })
   }
 
   private createAnimations() {

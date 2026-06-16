@@ -9,6 +9,7 @@ interface PlayerState {
   maxSatiation: number
   attack: number
   defense: number
+  dodge: number
   direction: { dx: number; dy: number }
   position: { x: number; y: number }
 }
@@ -23,6 +24,7 @@ interface EnemyState {
   attack: number
   defense: number
   exp: number
+  dodge: number
   aiState: string
 }
 
@@ -67,6 +69,7 @@ export const useGameStore = defineStore('game', {
       maxSatiation: 100,
       attack: 10,
       defense: 5,
+      dodge: 0.05,
       direction: { dx: 0, dy: 1 },
       position: { x: 7, y: 7 },
     },
@@ -120,6 +123,23 @@ export const useGameStore = defineStore('game', {
       this.dungeon.dungeonId = dungeonId
       this.dungeon.totalFloors = totalFloors
       this.dungeon.floor = 1
+    },
+
+    setDungeonState(dungeonId: string, totalFloors: number, floor: number) {
+      this.dungeon.dungeonId = dungeonId
+      this.dungeon.totalFloors = totalFloors
+      this.dungeon.floor = floor
+    },
+
+    setPlayerStats(stats: Partial<PlayerState>) {
+      Object.assign(this.player, stats)
+    },
+
+    setEnemyStats(id: string, stats: Partial<Omit<EnemyState, 'id'>>) {
+      const enemy = this.enemies.find((e) => e.id === id)
+      if (enemy) {
+        Object.assign(enemy, stats)
+      }
     },
 
     endTurn() {

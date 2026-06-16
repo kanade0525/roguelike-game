@@ -7,6 +7,7 @@ export interface CombatResult {
 export interface Combatant {
   attack: number
   defense?: number
+  dodge?: number
 }
 
 export class CombatSystem {
@@ -14,8 +15,9 @@ export class CombatSystem {
   private dodgeChance = 0.05
 
   calculateDamage(attacker: Combatant, defender: Combatant): CombatResult {
-    // 回避判定
-    if (Math.random() < this.dodgeChance) {
+    // 回避判定 (defender.dodge が未指定なら既定値)
+    const dodgeRate = defender.dodge ?? this.dodgeChance
+    if (Math.random() < dodgeRate) {
       return { damage: 0, isCritical: false, isDodged: true }
     }
 
