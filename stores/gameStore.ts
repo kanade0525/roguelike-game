@@ -46,6 +46,8 @@ interface DungeonState {
   totalFloors: number
 }
 
+export type GameResult = 'active' | 'dead' | 'cleared'
+
 interface GameState {
   player: PlayerState
   dungeon: DungeonState
@@ -56,6 +58,9 @@ interface GameState {
   messageLog: string[]
   currentMap: number[][]
   exploredTiles: string[] // "x,y" 形式の探索済み座標
+  gameResult: GameResult
+  defeatedEnemies: number
+  maxFloorReached: number
 }
 
 export const useGameStore = defineStore('game', {
@@ -85,6 +90,9 @@ export const useGameStore = defineStore('game', {
     messageLog: [],
     currentMap: [],
     exploredTiles: [],
+    gameResult: 'active',
+    defeatedEnemies: 0,
+    maxFloorReached: 1,
   }),
 
   getters: {
@@ -117,6 +125,17 @@ export const useGameStore = defineStore('game', {
 
     nextFloor() {
       this.dungeon.floor++
+      if (this.dungeon.floor > this.maxFloorReached) {
+        this.maxFloorReached = this.dungeon.floor
+      }
+    },
+
+    setGameResult(result: GameResult) {
+      this.gameResult = result
+    },
+
+    incrementDefeatedEnemies() {
+      this.defeatedEnemies++
     },
 
     setDungeon(dungeonId: string, totalFloors: number) {

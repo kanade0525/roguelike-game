@@ -167,6 +167,7 @@ export function useGameLoop() {
         const updated = store.enemies.find((e) => e.id === target.id)
         if (!updated || updated.hp <= 0) {
           store.removeEnemy(target.id)
+          store.incrementDefeatedEnemies()
           messages.push(`${name}を倒した！`)
           store.gainExp(target.exp)
           killed = true
