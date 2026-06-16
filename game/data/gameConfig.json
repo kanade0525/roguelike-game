@@ -13,7 +13,8 @@
     "attack": 10,
     "defense": 5,
     "dodge": 0.05,
-    "viewRange": 6
+    "viewRange": 6,
+    "initialGold": 0
   },
   "enemyTypes": {
     "skeleton": {
@@ -31,13 +32,20 @@
       "dodge": 0.08
     }
   },
-  "itemTypes": {
-    "healingGrass": {
-      "healAmount": 30
-    },
-    "antidoteGrass": {
-      "curePoison": true
-    }
+  "itemConfig": {
+    "inventoryMaxSlots": 20,
+    "maxStackSize": 99
+  },
+  "equipmentConfig": {
+    "maxEnhanceLevel": 9,
+    "enhanceBonusPerLevel": 1,
+    "enhanceCostBase": 100,
+    "enhanceCostMultiplier": 1.5
+  },
+  "goldConfig": {
+    "defaultDropAmount": 10,
+    "dropVariance": 5,
+    "dropChance": 0.3
   },
   "dungeonConfig": {
     "floorsTotal": 10,
