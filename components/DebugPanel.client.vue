@@ -8,6 +8,10 @@
   const store = useGameStore()
   const gameLoop = useGameLoop()
   const debug = useDebugMode()
+  // v-model でリアクティブに更新するには top-level の ref が必要 (nested の ref は auto-unwrap されない)
+  const debugEnabled = debug.enabled
+  const debugInvincible = debug.invincible
+  const debugOneShot = debug.oneShot
 
   const collapsed = ref(false)
 
@@ -183,13 +187,12 @@
 </script>
 
 <template>
-  <div v-if="debug.enabled.value" class="debug-panel" :class="{ collapsed }">
+  <div v-if="debugEnabled" class="debug-panel" :class="{ collapsed }">
     <header class="header">
       <span class="title">🛠 デバッグ</span>
       <button class="btn-icon" type="button" title="折りたたみ" @click="collapsed = !collapsed">
         {{ collapsed ? '▼' : '▲' }}
       </button>
-      <button class="btn-icon" type="button" title="閉じる" @click="debug.disable()">✕</button>
     </header>
 
     <div v-if="!collapsed" class="body">
@@ -244,11 +247,11 @@
         </div>
         <div class="row toggles">
           <label class="toggle" title="敵の攻撃を受けてもダメージを受けない">
-            <input v-model="debug.invincible.value" type="checkbox" >
+            <input v-model="debugInvincible" type="checkbox" >
             <span>無敵</span>
           </label>
           <label class="toggle" title="自分の攻撃で必ず一撃で敵を倒す">
-            <input v-model="debug.oneShot.value" type="checkbox" >
+            <input v-model="debugOneShot" type="checkbox" >
             <span>ワンパン</span>
           </label>
           <button class="btn-sm" type="button" @click="fullHeal">全回復</button>
@@ -321,7 +324,7 @@
   .debug-panel {
     position: fixed;
     top: 8px;
-    right: 8px;
+    left: 8px;
     width: 280px;
     max-height: calc(100vh - 16px);
     background: rgba(20, 20, 30, 0.92);
