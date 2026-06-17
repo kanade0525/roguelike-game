@@ -200,21 +200,22 @@ export function useGameLoop() {
         if (!updated || updated.hp <= 0) {
           store.removeEnemy(target.id)
           store.incrementDefeatedEnemies()
-          messages.push(`${name}を倒した！`)
+          const levelBefore = store.player.level
           store.gainExp(target.exp)
-          killed = true
-
-          // ゴールドドロップ抽選 (撃破時の足元に gold アイテムとして配置)
+          const leveledUp = store.player.level > levelBefore
           const gold = rollGoldDrop()
           if (gold > 0) {
-            store.addFloorItem({
-              id: `gold-${target.id}-${store.turn}`,
-              itemId: 'gold',
-              x: target.x,
-              y: target.y,
-              amount: gold,
-            })
+            store.player.gold += gold
           }
+
+          // 撃破ログを1行に統合: 「Xを倒した！ EXP+5  10G」
+          const parts = [`${name}を倒した！ EXP+${target.exp}`]
+          if (gold > 0) parts.push(`${gold}G`)
+          messages.push(parts.join('  '))
+          if (leveledUp) {
+            messages.push(`レベルが${store.player.level}に上がった！`)
+          }
+          killed = true
         }
       }
 
