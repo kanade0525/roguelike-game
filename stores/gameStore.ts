@@ -77,8 +77,8 @@ interface GameState {
 export const useGameStore = defineStore('game', {
   state: (): GameState => ({
     player: {
-      hp: 100,
-      maxHp: 100,
+      hp: 25,
+      maxHp: 25,
       level: 1,
       exp: 0,
       satiation: 100,

@@ -5,8 +5,8 @@ describe('Player', () => {
   describe('constructor', () => {
     it('デフォルト値で初期化される', () => {
       const player = new Player()
-      expect(player.hp).toBe(100)
-      expect(player.maxHp).toBe(100)
+      expect(player.hp).toBe(25)
+      expect(player.maxHp).toBe(25)
       expect(player.attack).toBe(10)
       expect(player.defense).toBe(5)
       expect(player.position).toEqual({ x: 7, y: 7 })
@@ -21,7 +21,7 @@ describe('Player', () => {
     })
 
     it('一部の値だけ指定できる', () => {
-      const player = new Player({ hp: 50 })
+      const player = new Player({ hp: 50, maxHp: 100 })
       expect(player.hp).toBe(50)
       expect(player.maxHp).toBe(100)
       expect(player.attack).toBe(10)
@@ -30,14 +30,14 @@ describe('Player', () => {
 
   describe('takeDamage', () => {
     it('防御力を差し引いたダメージを受ける', () => {
-      const player = new Player({ defense: 5 })
+      const player = new Player({ hp: 100, maxHp: 100, defense: 5 })
       const actual = player.takeDamage(12)
       expect(actual).toBe(7) // 12 - 5
       expect(player.hp).toBe(93) // 100 - 7
     })
 
     it('最低1ダメージは受ける', () => {
-      const player = new Player({ defense: 100 })
+      const player = new Player({ hp: 100, maxHp: 100, defense: 100 })
       const actual = player.takeDamage(1)
       expect(actual).toBe(1)
       expect(player.hp).toBe(99)
@@ -92,13 +92,13 @@ describe('Player', () => {
     it('データのコピーを返す', () => {
       const player = new Player()
       const json = player.toJSON()
-      expect(json.hp).toBe(100)
+      expect(json.hp).toBe(25)
       expect(json.position).toEqual({ x: 7, y: 7 })
 
       // 元データに影響しないことを確認
       json.hp = 0
       json.position.x = 999
-      expect(player.hp).toBe(100)
+      expect(player.hp).toBe(25)
       expect(player.position.x).toBe(7)
     })
   })

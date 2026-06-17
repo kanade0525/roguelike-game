@@ -9,7 +9,7 @@
     "showGrid": false
   },
   "playerConfig": {
-    "maxHealth": 100,
+    "maxHealth": 25,
     "attack": 10,
     "defense": 5,
     "dodge": 0.05,
