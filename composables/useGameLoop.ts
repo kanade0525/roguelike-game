@@ -40,6 +40,24 @@ export function useGameLoop() {
   const store = useGameStore()
   const debug = useDebugMode()
 
+  // 満腹度を減らし、閾値を跨いだ時のメッセージを返す
+  function tickSatiation(): string[] {
+    const before = store.player.satiation
+    store.decreaseSatiation(1)
+    const after = store.player.satiation
+    const messages: string[] = []
+    if (before > 30 && after <= 30) {
+      messages.push('お腹が減ってきた...')
+    }
+    if (before > 10 && after <= 10) {
+      messages.push('もう空腹で倒れそうだ...')
+    }
+    if (before > 0 && after === 0) {
+      messages.push('お腹がペコペコだ！')
+    }
+    return messages
+  }
+
   function enemyAttackPlayer(enemy: {
     type: string
     x: number
@@ -191,7 +209,7 @@ export function useGameLoop() {
     turnManager.enemyAction()
     turnManager.endTurn()
     store.endTurn()
-    store.decreaseSatiation(1)
+    messages.push(...tickSatiation())
 
     const combatEvents = [...playerEvents, ...enemyTurn.events]
     return { messages, combatEvents, playerEvents, enemyEvents: enemyTurn.events }
@@ -240,7 +258,7 @@ export function useGameLoop() {
     turnManager.enemyAction()
     turnManager.endTurn()
     store.endTurn()
-    store.decreaseSatiation(1)
+    messages.push(...tickSatiation())
 
     return {
       messages,
@@ -261,7 +279,7 @@ export function useGameLoop() {
     turnManager.enemyAction()
     turnManager.endTurn()
     store.endTurn()
-    store.decreaseSatiation(1)
+    messages.push(...tickSatiation())
 
     return {
       messages,
@@ -281,10 +299,10 @@ export function useGameLoop() {
     turnManager.enemyAction()
     turnManager.endTurn()
     store.endTurn()
-    store.decreaseSatiation(1)
+    const hungerMessages = tickSatiation()
 
     return {
-      messages: enemyTurn.messages,
+      messages: [...enemyTurn.messages, ...hungerMessages],
       combatEvents: enemyTurn.events,
       playerEvents: [],
       enemyEvents: enemyTurn.events,
