@@ -15,6 +15,15 @@
 
   const collapsed = ref(false)
 
+  function toggleCollapsed() {
+    collapsed.value = !collapsed.value
+    // 展開する瞬間は現在値で再同期 (畳んでる間にプレイで状態が変わっている可能性があるため)
+    if (!collapsed.value) {
+      syncPlayerDraft()
+      syncEnemyDrafts()
+    }
+  }
+
   const dungeonOptions = computed(() =>
     Object.entries(DUNGEONS).map(([id, def]) => ({
       id,
@@ -58,7 +67,7 @@
   }
 
   function savePlayer() {
-    store.setPlayerStats({
+    const updates: Parameters<typeof store.setPlayerStats>[0] = {
       hp: playerDraft.hp,
       maxHp: playerDraft.maxHp,
       attack: playerDraft.attack,
@@ -68,8 +77,17 @@
       exp: playerDraft.exp,
       satiation: playerDraft.satiation,
       maxSatiation: playerDraft.maxSatiation,
-      position: { x: playerDraft.posX, y: playerDraft.posY },
-    })
+    }
+    // 座標はドラフトと現在値が異なる時だけ反映する。
+    // (パネル開きっぱなしでプレイ→保存時に古い座標で player が飛んでしまうのを防ぐ)
+    if (
+      playerDraft.posX !== store.player.position.x ||
+      playerDraft.posY !== store.player.position.y
+    ) {
+      updates.position = { x: playerDraft.posX, y: playerDraft.posY }
+    }
+    store.setPlayerStats(updates)
+    syncPlayerDraft()
     notify('[DEBUG] プレイヤーを保存')
   }
 
@@ -218,7 +236,7 @@
   <div v-if="debugEnabled" class="debug-panel" :class="{ collapsed }">
     <header class="header">
       <span class="title">🛠 デバッグ</span>
-      <button class="btn-icon" type="button" title="折りたたみ" @click="collapsed = !collapsed">
+      <button class="btn-icon" type="button" title="折りたたみ" @click="toggleCollapsed">
         {{ collapsed ? '▼' : '▲' }}
       </button>
     </header>
