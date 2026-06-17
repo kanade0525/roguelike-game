@@ -41,6 +41,7 @@ interface FloorItem {
   itemId: string
   x: number
   y: number
+  amount?: number // gold ドロップなど数量を伴うアイテム用
 }
 
 interface InventoryItem {

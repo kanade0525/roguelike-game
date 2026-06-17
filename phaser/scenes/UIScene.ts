@@ -58,6 +58,10 @@ export class UIScene extends Phaser.Scene {
     this.statusBar.updateSatiation(current, max)
   }
 
+  updateGold(gold: number) {
+    this.statusBar.updateGold(gold)
+  }
+
   // --- メニュー ---
 
   toggleMenu() {

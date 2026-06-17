@@ -13,6 +13,7 @@ export class StatusBar {
   private levelText: Phaser.GameObjects.Text
   private hpText: Phaser.GameObjects.Text
   private satiationText: Phaser.GameObjects.Text
+  private goldText: Phaser.GameObjects.Text
 
   constructor(scene: Phaser.Scene) {
     const bg = scene.add.graphics()
@@ -21,27 +22,32 @@ export class StatusBar {
     bg.lineStyle(2, UI_COLOR.panelBorder, 1)
     bg.strokeRoundedRect(8, 8, 464, 36, 4)
 
-    const statusStyle = { ...BASE_STYLE, fontStyle: 'bold' }
+    const statusStyle = { ...BASE_STYLE, fontStyle: 'bold', fontSize: '14px' }
 
-    this.floorText = scene.add.text(20, 16, '1F', statusStyle)
-    this.levelText = scene.add.text(80, 16, 'Lv: 1', statusStyle)
-    this.hpText = scene.add.text(180, 16, 'HP: 100/100', statusStyle)
-    this.satiationText = scene.add.text(340, 16, '腹: 100', statusStyle)
+    this.floorText = scene.add.text(16, 16, 'B1F', statusStyle)
+    this.levelText = scene.add.text(70, 16, 'Lv 1', statusStyle)
+    this.hpText = scene.add.text(130, 16, 'HP 25/25', statusStyle)
+    this.satiationText = scene.add.text(260, 16, '腹 100', statusStyle)
+    this.goldText = scene.add.text(350, 16, '0G', statusStyle)
   }
 
   updateHP(current: number, max: number) {
-    this.hpText.setText(`HP: ${current}/${max}`)
+    this.hpText.setText(`HP ${current}/${max}`)
   }
 
   updateFloor(floor: number) {
-    this.floorText.setText(`${floor}F`)
+    this.floorText.setText(`B${floor}F`)
   }
 
   updateLevel(level: number) {
-    this.levelText.setText(`Lv: ${level}`)
+    this.levelText.setText(`Lv ${level}`)
   }
 
   updateSatiation(current: number, _max: number) {
-    this.satiationText.setText(`腹: ${current}`)
+    this.satiationText.setText(`腹 ${current}`)
+  }
+
+  updateGold(gold: number) {
+    this.goldText.setText(`${gold}G`)
   }
 }

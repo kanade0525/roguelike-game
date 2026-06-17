@@ -9,6 +9,7 @@ const ITEM_TINT: Record<string, number> = {
   armor: 0x66aaff,
   potion: 0x66ff66,
   food: 0xffcc66,
+  gold: 0xffd700,
   other: 0xcccccc,
 }
 
@@ -1136,6 +1137,7 @@ export class DungeonScene extends Phaser.Scene {
       updateFloor: (floor: number) => void
       updateLevel: (level: number) => void
       updateSatiation: (current: number, max: number) => void
+      updateGold: (gold: number) => void
     }
 
     for (const msg of messages) {
@@ -1147,6 +1149,7 @@ export class DungeonScene extends Phaser.Scene {
     uiScene.updateFloor(dungeon.floor)
     uiScene.updateLevel(player.level)
     uiScene.updateSatiation(player.satiation, player.maxSatiation)
+    uiScene.updateGold(player.gold ?? 0)
 
     if (player.level > this.lastPlayerLevel) {
       this.lastPlayerLevel = player.level

@@ -6,6 +6,21 @@ import { generateFloor } from '~/game/systems/DungeonGenerator'
 import { getFloorDifficulty } from '~/game/data/floorConfig'
 import { getDungeon, DEFAULT_DUNGEON_ID } from '~/game/dungeon'
 import { useDebugMode } from '~/composables/useDebugMode'
+import gameConfig from '~/game/data/gameConfig.json'
+
+const goldConfig = gameConfig.goldConfig ?? {
+  defaultDropAmount: 10,
+  dropVariance: 5,
+  dropChance: 0.3,
+}
+
+function rollGoldDrop(): number {
+  if (Math.random() >= goldConfig.dropChance) return 0
+  const base = goldConfig.defaultDropAmount
+  const variance = goldConfig.dropVariance
+  const amount = base + Math.floor(Math.random() * (variance * 2 + 1)) - variance
+  return Math.max(1, amount)
+}
 
 const turnManager = new TurnManager()
 const combatSystem = new CombatSystem()
@@ -188,6 +203,18 @@ export function useGameLoop() {
           messages.push(`${name}を倒した！`)
           store.gainExp(target.exp)
           killed = true
+
+          // ゴールドドロップ抽選 (撃破時の足元に gold アイテムとして配置)
+          const gold = rollGoldDrop()
+          if (gold > 0) {
+            store.addFloorItem({
+              id: `gold-${target.id}-${store.turn}`,
+              itemId: 'gold',
+              x: target.x,
+              y: target.y,
+              amount: gold,
+            })
+          }
         }
       }
 
@@ -245,7 +272,7 @@ export function useGameLoop() {
 
     const item = store.floorItems.find((i) => i.x === newX && i.y === newY)
     if (item) {
-      const pickup = store.pickupItem(item.itemId)
+      const pickup = store.pickupItem(item.itemId, item.amount ?? 1)
       store.removeFloorItem(item.id)
       if (pickup.message) {
         messages.push(pickup.message)
