@@ -1,17 +1,17 @@
 import type { FloorConfig } from '../types'
 
 const floor: FloorConfig = {
-  mapSize: { w: 30, h: 30 },
+  mapSize: { w: 22, h: 22 },
   enemies: {
-    count: 2,
+    count: 4,
     types: [{ type: 'skeleton', weight: 1 }],
   },
   items: {
-    count: 1,
+    count: 3,
     types: [
       { itemId: 'herb', weight: 3 },
       { itemId: 'bread', weight: 2 },
-      { itemId: 'sword', weight: 1 },
+      { itemId: 'sword', weight: 3 },
     ],
   },
 }

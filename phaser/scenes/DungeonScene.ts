@@ -824,11 +824,11 @@ export class DungeonScene extends Phaser.Scene {
     this.playCombatEffects(result.playerEvents)
 
     if (result.enemyEvents.length > 0) {
-      // 敵の攻撃を遅延再生（400ms後）
-      this.time.delayedCall(400, () => {
+      // 敵の攻撃を遅延再生 (短縮: 連打時の入力欠落を減らす)
+      this.time.delayedCall(200, () => {
         this.drawScene()
         this.playCombatEffects(result.enemyEvents)
-        this.time.delayedCall(300, () => {
+        this.time.delayedCall(150, () => {
           if (this.gameStore.player.hp <= 0 && this.gameStore.gameResult === 'active') {
             this.playDeathSequence()
           } else {
@@ -837,7 +837,7 @@ export class DungeonScene extends Phaser.Scene {
         })
       })
     } else {
-      this.time.delayedCall(300, () => {
+      this.time.delayedCall(150, () => {
         this.inputLocked = false
       })
     }
