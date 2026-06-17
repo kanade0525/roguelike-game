@@ -116,6 +116,8 @@ export class DungeonScene extends Phaser.Scene {
     this.load.audio('se_swing', '/assets/se/swing.mp3')
     this.load.audio('se_item_get', '/assets/se/item_get.mp3')
     this.load.audio('se_item_use', '/assets/se/item_use.mp3')
+    this.load.audio('se_game_clear', '/assets/se/game_clear.mp3')
+    this.load.audio('se_game_over', '/assets/se/game_over.mp3')
     this.load.audio('se_stairs', '/assets/se/stairs.mp3')
     this.load.audio('se_levelup', '/assets/se/levelup.mp3')
   }
@@ -576,6 +578,7 @@ export class DungeonScene extends Phaser.Scene {
       isMinimapOpen: () => boolean
       isInventoryOpen: () => boolean
       showConfirm: (message: string, onYes: () => void) => void
+      hideConfirm: () => void
       toggleMenu: () => void
       moveMenuCursor: (dx: number, dy: number) => void
       selectMenuItem: () => string | null
@@ -604,16 +607,17 @@ export class DungeonScene extends Phaser.Scene {
   private tryMove(dx: number, dy: number) {
     if (this.inputLocked) return
     const ui = this.getUiScene()
+    // 確認ダイアログは最上位レイヤなので最優先で操作する
+    if (ui.isConfirmOpen()) {
+      ui.moveConfirmCursor(dx)
+      return
+    }
     if (ui.isInventoryOpen()) {
       ui.moveInventoryCursor(dx, dy)
       return
     }
     if (ui.isMenuOpen()) {
       ui.moveMenuCursor(dx, dy)
-      return
-    }
-    if (ui.isConfirmOpen()) {
-      ui.moveConfirmCursor(dx)
       return
     }
 
@@ -660,6 +664,16 @@ export class DungeonScene extends Phaser.Scene {
       return
     }
 
+    // 確認ダイアログは最上位レイヤなので最優先で扱う (インベントリ→使用確認のような重ね表示にも対応)
+    if (ui.isConfirmOpen()) {
+      if (action === 'confirm') {
+        ui.confirmSelect()
+      } else if (action === 'inventory') {
+        ui.hideConfirm()
+      }
+      return
+    }
+
     if (ui.isInventoryOpen()) {
       this.handleInventoryAction(action)
       return
@@ -686,13 +700,6 @@ export class DungeonScene extends Phaser.Scene {
         }
       } else if (action === 'inventory') {
         ui.toggleMenu()
-      }
-      return
-    }
-
-    if (ui.isConfirmOpen()) {
-      if (action === 'confirm') {
-        ui.confirmSelect()
       }
       return
     }
@@ -835,6 +842,7 @@ export class DungeonScene extends Phaser.Scene {
   private playDeathSequence() {
     this.inputLocked = true
     this.stopBgm()
+    this.playSE('se_game_over')
 
     // プレイヤー位置に赤フラッシュ
     const playerPos = this.gameStore.player.position
@@ -1013,6 +1021,7 @@ export class DungeonScene extends Phaser.Scene {
 
   private playClearSequence(overlay: Phaser.GameObjects.Rectangle) {
     this.stopBgm()
+    this.playSE('se_game_clear')
 
     const clearText = this.add.text(
       this.screenWidth / 2,

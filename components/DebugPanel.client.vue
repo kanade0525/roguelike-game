@@ -176,8 +176,36 @@
 
   function warpEnemyToPlayer(id: string) {
     const p = store.player.position
-    store.setEnemyStats(id, { x: p.x, y: p.y - 1 })
-    notify()
+    const map = store.currentMap as number[][]
+    // プレイヤー周囲8マスから床かつ未占有のタイルを優先順に探す
+    const offsets = [
+      { dx: 0, dy: -1 },
+      { dx: 1, dy: 0 },
+      { dx: 0, dy: 1 },
+      { dx: -1, dy: 0 },
+      { dx: 1, dy: -1 },
+      { dx: 1, dy: 1 },
+      { dx: -1, dy: 1 },
+      { dx: -1, dy: -1 },
+    ]
+    const mapH = map.length
+    const mapW = mapH > 0 ? map[0].length : 0
+    const occupied = new Set<string>()
+    occupied.add(`${p.x},${p.y}`)
+    for (const e of store.enemies) {
+      if (e.id !== id) occupied.add(`${e.x},${e.y}`)
+    }
+    for (const { dx, dy } of offsets) {
+      const x = p.x + dx
+      const y = p.y + dy
+      if (x < 0 || x >= mapW || y < 0 || y >= mapH) continue
+      if (map[y][x] === 1) continue // 1 = WALL
+      if (occupied.has(`${x},${y}`)) continue
+      store.setEnemyStats(id, { x, y })
+      notify()
+      return
+    }
+    notify('[DEBUG] 周囲に空きマスがなく寄せられませんでした')
   }
 
   function removeEnemy(id: string) {
