@@ -755,9 +755,8 @@ export class DungeonScene extends Phaser.Scene {
         ui.showConfirm(`${def.name} を使用しますか？`, () => {
           const useResult = this.gameStore.useInventoryItem(index)
           if (useResult.success) {
-            // 使用結果メッセージを邪魔しないようインベントリを閉じる
-            ui.hideInventory()
             this.updateUI([useResult.message])
+            ui.refreshInventory(this.gameStore.inventory)
             if (useResult.message.includes('HP') || useResult.message.includes('満腹')) {
               this.playSE('se_item_use')
             }
@@ -772,8 +771,8 @@ export class DungeonScene extends Phaser.Scene {
         ui.showConfirm(`${def.name} を${verb}？`, () => {
           const equipResult = this.gameStore.equipInventoryItem(index)
           if (equipResult.success) {
-            ui.hideInventory()
             this.updateUI([equipResult.message])
+            ui.refreshInventory(this.gameStore.inventory)
           }
         })
         return

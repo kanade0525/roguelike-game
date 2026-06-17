@@ -26,8 +26,8 @@ export class InventoryOverlay {
   private descText: Phaser.GameObjects.Text
   private emptyText: Phaser.GameObjects.Text
   private readonly maxRows = 8
-  private readonly rowStartY = 96
-  private readonly rowHeight = 26
+  private readonly rowStartY = 90
+  private readonly rowHeight = 24
   private readonly rowStartX = 48
 
   // 最新のインベントリ（スナップショット）
@@ -38,20 +38,20 @@ export class InventoryOverlay {
     this.container.setVisible(false)
     this.container.setDepth(550)
 
-    // 半透明背景
-    const overlay = scene.add.rectangle(240, 255, 480, 510, 0x000000, 0.75)
+    // 半透明背景 (メッセージログ (y=413~457) を隠さないよう、ゲームエリアのみ覆う)
+    const overlay = scene.add.rectangle(240, 230, 480, 360, 0x000000, 0.75)
     this.container.add(overlay)
 
-    // パネル
+    // パネル (高さ 350、メッセージログ手前で終わる)
     const panel = scene.add.graphics()
     panel.fillStyle(UI_COLOR.panelBg, 0.95)
-    panel.fillRoundedRect(24, 56, 432, 380, 8)
+    panel.fillRoundedRect(24, 52, 432, 350, 8)
     panel.lineStyle(2, UI_COLOR.panelBorder, 1)
-    panel.strokeRoundedRect(24, 56, 432, 380, 8)
+    panel.strokeRoundedRect(24, 52, 432, 350, 8)
     this.container.add(panel)
 
     // タイトル
-    const title = scene.add.text(240, 72, 'どうぐ', {
+    const title = scene.add.text(240, 66, 'どうぐ', {
       ...BASE_STYLE,
       fontSize: '18px',
       fontStyle: 'bold',
@@ -80,12 +80,12 @@ export class InventoryOverlay {
     // 説明欄
     const descBg = scene.add.graphics()
     descBg.fillStyle(UI_COLOR.panelBg, 0.95)
-    descBg.fillRoundedRect(40, 336, 400, 52, 6)
+    descBg.fillRoundedRect(40, 300, 400, 48, 6)
     descBg.lineStyle(1, UI_COLOR.panelBorder, 1)
-    descBg.strokeRoundedRect(40, 336, 400, 52, 6)
+    descBg.strokeRoundedRect(40, 300, 400, 48, 6)
     this.container.add(descBg)
 
-    this.descText = scene.add.text(52, 348, '', {
+    this.descText = scene.add.text(52, 310, '', {
       ...BASE_STYLE,
       fontSize: '13px',
       color: TEXT_COLOR.subtle,
@@ -102,7 +102,7 @@ export class InventoryOverlay {
     this.container.add(this.cursor)
 
     // 操作ヒント
-    const hint = scene.add.text(240, 408, 'A:使う/装備  L:捨てる  B:閉じる', {
+    const hint = scene.add.text(240, 378, 'A:使う/装備  L:捨てる  B:閉じる', {
       ...BASE_STYLE,
       fontSize: '11px',
       color: TEXT_COLOR.dim,
