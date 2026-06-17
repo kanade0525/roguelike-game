@@ -148,26 +148,6 @@ export const ITEMS: Record<string, ItemDef> = {
     equippable: false,
     stackable: true,
   },
-  scroll_escape: {
-    id: 'scroll_escape',
-    name: 'リレミトの巻物',
-    description: 'ダンジョンから脱出する',
-    type: 'scroll',
-    effect: { scrollAction: 'escape' },
-    usable: true,
-    equippable: false,
-    stackable: true,
-  },
-  scroll_map: {
-    id: 'scroll_map',
-    name: '地形の巻物',
-    description: 'フロア全体の地形を表示',
-    type: 'scroll',
-    effect: { scrollAction: 'revealMap' },
-    usable: true,
-    equippable: false,
-    stackable: true,
-  },
   gold: {
     id: 'gold',
     name: 'ゴールド',
@@ -176,15 +156,6 @@ export const ITEMS: Record<string, ItemDef> = {
     usable: false,
     equippable: false,
     stackable: true,
-  },
-  strange_safe: {
-    id: 'strange_safe',
-    name: '謎の金庫',
-    description: '中身は鑑定しないとわからない',
-    type: 'special',
-    usable: false,
-    equippable: false,
-    stackable: false,
   },
 }
 

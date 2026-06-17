@@ -3,20 +3,20 @@ import { getFloorDifficulty } from '../../../game/data/floorConfig'
 
 describe('floorConfig', () => {
   describe('getFloorDifficulty (silentForest)', () => {
-    it('1Fの敵数が2', () => {
+    it('1Fの敵数が4', () => {
       const config = getFloorDifficulty(1, 'silentForest')
-      expect(config.enemyCount).toBe(2)
+      expect(config.enemyCount).toBe(4)
     })
 
-    it('4Fの敵数が5', () => {
+    it('4Fの敵数が10', () => {
       const config = getFloorDifficulty(4, 'silentForest')
-      expect(config.enemyCount).toBe(5)
+      expect(config.enemyCount).toBe(10)
     })
 
     it('フロアごとにマップサイズが設定される', () => {
       const config = getFloorDifficulty(1, 'silentForest')
-      expect(config.mapWidth).toBe(30)
-      expect(config.mapHeight).toBe(30)
+      expect(config.mapWidth).toBe(22)
+      expect(config.mapHeight).toBe(22)
     })
 
     it('ボスフロア判定', () => {

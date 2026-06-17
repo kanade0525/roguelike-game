@@ -30,6 +30,14 @@ export default defineNuxtPlugin(() => {
 
   console.log('↑ ↑ ↓ ↓ ← → ← → B A')
 
+  // 起動・終了メッセージをゲーム画面のメッセージログに出す (#57 受け入れ条件)
+  debug.onEnable(() => {
+    window.__katabasis?.refresh?.('🛠 デバッグモード ON')
+  })
+  debug.onDisable(() => {
+    window.__katabasis?.refresh?.('🛠 デバッグモード OFF')
+  })
+
   window.__katabasis = {
     debug: {
       enable: debug.enable,

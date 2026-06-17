@@ -131,11 +131,10 @@ describe('ITEMS データ整合性', () => {
     }
   })
 
-  it('scroll/gold/special タイプのアイテムが存在する', () => {
+  it('gold タイプのアイテムが存在する', () => {
+    // scroll / special は M3 範囲外なので具体的アイテムは未定義 (型は items.ts に予約済み)
     const types = Object.values(ITEMS).map((i) => i.type)
-    expect(types).toContain('scroll')
     expect(types).toContain('gold')
-    expect(types).toContain('special')
   })
 
   it('ポーション・食料・スクロール・ゴールドは stackable=true', () => {

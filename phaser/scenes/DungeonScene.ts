@@ -847,6 +847,8 @@ export class DungeonScene extends Phaser.Scene {
     this.inputLocked = true
     this.stopBgm()
     this.playSE('se_game_over')
+    // 持ち物全ロスト (issue #7)
+    this.gameStore.clearInventory()
 
     // プレイヤー位置に赤フラッシュ
     const playerPos = this.gameStore.player.position

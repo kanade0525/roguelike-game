@@ -223,6 +223,10 @@ export const useGameStore = defineStore('game', {
       this.enemies = []
     },
 
+    clearInventory() {
+      this.inventory = []
+    },
+
     addFloorItem(item: FloorItem) {
       this.floorItems.push(item)
     },
