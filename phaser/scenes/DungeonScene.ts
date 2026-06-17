@@ -9,6 +9,7 @@ const ITEM_TINT: Record<string, number> = {
   armor: 0x66aaff,
   potion: 0x66ff66,
   food: 0xffcc66,
+  gold: 0xffd700,
   other: 0xcccccc,
 }
 
@@ -105,6 +106,7 @@ export class DungeonScene extends Phaser.Scene {
     }
     // アイテム
     this.load.image('weapon_sword', '/assets/tiles/weapon_anime_sword.png')
+    this.load.image('flask_green', '/assets/tiles/flask_green.png')
 
     // SE（ファイルが存在しない場合はロードエラーを無視）
     this.load.on('loaderror', () => {})
@@ -114,6 +116,9 @@ export class DungeonScene extends Phaser.Scene {
     this.load.audio('se_critical', '/assets/se/critical.mp3')
     this.load.audio('se_swing', '/assets/se/swing.mp3')
     this.load.audio('se_item_get', '/assets/se/item_get.mp3')
+    this.load.audio('se_item_use', '/assets/se/item_use.mp3')
+    this.load.audio('se_game_clear', '/assets/se/game_clear.mp3')
+    this.load.audio('se_game_over', '/assets/se/game_over.mp3')
     this.load.audio('se_stairs', '/assets/se/stairs.mp3')
     this.load.audio('se_levelup', '/assets/se/levelup.mp3')
   }
@@ -491,10 +496,17 @@ export class DungeonScene extends Phaser.Scene {
       const screenTileY = item.y - viewStartY
       const x = this.offsetX + screenTileX * this.tileWidth + this.tileWidth / 2
       const y = this.offsetY + screenTileY * this.tileHeight + this.tileHeight / 2
-      const sprite = this.add.image(x, y, 'weapon_sword')
-      sprite.setScale(this.tileScale * 0.35)
-      const type = ITEMS[item.itemId]?.type ?? 'other'
-      sprite.setTint(ITEM_TINT[type] ?? 0xffffff)
+      const def = ITEMS[item.itemId]
+      const spriteKey = def?.sprite && this.textures.exists(def.sprite) ? def.sprite : 'weapon_sword'
+      const sprite = this.add.image(x, y, spriteKey)
+      // 専用スプライト (flask 等) は元画像が小さいので大きめに描画する
+      const scaleFactor = spriteKey === 'weapon_sword' ? 0.35 : 0.55
+      sprite.setScale(this.tileScale * scaleFactor)
+      const type = def?.type ?? 'other'
+      // 専用スプライトは tint しない（色被りを防ぐ）
+      if (spriteKey === 'weapon_sword') {
+        sprite.setTint(ITEM_TINT[type] ?? 0xffffff)
+      }
       this.entityContainer.add(sprite)
     }
   }
@@ -569,6 +581,7 @@ export class DungeonScene extends Phaser.Scene {
       isMinimapOpen: () => boolean
       isInventoryOpen: () => boolean
       showConfirm: (message: string, onYes: () => void) => void
+      hideConfirm: () => void
       toggleMenu: () => void
       moveMenuCursor: (dx: number, dy: number) => void
       selectMenuItem: () => string | null
@@ -597,16 +610,17 @@ export class DungeonScene extends Phaser.Scene {
   private tryMove(dx: number, dy: number) {
     if (this.inputLocked) return
     const ui = this.getUiScene()
+    // 確認ダイアログは最上位レイヤなので最優先で操作する
+    if (ui.isConfirmOpen()) {
+      ui.moveConfirmCursor(dx)
+      return
+    }
     if (ui.isInventoryOpen()) {
       ui.moveInventoryCursor(dx, dy)
       return
     }
     if (ui.isMenuOpen()) {
       ui.moveMenuCursor(dx, dy)
-      return
-    }
-    if (ui.isConfirmOpen()) {
-      ui.moveConfirmCursor(dx)
       return
     }
 
@@ -653,6 +667,16 @@ export class DungeonScene extends Phaser.Scene {
       return
     }
 
+    // 確認ダイアログは最上位レイヤなので最優先で扱う (インベントリ→使用確認のような重ね表示にも対応)
+    if (ui.isConfirmOpen()) {
+      if (action === 'confirm') {
+        ui.confirmSelect()
+      } else if (action === 'inventory') {
+        ui.hideConfirm()
+      }
+      return
+    }
+
     if (ui.isInventoryOpen()) {
       this.handleInventoryAction(action)
       return
@@ -679,13 +703,6 @@ export class DungeonScene extends Phaser.Scene {
         }
       } else if (action === 'inventory') {
         ui.toggleMenu()
-      }
-      return
-    }
-
-    if (ui.isConfirmOpen()) {
-      if (action === 'confirm') {
-        ui.confirmSelect()
       }
       return
     }
@@ -731,17 +748,33 @@ export class DungeonScene extends Phaser.Scene {
     if (action === 'confirm') {
       const entry = this.gameStore.inventory[index]
       if (!entry) return
-      const useResult = this.gameStore.useInventoryItem(index)
-      if (useResult.success) {
-        this.updateUI([useResult.message])
-        ui.refreshInventory(this.gameStore.inventory)
-        this.consumeTurnAfterItem()
+      const def = ITEMS[entry.itemId]
+      if (!def) return
+
+      if (def.usable) {
+        ui.showConfirm(`${def.name} を使用しますか？`, () => {
+          const useResult = this.gameStore.useInventoryItem(index)
+          if (useResult.success) {
+            this.updateUI([useResult.message])
+            ui.refreshInventory(this.gameStore.inventory)
+            if (useResult.message.includes('HP') || useResult.message.includes('満腹')) {
+              this.playSE('se_item_use')
+            }
+            this.consumeTurnAfterItem()
+          }
+        })
         return
       }
-      const equipResult = this.gameStore.equipInventoryItem(index)
-      if (equipResult.success) {
-        this.updateUI([equipResult.message])
-        ui.refreshInventory(this.gameStore.inventory)
+
+      if (def.equippable) {
+        const verb = entry.equipped ? '外しますか' : '装備しますか'
+        ui.showConfirm(`${def.name} を${verb}？`, () => {
+          const equipResult = this.gameStore.equipInventoryItem(index)
+          if (equipResult.success) {
+            this.updateUI([equipResult.message])
+            ui.refreshInventory(this.gameStore.inventory)
+          }
+        })
         return
       }
       return
@@ -813,6 +846,7 @@ export class DungeonScene extends Phaser.Scene {
   private playDeathSequence() {
     this.inputLocked = true
     this.stopBgm()
+    this.playSE('se_game_over')
 
     // プレイヤー位置に赤フラッシュ
     const playerPos = this.gameStore.player.position
@@ -991,6 +1025,7 @@ export class DungeonScene extends Phaser.Scene {
 
   private playClearSequence(overlay: Phaser.GameObjects.Rectangle) {
     this.stopBgm()
+    this.playSE('se_game_clear')
 
     const clearText = this.add.text(
       this.screenWidth / 2,
@@ -1104,6 +1139,7 @@ export class DungeonScene extends Phaser.Scene {
       updateFloor: (floor: number) => void
       updateLevel: (level: number) => void
       updateSatiation: (current: number, max: number) => void
+      updateGold: (gold: number) => void
     }
 
     for (const msg of messages) {
@@ -1115,6 +1151,7 @@ export class DungeonScene extends Phaser.Scene {
     uiScene.updateFloor(dungeon.floor)
     uiScene.updateLevel(player.level)
     uiScene.updateSatiation(player.satiation, player.maxSatiation)
+    uiScene.updateGold(player.gold ?? 0)
 
     if (player.level > this.lastPlayerLevel) {
       this.lastPlayerLevel = player.level

@@ -16,8 +16,8 @@ export class Player {
 
   constructor(data?: Partial<PlayerData>) {
     this.data = {
-      hp: data?.hp ?? 100,
-      maxHp: data?.maxHp ?? 100,
+      hp: data?.hp ?? 25,
+      maxHp: data?.maxHp ?? 25,
       attack: data?.attack ?? 10,
       defense: data?.defense ?? 5,
       position: data?.position ?? { x: 7, y: 7 },

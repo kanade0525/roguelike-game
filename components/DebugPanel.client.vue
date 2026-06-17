@@ -4,6 +4,7 @@
   import { useGameLoop } from '~/composables/useGameLoop'
   import { useDebugMode } from '~/composables/useDebugMode'
   import { DUNGEONS, getDungeon } from '~/game/dungeon'
+  import { ITEMS } from '~/game/data/items'
 
   const store = useGameStore()
   const gameLoop = useGameLoop()
@@ -14,6 +15,15 @@
   const debugOneShot = debug.oneShot
 
   const collapsed = ref(false)
+
+  function toggleCollapsed() {
+    collapsed.value = !collapsed.value
+    // 展開する瞬間は現在値で再同期 (畳んでる間にプレイで状態が変わっている可能性があるため)
+    if (!collapsed.value) {
+      syncPlayerDraft()
+      syncEnemyDrafts()
+    }
+  }
 
   const dungeonOptions = computed(() =>
     Object.entries(DUNGEONS).map(([id, def]) => ({
@@ -58,7 +68,7 @@
   }
 
   function savePlayer() {
-    store.setPlayerStats({
+    const updates: Parameters<typeof store.setPlayerStats>[0] = {
       hp: playerDraft.hp,
       maxHp: playerDraft.maxHp,
       attack: playerDraft.attack,
@@ -68,8 +78,17 @@
       exp: playerDraft.exp,
       satiation: playerDraft.satiation,
       maxSatiation: playerDraft.maxSatiation,
-      position: { x: playerDraft.posX, y: playerDraft.posY },
-    })
+    }
+    // 座標はドラフトと現在値が異なる時だけ反映する。
+    // (パネル開きっぱなしでプレイ→保存時に古い座標で player が飛んでしまうのを防ぐ)
+    if (
+      playerDraft.posX !== store.player.position.x ||
+      playerDraft.posY !== store.player.position.y
+    ) {
+      updates.position = { x: playerDraft.posX, y: playerDraft.posY }
+    }
+    store.setPlayerStats(updates)
+    syncPlayerDraft()
     notify('[DEBUG] プレイヤーを保存')
   }
 
@@ -152,6 +171,24 @@
     }
   })
 
+  // アイテム付与
+  const itemOptions = computed(() =>
+    Object.values(ITEMS).map((i) => ({
+      id: i.id,
+      name: i.name,
+      type: i.type,
+    }))
+  )
+  const giveItemId = ref('herb')
+  const giveItemAmount = ref(1)
+
+  function giveItem() {
+    const def = ITEMS[giveItemId.value]
+    if (!def) return
+    const result = store.pickupItem(giveItemId.value, Math.max(1, giveItemAmount.value))
+    notify(`[DEBUG] ${result.message}`)
+  }
+
   function jumpToFloor() {
     const def = getDungeon(jumpDungeonId.value)
     const floor = Math.max(1, Math.min(jumpFloor.value, def.floors.length))
@@ -176,8 +213,36 @@
 
   function warpEnemyToPlayer(id: string) {
     const p = store.player.position
-    store.setEnemyStats(id, { x: p.x, y: p.y - 1 })
-    notify()
+    const map = store.currentMap as number[][]
+    // プレイヤー周囲8マスから床かつ未占有のタイルを優先順に探す
+    const offsets = [
+      { dx: 0, dy: -1 },
+      { dx: 1, dy: 0 },
+      { dx: 0, dy: 1 },
+      { dx: -1, dy: 0 },
+      { dx: 1, dy: -1 },
+      { dx: 1, dy: 1 },
+      { dx: -1, dy: 1 },
+      { dx: -1, dy: -1 },
+    ]
+    const mapH = map.length
+    const mapW = mapH > 0 ? map[0].length : 0
+    const occupied = new Set<string>()
+    occupied.add(`${p.x},${p.y}`)
+    for (const e of store.enemies) {
+      if (e.id !== id) occupied.add(`${e.x},${e.y}`)
+    }
+    for (const { dx, dy } of offsets) {
+      const x = p.x + dx
+      const y = p.y + dy
+      if (x < 0 || x >= mapW || y < 0 || y >= mapH) continue
+      if (map[y][x] === 1) continue // 1 = WALL
+      if (occupied.has(`${x},${y}`)) continue
+      store.setEnemyStats(id, { x, y })
+      notify()
+      return
+    }
+    notify('[DEBUG] 周囲に空きマスがなく寄せられませんでした')
   }
 
   function removeEnemy(id: string) {
@@ -190,7 +255,7 @@
   <div v-if="debugEnabled" class="debug-panel" :class="{ collapsed }">
     <header class="header">
       <span class="title">🛠 デバッグ</span>
-      <button class="btn-icon" type="button" title="折りたたみ" @click="collapsed = !collapsed">
+      <button class="btn-icon" type="button" title="折りたたみ" @click="toggleCollapsed">
         {{ collapsed ? '▼' : '▲' }}
       </button>
     </header>
@@ -277,6 +342,22 @@
             <option v-for="f in jumpFloorOptions" :key="f" :value="f">{{ f }}F</option>
           </select>
           <button class="btn-sm primary" type="button" @click="jumpToFloor">ジャンプ</button>
+        </div>
+      </section>
+
+      <section class="section">
+        <h3>アイテム付与</h3>
+        <div class="row">
+          <select v-model="giveItemId">
+            <option v-for="i in itemOptions" :key="i.id" :value="i.id">
+              {{ i.name }} ({{ i.type }})
+            </option>
+          </select>
+        </div>
+        <div class="row">
+          <label>個数</label>
+          <input v-model.number="giveItemAmount" type="number" min="1" max="99" >
+          <button class="btn-sm primary" type="button" @click="giveItem">追加</button>
         </div>
       </section>
 

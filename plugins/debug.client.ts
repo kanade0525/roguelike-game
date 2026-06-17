@@ -1,4 +1,5 @@
 import { useDebugMode } from '~/composables/useDebugMode'
+import { useGameStore } from '~/stores/gameStore'
 
 declare global {
   interface Window {
@@ -15,6 +16,8 @@ declare global {
       }
       /** Phaser シーンが登録する全画面再描画フック (DungeonScene.create で設定) */
       refresh?: (message?: string) => void
+      /** DevTools / 自動検証用に Pinia store ハンドルを露出 */
+      getStore?: () => ReturnType<typeof useGameStore>
     }
   }
 }
@@ -48,5 +51,6 @@ export default defineNuxtPlugin(() => {
         debug.oneShot.value = v
       },
     },
+    getStore: () => useGameStore(),
   }
 })

@@ -9,7 +9,7 @@
     "showGrid": false
   },
   "playerConfig": {
-    "maxHealth": 100,
+    "maxHealth": 25,
     "attack": 10,
     "defense": 5,
     "dodge": 0.05,
@@ -43,9 +43,9 @@
     "enhanceCostMultiplier": 1.5
   },
   "goldConfig": {
-    "defaultDropAmount": 10,
-    "dropVariance": 5,
-    "dropChance": 0.3
+    "defaultDropAmount": 12,
+    "dropVariance": 7,
+    "dropChance": 0.6
   },
   "dungeonConfig": {
     "floorsTotal": 10,

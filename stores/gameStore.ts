@@ -41,6 +41,7 @@ interface FloorItem {
   itemId: string
   x: number
   y: number
+  amount?: number // gold ドロップなど数量を伴うアイテム用
 }
 
 interface InventoryItem {
@@ -77,8 +78,8 @@ interface GameState {
 export const useGameStore = defineStore('game', {
   state: (): GameState => ({
     player: {
-      hp: 100,
-      maxHp: 100,
+      hp: 25,
+      maxHp: 25,
       level: 1,
       exp: 0,
       satiation: 100,
@@ -365,6 +366,9 @@ export const useGameStore = defineStore('game', {
     },
 
     decreaseSatiation(amount: number) {
+      // 満腹度はターン数 SATIATION_DECREASE_INTERVAL ごとに amount 減らす
+      const SATIATION_DECREASE_INTERVAL = 3
+      if (this.turn % SATIATION_DECREASE_INTERVAL !== 0) return
       this.player.satiation = Math.max(0, this.player.satiation - amount)
     },
 

@@ -6,6 +6,21 @@ import { generateFloor } from '~/game/systems/DungeonGenerator'
 import { getFloorDifficulty } from '~/game/data/floorConfig'
 import { getDungeon, DEFAULT_DUNGEON_ID } from '~/game/dungeon'
 import { useDebugMode } from '~/composables/useDebugMode'
+import gameConfig from '~/game/data/gameConfig.json'
+
+const goldConfig = gameConfig.goldConfig ?? {
+  defaultDropAmount: 10,
+  dropVariance: 5,
+  dropChance: 0.3,
+}
+
+function rollGoldDrop(): number {
+  if (Math.random() >= goldConfig.dropChance) return 0
+  const base = goldConfig.defaultDropAmount
+  const variance = goldConfig.dropVariance
+  const amount = base + Math.floor(Math.random() * (variance * 2 + 1)) - variance
+  return Math.max(1, amount)
+}
 
 const turnManager = new TurnManager()
 const combatSystem = new CombatSystem()
@@ -39,6 +54,24 @@ function getEnemyName(type: string): string {
 export function useGameLoop() {
   const store = useGameStore()
   const debug = useDebugMode()
+
+  // 満腹度を減らし、閾値を跨いだ時のメッセージを返す
+  function tickSatiation(): string[] {
+    const before = store.player.satiation
+    store.decreaseSatiation(1)
+    const after = store.player.satiation
+    const messages: string[] = []
+    if (before > 30 && after <= 30) {
+      messages.push('お腹が減ってきた...')
+    }
+    if (before > 10 && after <= 10) {
+      messages.push('もう空腹で倒れそうだ...')
+    }
+    if (before > 0 && after === 0) {
+      messages.push('お腹がペコペコだ！')
+    }
+    return messages
+  }
 
   function enemyAttackPlayer(enemy: {
     type: string
@@ -167,8 +200,32 @@ export function useGameLoop() {
         if (!updated || updated.hp <= 0) {
           store.removeEnemy(target.id)
           store.incrementDefeatedEnemies()
-          messages.push(`${name}を倒した！`)
+          const beforeLv = store.player.level
+          const beforeMaxHp = store.player.maxHp
+          const beforeAtk = store.player.attack
+          const beforeDef = store.player.defense
           store.gainExp(target.exp)
+          const leveledUp = store.player.level > beforeLv
+          const gold = rollGoldDrop()
+          if (gold > 0) {
+            store.player.gold += gold
+          }
+
+          // 撃破ログを1行に統合: 「Xを倒した！ EXP+5  10G」
+          const parts = [`${name}を倒した！ EXP+${target.exp}`]
+          if (gold > 0) parts.push(`${gold}G`)
+          messages.push(parts.join('  '))
+          if (leveledUp) {
+            const dHp = store.player.maxHp - beforeMaxHp
+            const dAtk = store.player.attack - beforeAtk
+            const dDef = store.player.defense - beforeDef
+            const upParts: string[] = []
+            if (dHp !== 0) upParts.push(`最大HP+${dHp}`)
+            if (dAtk !== 0) upParts.push(`攻撃+${dAtk}`)
+            if (dDef !== 0) upParts.push(`防御+${dDef}`)
+            const detail = upParts.length > 0 ? `  ${upParts.join('  ')}` : ''
+            messages.push(`レベルが${store.player.level}に上がった！${detail}`)
+          }
           killed = true
         }
       }
@@ -191,7 +248,7 @@ export function useGameLoop() {
     turnManager.enemyAction()
     turnManager.endTurn()
     store.endTurn()
-    store.decreaseSatiation(1)
+    messages.push(...tickSatiation())
 
     const combatEvents = [...playerEvents, ...enemyTurn.events]
     return { messages, combatEvents, playerEvents, enemyEvents: enemyTurn.events }
@@ -227,7 +284,7 @@ export function useGameLoop() {
 
     const item = store.floorItems.find((i) => i.x === newX && i.y === newY)
     if (item) {
-      const pickup = store.pickupItem(item.itemId)
+      const pickup = store.pickupItem(item.itemId, item.amount ?? 1)
       store.removeFloorItem(item.id)
       if (pickup.message) {
         messages.push(pickup.message)
@@ -240,7 +297,7 @@ export function useGameLoop() {
     turnManager.enemyAction()
     turnManager.endTurn()
     store.endTurn()
-    store.decreaseSatiation(1)
+    messages.push(...tickSatiation())
 
     return {
       messages,
@@ -261,7 +318,7 @@ export function useGameLoop() {
     turnManager.enemyAction()
     turnManager.endTurn()
     store.endTurn()
-    store.decreaseSatiation(1)
+    messages.push(...tickSatiation())
 
     return {
       messages,
@@ -281,10 +338,10 @@ export function useGameLoop() {
     turnManager.enemyAction()
     turnManager.endTurn()
     store.endTurn()
-    store.decreaseSatiation(1)
+    const hungerMessages = tickSatiation()
 
     return {
-      messages: enemyTurn.messages,
+      messages: [...enemyTurn.messages, ...hungerMessages],
       combatEvents: enemyTurn.events,
       playerEvents: [],
       enemyEvents: enemyTurn.events,
