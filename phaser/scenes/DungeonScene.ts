@@ -499,7 +499,9 @@ export class DungeonScene extends Phaser.Scene {
       const def = ITEMS[item.itemId]
       const spriteKey = def?.sprite && this.textures.exists(def.sprite) ? def.sprite : 'weapon_sword'
       const sprite = this.add.image(x, y, spriteKey)
-      sprite.setScale(this.tileScale * 0.35)
+      // 専用スプライト (flask 等) は元画像が小さいので大きめに描画する
+      const scaleFactor = spriteKey === 'weapon_sword' ? 0.35 : 0.7
+      sprite.setScale(this.tileScale * scaleFactor)
       const type = def?.type ?? 'other'
       // 専用スプライトは tint しない（色被りを防ぐ）
       if (spriteKey === 'weapon_sword') {

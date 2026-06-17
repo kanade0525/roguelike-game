@@ -200,9 +200,12 @@ export function useGameLoop() {
         if (!updated || updated.hp <= 0) {
           store.removeEnemy(target.id)
           store.incrementDefeatedEnemies()
-          const levelBefore = store.player.level
+          const beforeLv = store.player.level
+          const beforeMaxHp = store.player.maxHp
+          const beforeAtk = store.player.attack
+          const beforeDef = store.player.defense
           store.gainExp(target.exp)
-          const leveledUp = store.player.level > levelBefore
+          const leveledUp = store.player.level > beforeLv
           const gold = rollGoldDrop()
           if (gold > 0) {
             store.player.gold += gold
@@ -213,7 +216,15 @@ export function useGameLoop() {
           if (gold > 0) parts.push(`${gold}G`)
           messages.push(parts.join('  '))
           if (leveledUp) {
-            messages.push(`レベルが${store.player.level}に上がった！`)
+            const dHp = store.player.maxHp - beforeMaxHp
+            const dAtk = store.player.attack - beforeAtk
+            const dDef = store.player.defense - beforeDef
+            const upParts: string[] = []
+            if (dHp !== 0) upParts.push(`最大HP+${dHp}`)
+            if (dAtk !== 0) upParts.push(`攻撃+${dAtk}`)
+            if (dDef !== 0) upParts.push(`防御+${dDef}`)
+            const detail = upParts.length > 0 ? `  ${upParts.join('  ')}` : ''
+            messages.push(`レベルが${store.player.level}に上がった！${detail}`)
           }
           killed = true
         }
