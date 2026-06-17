@@ -764,7 +764,8 @@ export class DungeonScene extends Phaser.Scene {
       }
 
       if (def.equippable) {
-        ui.showConfirm(`${def.name} を装備しますか？`, () => {
+        const verb = entry.equipped ? '外しますか' : '装備しますか'
+        ui.showConfirm(`${def.name} を${verb}？`, () => {
           const equipResult = this.gameStore.equipInventoryItem(index)
           if (equipResult.success) {
             this.updateUI([equipResult.message])
