@@ -4,6 +4,7 @@
   import { useGameLoop } from '~/composables/useGameLoop'
   import { useDebugMode } from '~/composables/useDebugMode'
   import { DUNGEONS, getDungeon } from '~/game/dungeon'
+  import { ITEMS } from '~/game/data/items'
 
   const store = useGameStore()
   const gameLoop = useGameLoop()
@@ -170,6 +171,24 @@
     }
   })
 
+  // アイテム付与
+  const itemOptions = computed(() =>
+    Object.values(ITEMS).map((i) => ({
+      id: i.id,
+      name: i.name,
+      type: i.type,
+    }))
+  )
+  const giveItemId = ref('herb')
+  const giveItemAmount = ref(1)
+
+  function giveItem() {
+    const def = ITEMS[giveItemId.value]
+    if (!def) return
+    const result = store.pickupItem(giveItemId.value, Math.max(1, giveItemAmount.value))
+    notify(`[DEBUG] ${result.message}`)
+  }
+
   function jumpToFloor() {
     const def = getDungeon(jumpDungeonId.value)
     const floor = Math.max(1, Math.min(jumpFloor.value, def.floors.length))
@@ -323,6 +342,22 @@
             <option v-for="f in jumpFloorOptions" :key="f" :value="f">{{ f }}F</option>
           </select>
           <button class="btn-sm primary" type="button" @click="jumpToFloor">ジャンプ</button>
+        </div>
+      </section>
+
+      <section class="section">
+        <h3>アイテム付与</h3>
+        <div class="row">
+          <select v-model="giveItemId">
+            <option v-for="i in itemOptions" :key="i.id" :value="i.id">
+              {{ i.name }} ({{ i.type }})
+            </option>
+          </select>
+        </div>
+        <div class="row">
+          <label>個数</label>
+          <input v-model.number="giveItemAmount" type="number" min="1" max="99" >
+          <button class="btn-sm primary" type="button" @click="giveItem">追加</button>
         </div>
       </section>
 
