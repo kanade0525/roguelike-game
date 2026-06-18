@@ -371,7 +371,7 @@ export const useGameStore = defineStore('game', {
 
     decreaseSatiation(amount: number) {
       // 満腹度はターン数 SATIATION_DECREASE_INTERVAL ごとに amount 減らす
-      const SATIATION_DECREASE_INTERVAL = 3
+      const SATIATION_DECREASE_INTERVAL = 15
       if (this.turn % SATIATION_DECREASE_INTERVAL !== 0) return
       this.player.satiation = Math.max(0, this.player.satiation - amount)
     },
