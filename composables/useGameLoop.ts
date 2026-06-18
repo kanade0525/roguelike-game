@@ -402,8 +402,8 @@ export function useGameLoop() {
 
     const difficulty = getFloorDifficulty(nextFloor, store.dungeon.dungeonId)
     const floorMsg = difficulty.isBossFloor
-      ? `${nextFloor}F — ボスフロアに到達した！`
-      : `${nextFloor}Fに到着した！`
+      ? `B${nextFloor}F — ボスフロアに到達した！`
+      : `B${nextFloor}Fに到着した！`
 
     return [floorMsg]
   }

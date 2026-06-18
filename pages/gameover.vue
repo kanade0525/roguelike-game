@@ -40,7 +40,7 @@
       <dl class="stat-list">
         <div class="stat-row">
           <dt>到達階層</dt>
-          <dd>{{ finalFloor }} F</dd>
+          <dd>B{{ finalFloor }}F</dd>
         </div>
         <div class="stat-row">
           <dt>最終レベル</dt>

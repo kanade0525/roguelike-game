@@ -196,7 +196,7 @@
     gameLoop.initFloor(floor)
     syncPlayerDraft()
     syncEnemyDrafts()
-    notify(`[DEBUG] ${def.name} ${floor}Fへジャンプ`)
+    notify(`[DEBUG] ${def.name} B${floor}Fへジャンプ`)
   }
 
   function killAllEnemies() {

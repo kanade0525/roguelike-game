@@ -261,7 +261,7 @@ export class DungeonScene extends Phaser.Scene {
         const floorLabel = this.add.text(
           this.screenWidth / 2,
           gameAreaCenterY,
-          `${dungeon.name}  ~${floor}F~`,
+          `${dungeon.name}  ~B${floor}F~`,
           {
             fontSize: '22px',
             fontFamily: '"DotGothic16", monospace',
