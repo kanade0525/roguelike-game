@@ -5,6 +5,7 @@ import {
   equipItem as calcEquip,
   unequipItem as calcUnequip,
 } from '~/game/systems/ItemSystem'
+import { computeDeathGoldLoss } from '~/game/systems/EconomySystem'
 import gameConfig from '~/game/data/gameConfig.json'
 
 interface PlayerState {
@@ -243,6 +244,21 @@ export const useGameStore = defineStore('game', {
     setLastRun(info: LastRun) {
       this.meta.lastRun = info
       this.persistMeta()
+    },
+
+    // 死亡時のペナルティ適用: 現ランgoldの一定割合をロスト、残りは拠点へ持ち帰る
+    applyDeathPenalty(): { lost: number; kept: number } {
+      const rate = gameConfig.deathPenalty?.goldLossRate ?? 1
+      const { lost, kept } = computeDeathGoldLoss(this.player.gold, rate)
+      this.meta.gold += kept
+      this.player.gold = 0
+      this.setLastRun({
+        result: 'dead',
+        goldBanked: kept,
+        goldLost: lost,
+        floor: this.dungeon.floor,
+      })
+      return { lost, kept }
     },
 
     addMessage(message: string) {

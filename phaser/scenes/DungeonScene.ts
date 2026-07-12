@@ -497,7 +497,8 @@ export class DungeonScene extends Phaser.Scene {
       const x = this.offsetX + screenTileX * this.tileWidth + this.tileWidth / 2
       const y = this.offsetY + screenTileY * this.tileHeight + this.tileHeight / 2
       const def = ITEMS[item.itemId]
-      const spriteKey = def?.sprite && this.textures.exists(def.sprite) ? def.sprite : 'weapon_sword'
+      const spriteKey =
+        def?.sprite && this.textures.exists(def.sprite) ? def.sprite : 'weapon_sword'
       const sprite = this.add.image(x, y, spriteKey)
       // 専用スプライト (flask 等) は元画像が小さいので大きめに描画する
       const scaleFactor = spriteKey === 'weapon_sword' ? 0.35 : 0.55
@@ -595,13 +596,9 @@ export class DungeonScene extends Phaser.Scene {
         exploredTiles: string[]
       ) => void
       hideMinimap: () => void
-      showInventory: (
-        inventory: { itemId: string; name: string; equipped?: boolean }[]
-      ) => void
+      showInventory: (inventory: { itemId: string; name: string; equipped?: boolean }[]) => void
       hideInventory: () => void
-      refreshInventory: (
-        inventory: { itemId: string; name: string; equipped?: boolean }[]
-      ) => void
+      refreshInventory: (inventory: { itemId: string; name: string; equipped?: boolean }[]) => void
       moveInventoryCursor: (dx: number, dy: number) => void
       getInventorySelectedIndex: () => number
     }
@@ -697,6 +694,10 @@ export class DungeonScene extends Phaser.Scene {
             )
           } else if (selected === '道具') {
             ui.showInventory(this.gameStore.inventory)
+          } else if (selected === '脱出') {
+            ui.showConfirm('ダンジョンから脱出しますか？', () => {
+              this.gameLoop.escapeDungeon()
+            })
           } else {
             this.updateUI([`${selected}（未実装）`])
           }
@@ -847,8 +848,9 @@ export class DungeonScene extends Phaser.Scene {
     this.inputLocked = true
     this.stopBgm()
     this.playSE('se_game_over')
-    // 持ち物全ロスト (issue #7)
+    // 持ち物全ロスト (issue #7) + gold ロスト (死亡ペナルティ, issue #37)
     this.gameStore.clearInventory()
+    this.gameStore.applyDeathPenalty()
 
     // プレイヤー位置に赤フラッシュ
     const playerPos = this.gameStore.player.position
@@ -1052,6 +1054,14 @@ export class DungeonScene extends Phaser.Scene {
       ease: 'Power2',
       onComplete: () => {
         this.time.delayedCall(1500, () => {
+          // 踏破は生還扱い: 現ランgoldを拠点へ持ち帰る (issue #37)
+          const banked = this.gameStore.bankRunGold()
+          this.gameStore.setLastRun({
+            result: 'cleared',
+            goldBanked: banked,
+            goldLost: 0,
+            floor: this.gameStore.dungeon.floor,
+          })
           this.gameStore.setGameResult('cleared')
           overlay.destroy()
         })

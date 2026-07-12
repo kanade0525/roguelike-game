@@ -28,7 +28,7 @@ export class MenuOverlay {
     const overlay = scene.add.rectangle(240, overlayY + overlayH / 2, 480, overlayH, 0x000000, 0.6)
     this.container.add(overlay)
 
-    // 左上: メニューボタン（道具/マップ/足元/作戦）
+    // 左上: メニューボタン（道具/マップ/足元/脱出）
     const menuBg = scene.add.graphics()
     menuBg.fillStyle(UI_COLOR.panelBg, 0.95)
     menuBg.fillRoundedRect(8, 56, 170, 76, 6)
@@ -40,7 +40,7 @@ export class MenuOverlay {
       { text: '道具', col: 0, row: 0 },
       { text: 'マップ', col: 1, row: 0 },
       { text: '足元', col: 0, row: 1 },
-      { text: '作戦', col: 1, row: 1 },
+      { text: '脱出', col: 1, row: 1 },
     ]
 
     const menuStyle = { ...BASE_STYLE, color: TEXT_COLOR.muted }
