@@ -5,7 +5,8 @@ import {
   equipItem as calcEquip,
   unequipItem as calcUnequip,
 } from '~/game/systems/ItemSystem'
-import { computeDeathGoldLoss } from '~/game/systems/EconomySystem'
+import { computeDeathGoldLoss, rollSafeGold } from '~/game/systems/EconomySystem'
+import { TILE } from '~/game/data/maps'
 import gameConfig from '~/game/data/gameConfig.json'
 
 interface PlayerState {
@@ -351,7 +352,11 @@ export const useGameStore = defineStore('game', {
       this.floorItems = []
     },
 
-    useInventoryItem(index: number): { success: boolean; message: string } {
+    useInventoryItem(index: number): {
+      success: boolean
+      message: string
+      scrollAction?: 'teleport' | 'revealMap' | 'escape'
+    } {
       const entry = this.inventory[index]
       if (!entry) return { success: false, message: '' }
       const def = ITEMS[entry.itemId]
@@ -365,7 +370,70 @@ export const useGameStore = defineStore('game', {
           this.inventory.splice(index, 1)
         }
       }
-      return { success: result.success, message: result.message }
+      // 巻物の状態変更系はストアで適用（'escape' は経路集約のため呼び出し側で処理）
+      if (result.scrollAction === 'teleport') {
+        this.teleportPlayerRandom()
+      } else if (result.scrollAction === 'revealMap') {
+        this.revealEntireMap()
+      }
+      return {
+        success: result.success,
+        message: result.message,
+        scrollAction: result.scrollAction,
+      }
+    },
+
+    // フロア内のランダムな床マスへプレイヤーを瞬間移動させる
+    teleportPlayerRandom(): boolean {
+      const map = this.currentMap
+      if (!map.length) return false
+      const candidates: { x: number; y: number }[] = []
+      for (let y = 0; y < map.length; y++) {
+        for (let x = 0; x < map[y].length; x++) {
+          if (map[y][x] !== TILE.FLOOR) continue
+          if (x === this.player.position.x && y === this.player.position.y) continue
+          if (this.enemies.some((e) => e.x === x && e.y === y)) continue
+          candidates.push({ x, y })
+        }
+      }
+      if (candidates.length === 0) return false
+      const pick = candidates[Math.floor(Math.random() * candidates.length)]
+      this.setPlayerPosition(pick.x, pick.y)
+      this.revealAround(pick.x, pick.y)
+      return true
+    },
+
+    // 現フロアの全タイルを探索済みにする（地図の巻物）
+    revealEntireMap() {
+      const map = this.currentMap
+      const explored = new Set(this.exploredTiles)
+      for (let y = 0; y < map.length; y++) {
+        for (let x = 0; x < map[y].length; x++) {
+          explored.add(`${x},${y}`)
+        }
+      }
+      this.exploredTiles = Array.from(explored)
+    },
+
+    // 拠点で所持している謎の金庫をすべて開封し、獲得ゴールドを拠点goldへ加算
+    openStrangeSafes(): { count: number; gold: number } {
+      const cfg = gameConfig.strangeSafe ?? { minGold: 50, maxGold: 200 }
+      let count = 0
+      let gold = 0
+      this.inventory = this.inventory.filter((entry) => {
+        if (ITEMS[entry.itemId]?.type !== 'special') return true
+        const times = entry.stack ?? 1
+        for (let i = 0; i < times; i++) {
+          gold += rollSafeGold(cfg.minGold, cfg.maxGold)
+          count++
+        }
+        return false
+      })
+      if (count > 0) {
+        this.meta.gold += gold
+        this.persistMeta()
+      }
+      return { count, gold }
     },
 
     equipInventoryItem(index: number): { success: boolean; message: string } {

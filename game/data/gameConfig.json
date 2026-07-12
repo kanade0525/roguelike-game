@@ -50,6 +50,10 @@
   "deathPenalty": {
     "goldLossRate": 1.0
   },
+  "strangeSafe": {
+    "minGold": 50,
+    "maxGold": 200
+  },
   "dungeonConfig": {
     "floorsTotal": 10,
     "enemiesPerFloor": [3, 4, 5, 6, 7, 8, 9, 10, 12, 15]

@@ -1,4 +1,12 @@
-export type ItemType = 'weapon' | 'armor' | 'potion' | 'food' | 'scroll' | 'gold' | 'special' | 'other'
+export type ItemType =
+  | 'weapon'
+  | 'armor'
+  | 'potion'
+  | 'food'
+  | 'scroll'
+  | 'gold'
+  | 'special'
+  | 'other'
 
 export interface ItemEffect {
   hp?: number
@@ -147,6 +155,44 @@ export const ITEMS: Record<string, ItemDef> = {
     usable: true,
     equippable: false,
     stackable: true,
+  },
+  escape_scroll: {
+    id: 'escape_scroll',
+    name: 'リレミトの巻物',
+    description: 'ダンジョンから脱出して拠点へ戻る',
+    type: 'scroll',
+    effect: { scrollAction: 'escape' },
+    usable: true,
+    equippable: false,
+    stackable: true,
+  },
+  teleport_scroll: {
+    id: 'teleport_scroll',
+    name: 'ワープの巻物',
+    description: 'フロア内のランダムな場所へ瞬間移動する',
+    type: 'scroll',
+    effect: { scrollAction: 'teleport' },
+    usable: true,
+    equippable: false,
+    stackable: true,
+  },
+  map_scroll: {
+    id: 'map_scroll',
+    name: '地図の巻物',
+    description: '現在のフロアの地図をすべて見渡す',
+    type: 'scroll',
+    effect: { scrollAction: 'revealMap' },
+    usable: true,
+    equippable: false,
+    stackable: true,
+  },
+  strange_safe: {
+    id: 'strange_safe',
+    name: '謎の金庫',
+    description: '重くて開かない。拠点に持ち帰れば開けられそうだ',
+    type: 'special',
+    usable: false,
+    equippable: false,
   },
   gold: {
     id: 'gold',

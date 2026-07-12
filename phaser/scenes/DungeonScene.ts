@@ -9,6 +9,8 @@ const ITEM_TINT: Record<string, number> = {
   armor: 0x66aaff,
   potion: 0x66ff66,
   food: 0xffcc66,
+  scroll: 0xcc99ff,
+  special: 0xffaa33,
   gold: 0xffd700,
   other: 0xcccccc,
 }
@@ -755,14 +757,30 @@ export class DungeonScene extends Phaser.Scene {
       if (def.usable) {
         ui.showConfirm(`${def.name} を使用しますか？`, () => {
           const useResult = this.gameStore.useInventoryItem(index)
-          if (useResult.success) {
-            this.updateUI([useResult.message])
-            ui.refreshInventory(this.gameStore.inventory)
-            if (useResult.message.includes('HP') || useResult.message.includes('満腹')) {
-              this.playSE('se_item_use')
-            }
-            this.consumeTurnAfterItem()
+          if (!useResult.success) return
+          this.updateUI([useResult.message])
+          ui.refreshInventory(this.gameStore.inventory)
+
+          const scrollAction = useResult.scrollAction
+          // リレミトの巻物: 脱出（ターン消費なし・拠点へ遷移）
+          if (scrollAction === 'escape') {
+            ui.hideInventory()
+            this.playSE('se_stairs')
+            this.gameLoop.escapeDungeon()
+            return
           }
+          // ワープ/地図の巻物: 効果は store 適用済み、再描画してターン消費
+          if (scrollAction === 'teleport' || scrollAction === 'revealMap') {
+            this.playSE('se_item_use')
+            ui.hideInventory()
+            this.consumeTurnAfterItem()
+            return
+          }
+          // 通常の消費アイテム（ポーション・食料）
+          if (useResult.message.includes('HP') || useResult.message.includes('満腹')) {
+            this.playSE('se_item_use')
+          }
+          this.consumeTurnAfterItem()
         })
         return
       }
@@ -776,6 +794,12 @@ export class DungeonScene extends Phaser.Scene {
             ui.refreshInventory(this.gameStore.inventory)
           }
         })
+        return
+      }
+
+      // 特殊アイテム（謎の金庫など）: 使用/装備どちらでもない
+      if (def.type === 'special') {
+        this.updateUI(['重い金庫だ。拠点に持ち帰れば開けられそうだ。'])
         return
       }
       return

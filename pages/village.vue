@@ -28,9 +28,17 @@
 
   const selectedDungeonId = ref(DEFAULT_DUNGEON_ID)
 
+  // 持ち帰った謎の金庫の開封結果
+  const safeResult = ref<{ count: number; gold: number } | null>(null)
+
   onMounted(() => {
     // localStorage から永続データを同期
     gameStore.loadMeta()
+    // 持ち帰った謎の金庫を開封してゴールドを獲得
+    const opened = gameStore.openStrangeSafes()
+    if (opened.count > 0) {
+      safeResult.value = opened
+    }
   })
 
   const departDungeon = () => {
@@ -63,6 +71,9 @@
         前回: {{ lastRunLabel }} / B{{ lastRun.floor }}F
         <template v-if="lastRun.goldBanked > 0"> ・ +{{ lastRun.goldBanked }}G</template>
         <template v-if="lastRun.goldLost > 0"> ・ -{{ lastRun.goldLost }}G</template>
+      </p>
+      <p v-if="safeResult" class="safe-result">
+        謎の金庫を開けた！ +{{ safeResult.gold }}G（{{ safeResult.count }}個）
       </p>
     </div>
 
@@ -158,6 +169,12 @@
 
   .lastrun.is-dead {
     color: #ff8a8a;
+  }
+
+  .safe-result {
+    margin: 0.4rem 0 0;
+    font-size: 0.6rem;
+    color: #ffd700;
   }
 
   .shop-title,

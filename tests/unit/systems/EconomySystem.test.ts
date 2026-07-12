@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { computeDeathGoldLoss } from '../../../game/systems/EconomySystem'
+import { computeDeathGoldLoss, rollSafeGold } from '../../../game/systems/EconomySystem'
 
 describe('EconomySystem.computeDeathGoldLoss', () => {
   it('lossRate=1 で全ロスト', () => {
@@ -38,5 +38,32 @@ describe('EconomySystem.computeDeathGoldLoss', () => {
   it('lossRateが範囲外でも 0..1 にクランプ', () => {
     expect(computeDeathGoldLoss(100, 2).lost).toBe(100)
     expect(computeDeathGoldLoss(100, -1).lost).toBe(0)
+  })
+})
+
+describe('EconomySystem.rollSafeGold', () => {
+  it('rng=0 で最小値', () => {
+    expect(rollSafeGold(50, 200, () => 0)).toBe(50)
+  })
+
+  it('rng→1 で最大値（両端含む）', () => {
+    expect(rollSafeGold(50, 200, () => 0.999999)).toBe(200)
+  })
+
+  it('rng=0.5 で中央付近', () => {
+    // 50 + floor(0.5 * 151) = 50 + 75 = 125
+    expect(rollSafeGold(50, 200, () => 0.5)).toBe(125)
+  })
+
+  it('常に min..max の範囲内', () => {
+    for (const r of [0, 0.1, 0.33, 0.5, 0.77, 0.99]) {
+      const g = rollSafeGold(50, 200, () => r)
+      expect(g).toBeGreaterThanOrEqual(50)
+      expect(g).toBeLessThanOrEqual(200)
+    }
+  })
+
+  it('min>max でも min にクランプされる', () => {
+    expect(rollSafeGold(200, 50, () => 0.5)).toBe(200)
   })
 })

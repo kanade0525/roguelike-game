@@ -14,3 +14,15 @@ export function computeDeathGoldLoss(
   const kept = gold - lost
   return { lost, kept }
 }
+
+// 謎の金庫を開けたときの獲得ゴールド（min..max の一様乱数, 両端含む）。
+// rng は 0<=x<1 を返す関数（テスト時に注入可能）。
+export function rollSafeGold(
+  minGold: number,
+  maxGold: number,
+  rng: () => number = Math.random
+): number {
+  const min = Math.max(0, Math.floor(minGold))
+  const max = Math.max(min, Math.floor(maxGold))
+  return min + Math.floor(rng() * (max - min + 1))
+}
