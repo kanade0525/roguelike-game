@@ -17,6 +17,8 @@ const floor: FloorConfig = {
       { itemId: 'sword', weight: 1 },
       { itemId: 'shield', weight: 1 },
       { itemId: 'antidote', weight: 1 },
+      { itemId: 'escape_scroll', weight: 1 },
+      { itemId: 'teleport_scroll', weight: 1 },
     ],
   },
 }

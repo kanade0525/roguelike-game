@@ -7,6 +7,10 @@
     router.push('/game')
   }
 
+  const goVillage = () => {
+    router.push('/village')
+  }
+
   const continueGame = () => {
     // TODO: セーブデータ読み込み
     router.push('/game')
@@ -27,6 +31,7 @@
     <!-- メニューボタン -->
     <div class="menu nes-container is-dark is-rounded">
       <button class="nes-btn is-primary menu-btn" @click="startGame">はじめから</button>
+      <button class="nes-btn menu-btn" @click="goVillage">きょてんへ</button>
       <button
         class="nes-btn menu-btn"
         :class="{ 'is-disabled': !hasSaveData }"

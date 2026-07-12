@@ -15,12 +15,24 @@
   const finalLevel = computed(() => gameStore.player.level)
   const defeatedCount = computed(() => gameStore.defeatedEnemies)
 
+  // gold のリザルト（死亡=ロスト額 / 踏破=持ち帰り額）
+  const goldLost = computed(() => gameStore.meta.lastRun?.goldLost ?? 0)
+  const goldBanked = computed(() => gameStore.meta.lastRun?.goldBanked ?? 0)
+  const goldLabel = computed(() => (isDead.value ? '失ったゴールド' : '持ち帰ったゴールド'))
+  const goldValue = computed(() => (isDead.value ? goldLost.value : goldBanked.value))
+
   onMounted(() => {
     // 不正遷移対策: activeのままならタイトルへ戻す
     if (gameStore.gameResult === 'active') {
       router.replace('/')
     }
   })
+
+  const backToVillage = () => {
+    sessionStorage.removeItem('gameState')
+    gameStore.resetGame() // meta（永続gold）は保持される
+    router.push('/village')
+  }
 
   const backToTitle = () => {
     sessionStorage.removeItem('gameState')
@@ -50,11 +62,16 @@
           <dt>撃破数</dt>
           <dd>{{ defeatedCount }}</dd>
         </div>
+        <div class="stat-row">
+          <dt>{{ goldLabel }}</dt>
+          <dd :class="{ 'gold-lost': isDead, 'gold-kept': !isDead }">{{ goldValue }} G</dd>
+        </div>
       </dl>
     </div>
 
     <div class="menu">
-      <button class="nes-btn is-primary menu-btn" @click="backToTitle">タイトルへ</button>
+      <button class="nes-btn is-primary menu-btn" @click="backToVillage">拠点へもどる</button>
+      <button class="nes-btn menu-btn" @click="backToTitle">タイトルへ</button>
     </div>
   </div>
 </template>
@@ -134,9 +151,20 @@
     font-weight: bold;
   }
 
+  .stat-row dd.gold-lost {
+    color: #ff8a8a;
+  }
+
+  .stat-row dd.gold-kept {
+    color: #ffd700;
+  }
+
   .menu {
     width: 100%;
     max-width: 280px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
   }
 
   .menu-btn {

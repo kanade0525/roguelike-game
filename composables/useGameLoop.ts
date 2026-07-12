@@ -397,6 +397,23 @@ export function useGameLoop() {
     store.resetGame()
     store.setDungeon(dungeonId, dungeon.floors.length)
     initFloor(1)
+    // 拠点に持ち帰った所持品（強化済み装備など）を引き継いで開始
+    store.loadBelongingsIntoInventory()
+  }
+
+  // ダンジオンから脱出して拠点へ戻る。現ランのゴールドは拠点に持ち帰る。
+  function escapeDungeon() {
+    const carried = store.player.gold
+    store.setLastRun({
+      result: 'escaped',
+      goldBanked: carried,
+      goldLost: 0,
+      floor: store.dungeon.floor,
+    })
+    store.bankRunGold()
+    store.saveBelongings() // 所持品を拠点へ持ち帰る
+    // gameResult の変化を GameCanvas が監視して /village へ遷移する
+    store.setGameResult('escaped')
   }
 
   function goNextFloor(): string[] | { cleared: true; messages: string[] } {
@@ -426,5 +443,6 @@ export function useGameLoop() {
     initFloor,
     initDungeon,
     goNextFloor,
+    escapeDungeon,
   }
 }

@@ -13,6 +13,8 @@ const floor: FloorConfig = {
       { itemId: 'bread', weight: 2 },
       { itemId: 'sword', weight: 3 },
       { itemId: 'shield', weight: 1 },
+      { itemId: 'teleport_scroll', weight: 1 },
+      { itemId: 'map_scroll', weight: 1 },
     ],
   },
 }

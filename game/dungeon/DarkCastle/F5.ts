@@ -18,6 +18,8 @@ const floor: FloorConfig = {
       { itemId: 'big_bread', weight: 1 },
       { itemId: 'great_sword', weight: 1 },
       { itemId: 'heavy_armor', weight: 1 },
+      { itemId: 'teleport_scroll', weight: 1 },
+      { itemId: 'strange_safe', weight: 1 },
     ],
   },
 }

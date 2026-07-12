@@ -44,7 +44,14 @@
       gameLoop.initDungeon(gameStore.dungeon.dungeonId)
     }
 
-    // 復元時にゲーム終了状態ならリザルトへ直接遷移
+    // 拠点の永続データ（gold等）は localStorage を正として同期（session復元より優先）
+    gameStore.loadMeta()
+
+    // 復元時にゲーム終了状態ならリザルト/拠点へ直接遷移
+    if (gameStore.gameResult === 'escaped') {
+      router.replace('/village')
+      return
+    }
     if (gameStore.gameResult !== 'active') {
       router.replace('/gameover')
       return
@@ -55,11 +62,13 @@
       gameStore.saveToSession()
     })
 
-    // ゲームオーバー・クリア時にリザルト画面へ遷移
+    // ゲーム終了時に画面遷移: 脱出→拠点、死亡/クリア→リザルト
     watch(
       () => gameStore.gameResult,
       (result) => {
-        if (result === 'dead' || result === 'cleared') {
+        if (result === 'escaped') {
+          router.push('/village')
+        } else if (result === 'dead' || result === 'cleared') {
           router.push('/gameover')
         }
       }
