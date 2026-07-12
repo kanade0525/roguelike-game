@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import { TILE } from '../../game/data/maps'
 import { getDungeon } from '../../game/dungeon'
 import { ITEMS } from '../../game/data/items'
+import gameConfig from '../../game/data/gameConfig.json'
 import type { CombatEvent, ActionResult } from '../../composables/useGameLoop'
 
 const ITEM_TINT: Record<string, number> = {
@@ -12,6 +13,11 @@ const ITEM_TINT: Record<string, number> = {
   gold: 0xffd700,
   other: 0xcccccc,
 }
+
+// 探索済みだが今は見えていないタイルの減光色（乗算tint）
+const DIM_TINT = 0x555566
+
+type TileVisibility = 'visible' | 'explored' | 'hidden'
 
 export class DungeonScene extends Phaser.Scene {
   // 表示するタイル数（ビューポート）
@@ -66,6 +72,11 @@ export class DungeonScene extends Phaser.Scene {
   // キーボード8方向移動: 押下中の移動キー集合と、1フレーム内の移動合成フラグ
   private heldMoveKeys = new Set<string>()
   private movePending = false
+
+  // FOV（視界）: 有効フラグと、drawScene 内で使い回す可視/探索済み集合
+  private fovActive = false
+  private visibleSet: Set<string> = new Set()
+  private exploredSet: Set<string> = new Set()
 
   // BGM
   private currentBgm: Phaser.Sound.BaseSound | null = null
@@ -138,6 +149,16 @@ export class DungeonScene extends Phaser.Scene {
     this.calculateTileSize()
 
     this.syncMapFromStore()
+
+    // FOV有効判定: playerConfig.fovEnabled（既定ON）または debugConfig.showFOV（強制ON）
+    const playerCfg = gameConfig.playerConfig as { fovEnabled?: boolean }
+    const debugCfg = gameConfig.debugConfig as { showFOV?: boolean }
+    this.fovActive = (playerCfg?.fovEnabled ?? false) || (debugCfg?.showFOV ?? false)
+
+    // マウント／リロード直後に可視タイルが空でも即描画できるよう再計算する
+    if (this.fovActive) {
+      this.gameStore.recomputeFov()
+    }
 
     // コンテナ作成（描画順序制御用）
     this.floorContainer = this.add.container(0, 0)
@@ -323,6 +344,12 @@ export class DungeonScene extends Phaser.Scene {
     this.wallContainer.removeAll(true)
     this.entityContainer.removeAll(true)
 
+    // FOV可視/探索済み集合を毎フレーム構築（Array.includes の O(n) を回避）
+    if (this.fovActive) {
+      this.visibleSet = new Set(this.gameStore.visibleTiles as string[])
+      this.exploredSet = new Set(this.gameStore.exploredTiles as string[])
+    }
+
     const playerPos = this.gameStore.player.position
     const halfViewX = Math.floor(this.viewTilesX / 2)
     const halfViewY = Math.floor(this.viewTilesY / 2)
@@ -337,11 +364,14 @@ export class DungeonScene extends Phaser.Scene {
         if (x < 0 || x >= this.mapWidth || y < 0 || y >= this.mapHeight) continue
         const tile = this.map[y][x]
         if (tile === TILE.FLOOR || tile === TILE.STAIRS) {
+          const vis = this.tileVisibility(x, y)
+          if (vis === 'hidden') continue
+          const dim = vis === 'explored'
           const inViewport = x >= this.viewStartX && x < endX && y >= this.viewStartY && y < endY
           if (inViewport && tile === TILE.FLOOR) {
-            this.drawFloorTile(x, y)
+            this.drawFloorTile(x, y, dim)
           }
-          this.drawBorderOverlay(x, y)
+          this.drawBorderOverlay(x, y, dim)
         }
       }
     }
@@ -351,14 +381,18 @@ export class DungeonScene extends Phaser.Scene {
       for (let x = this.viewStartX; x < endX; x++) {
         if (x < 0 || x >= this.mapWidth || y < 0 || y >= this.mapHeight) continue
         if (this.map[y][x] === TILE.STAIRS) {
+          const vis = this.tileVisibility(x, y)
+          if (vis === 'hidden') continue
+          const dim = vis === 'explored'
           const sx = this.offsetX + (x - this.viewStartX) * this.tileWidth + this.tileWidth / 2
           const sy = this.offsetY + (y - this.viewStartY) * this.tileHeight + this.tileHeight / 2
           const stairsTile = this.add.image(sx, sy, 'floor_stairs')
           stairsTile.setScale(this.tileScale)
+          if (dim) stairsTile.setTint(DIM_TINT)
           this.wallContainer.add(stairsTile)
           // 南に壁がある場合、ふち（wall_top_mid）を階段の上に重ねる
           if (!this.isFloor(x, y + 1)) {
-            this.addWallTile('wall_top_mid', x, y)
+            this.addWallTile('wall_top_mid', x, y, dim)
           }
         }
       }
@@ -373,7 +407,16 @@ export class DungeonScene extends Phaser.Scene {
     }
   }
 
-  private drawFloorTile(tileX: number, tileY: number) {
+  // タイルの可視状態を返す（FOV無効時は常に visible = 全描画）
+  private tileVisibility(x: number, y: number): TileVisibility {
+    if (!this.fovActive) return 'visible'
+    const key = `${x},${y}`
+    if (this.visibleSet.has(key)) return 'visible'
+    if (this.exploredSet.has(key)) return 'explored'
+    return 'hidden'
+  }
+
+  private drawFloorTile(tileX: number, tileY: number, dim = false) {
     const screenTileX = tileX - this.viewStartX
     const screenTileY = tileY - this.viewStartY
     const x = this.offsetX + screenTileX * this.tileWidth + this.tileWidth / 2
@@ -382,11 +425,12 @@ export class DungeonScene extends Phaser.Scene {
     const textureKey = `floor_${((tileX * 7 + tileY * 13) % 8) + 1}`
     const tile = this.add.image(x, y, textureKey)
     tile.setScale(this.tileScale)
+    if (dim) tile.setTint(DIM_TINT)
     this.floorContainer.add(tile)
   }
 
   // グリッド座標に壁タイルを配置
-  private addWallTile(texture: string, gridX: number, gridY: number) {
+  private addWallTile(texture: string, gridX: number, gridY: number, dim = false) {
     const screenX = gridX - this.viewStartX
     const screenY = gridY - this.viewStartY
     if (
@@ -401,11 +445,12 @@ export class DungeonScene extends Phaser.Scene {
     const img = this.add.image(x, y, texture)
     img.setOrigin(0, 0)
     img.setScale(this.tileScale)
+    if (dim) img.setTint(DIM_TINT)
     this.wallContainer.add(img)
   }
 
   // 床セルの隣接壁にタイルを配置
-  private drawBorderOverlay(tileX: number, tileY: number) {
+  private drawBorderOverlay(tileX: number, tileY: number, dim = false) {
     const hasN = this.isFloor(tileX, tileY - 1)
     const hasE = this.isFloor(tileX + 1, tileY)
     const hasS = this.isFloor(tileX, tileY + 1)
@@ -414,41 +459,41 @@ export class DungeonScene extends Phaser.Scene {
     // === 直線部分 ===
     // 北に壁: 前面 + キャップ
     if (!hasN) {
-      this.addWallTile('wall_mid', tileX, tileY - 1)
-      this.addWallTile('wall_top_mid', tileX, tileY - 2)
+      this.addWallTile('wall_mid', tileX, tileY - 1, dim)
+      this.addWallTile('wall_top_mid', tileX, tileY - 2, dim)
     }
     // 南に壁: 前面 + キャップ（キャップは床セル自体に重ねる、ただし階段は隠さない）
     if (!hasS) {
-      this.addWallTile('wall_mid', tileX, tileY + 1)
+      this.addWallTile('wall_mid', tileX, tileY + 1, dim)
       if (this.map[tileY]?.[tileX] !== TILE.STAIRS) {
-        this.addWallTile('wall_top_mid', tileX, tileY)
+        this.addWallTile('wall_top_mid', tileX, tileY, dim)
       }
     }
     // 西に壁
     if (!hasW) {
-      this.addWallTile('wall_outer_mid_left', tileX - 1, tileY)
+      this.addWallTile('wall_outer_mid_left', tileX - 1, tileY, dim)
     }
     // 東に壁
     if (!hasE) {
-      this.addWallTile('wall_outer_mid_right', tileX + 1, tileY)
+      this.addWallTile('wall_outer_mid_right', tileX + 1, tileY, dim)
     }
 
     // === 外側角（凸角）===
     if (!hasN && !hasW) {
-      this.addWallTile('wall_outer_top_left', tileX - 1, tileY - 2)
-      this.addWallTile('wall_top_left', tileX, tileY - 2)
-      this.addWallTile('wall_outer_mid_left', tileX - 1, tileY - 1)
+      this.addWallTile('wall_outer_top_left', tileX - 1, tileY - 2, dim)
+      this.addWallTile('wall_top_left', tileX, tileY - 2, dim)
+      this.addWallTile('wall_outer_mid_left', tileX - 1, tileY - 1, dim)
     }
     if (!hasN && !hasE) {
-      this.addWallTile('wall_outer_top_right', tileX + 1, tileY - 2)
-      this.addWallTile('wall_top_right', tileX, tileY - 2)
-      this.addWallTile('wall_outer_mid_right', tileX + 1, tileY - 1)
+      this.addWallTile('wall_outer_top_right', tileX + 1, tileY - 2, dim)
+      this.addWallTile('wall_top_right', tileX, tileY - 2, dim)
+      this.addWallTile('wall_outer_mid_right', tileX + 1, tileY - 1, dim)
     }
     if (!hasS && !hasW) {
-      this.addWallTile('wall_outer_front_left', tileX - 1, tileY + 1)
+      this.addWallTile('wall_outer_front_left', tileX - 1, tileY + 1, dim)
     }
     if (!hasS && !hasE) {
-      this.addWallTile('wall_outer_front_right', tileX + 1, tileY + 1)
+      this.addWallTile('wall_outer_front_right', tileX + 1, tileY + 1, dim)
     }
 
     // TODO: 内側角（凹角）は別途マップが大きくなってから対応
@@ -496,6 +541,8 @@ export class DungeonScene extends Phaser.Scene {
   private drawItems(viewStartX: number, viewStartY: number, endX: number, endY: number) {
     for (const item of this.gameStore.floorItems) {
       if (item.x < viewStartX || item.x >= endX || item.y < viewStartY || item.y >= endY) continue
+      // FOV有効時、今見えているマスのアイテムのみ描画
+      if (this.tileVisibility(item.x, item.y) !== 'visible') continue
       const screenTileX = item.x - viewStartX
       const screenTileY = item.y - viewStartY
       const x = this.offsetX + screenTileX * this.tileWidth + this.tileWidth / 2
@@ -520,6 +567,8 @@ export class DungeonScene extends Phaser.Scene {
     for (const enemy of this.gameStore.enemies) {
       if (enemy.x < viewStartX || enemy.x >= endX || enemy.y < viewStartY || enemy.y >= endY)
         continue
+      // FOV有効時、今見えているマスの敵のみ描画
+      if (this.tileVisibility(enemy.x, enemy.y) !== 'visible') continue
       const screenTileX = enemy.x - viewStartX
       const screenTileY = enemy.y - viewStartY
       const x = this.offsetX + screenTileX * this.tileWidth + this.tileWidth / 2

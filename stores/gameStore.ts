@@ -5,6 +5,7 @@ import {
   equipItem as calcEquip,
   unequipItem as calcUnequip,
 } from '~/game/systems/ItemSystem'
+import { computeVisible } from '~/game/systems/FOVSystem'
 import gameConfig from '~/game/data/gameConfig.json'
 
 interface PlayerState {
@@ -69,7 +70,8 @@ interface GameState {
   turn: number
   messageLog: string[]
   currentMap: number[][]
-  exploredTiles: string[] // "x,y" 形式の探索済み座標
+  exploredTiles: string[] // "x,y" 形式の探索済み座標（過去に一度でも見えた）
+  visibleTiles: string[] // "x,y" 形式の現在可視の座標（今見えている）
   gameResult: GameResult
   defeatedEnemies: number
   maxFloorReached: number
@@ -103,6 +105,7 @@ export const useGameStore = defineStore('game', {
     messageLog: [],
     currentMap: [],
     exploredTiles: [],
+    visibleTiles: [],
     gameResult: 'active',
     defeatedEnemies: 0,
     maxFloorReached: 1,
@@ -245,17 +248,14 @@ export const useGameStore = defineStore('game', {
 
       // ゴールドはプレイヤーの所持金に加算
       if (def.type === 'gold') {
-        const goldAmount =
-          amount > 1 ? amount : gameConfig.goldConfig?.defaultDropAmount ?? 10
+        const goldAmount = amount > 1 ? amount : (gameConfig.goldConfig?.defaultDropAmount ?? 10)
         this.player.gold += goldAmount
         return { message: `${goldAmount}Gを拾った！`, toGold: true }
       }
 
       // スタック可能アイテムは既存スタックに合算
       if (def.stackable) {
-        const existing = this.inventory.find(
-          (i) => i.itemId === itemId && !i.equipped
-        )
+        const existing = this.inventory.find((i) => i.itemId === itemId && !i.equipped)
         if (existing) {
           existing.stack = (existing.stack ?? 1) + amount
           return { message: `${def.name}を拾った！`, toGold: false }
@@ -345,28 +345,39 @@ export const useGameStore = defineStore('game', {
       this.currentMap = map.map((row) => [...row])
     },
 
-    revealAround(cx: number, cy: number, radius: number = 3) {
-      const mapH = this.currentMap.length
-      const mapW = mapH > 0 ? this.currentMap[0].length : 0
-      for (let dy = -radius; dy <= radius; dy++) {
-        for (let dx = -radius; dx <= radius; dx++) {
-          const x = cx + dx
-          const y = cy + dy
-          if (x < 0 || x >= mapW || y < 0 || y >= mapH) continue
-          const key = `${x},${y}`
-          if (!this.exploredTiles.includes(key)) {
-            this.exploredTiles.push(key)
-          }
-        }
+    /**
+     * FOV（視界）を再計算する。
+     * 現在可視のタイル集合 (visibleTiles) を計算し直し、探索済み (exploredTiles) に和集合で追加する。
+     * @param cx 視点 X（省略時はプレイヤー位置）
+     * @param cy 視点 Y（省略時はプレイヤー位置）
+     * @param range 視界半径（省略時は gameConfig の viewRange）
+     */
+    recomputeFov(cx?: number, cy?: number, range?: number) {
+      const px = cx ?? this.player.position.x
+      const py = cy ?? this.player.position.y
+      const r = range ?? gameConfig.playerConfig?.viewRange ?? 6
+
+      const visible = computeVisible(this.currentMap, px, py, r)
+      this.visibleTiles = [...visible]
+
+      const explored = new Set(this.exploredTiles)
+      for (const key of visible) {
+        explored.add(key)
       }
+      this.exploredTiles = [...explored]
     },
 
     clearExplored() {
       this.exploredTiles = []
+      this.visibleTiles = []
     },
 
     isExplored(x: number, y: number): boolean {
       return this.exploredTiles.includes(`${x},${y}`)
+    },
+
+    isVisible(x: number, y: number): boolean {
+      return this.visibleTiles.includes(`${x},${y}`)
     },
 
     decreaseSatiation(amount: number) {

@@ -290,7 +290,7 @@ export function useGameLoop() {
     }
 
     store.setPlayerPosition(newX, newY)
-    store.revealAround(newX, newY)
+    store.recomputeFov(newX, newY)
 
     const item = store.floorItems.find((i) => i.x === newX && i.y === newY)
     if (item) {
@@ -382,7 +382,7 @@ export function useGameLoop() {
     store.clearFloorItems()
     store.clearExplored()
     turnManager.reset()
-    store.revealAround(generated.playerStart.x, generated.playerStart.y)
+    store.recomputeFov(generated.playerStart.x, generated.playerStart.y)
 
     for (const item of generated.items) {
       store.addFloorItem(item)

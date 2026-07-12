@@ -14,6 +14,7 @@
     "defense": 5,
     "dodge": 0.05,
     "viewRange": 6,
+    "fovEnabled": true,
     "initialGold": 0
   },
   "enemyTypes": {
