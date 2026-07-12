@@ -58,7 +58,24 @@ interface DungeonState {
   totalFloors: number
 }
 
-export type GameResult = 'active' | 'dead' | 'cleared'
+export type GameResult = 'active' | 'dead' | 'cleared' | 'escaped'
+
+// 直近1ランのリザルト（拠点画面で表示する）
+interface LastRun {
+  result: 'escaped' | 'dead' | 'cleared'
+  goldBanked: number // 拠点に預けたゴールド
+  goldLost: number // 死亡ペナルティ等で失ったゴールド
+  floor: number // 到達フロア
+}
+
+// ラン跨ぎで永続する拠点データ（localStorage 保存）
+interface MetaState {
+  gold: number // 拠点に預けた永続ゴールド（鍛冶で使用）
+  lastRun: LastRun | null
+}
+
+// localStorage キー（sessionStorage の現ラン継続とは別レイヤ）
+const META_STORAGE_KEY = 'katabasis_meta'
 
 interface GameState {
   player: PlayerState
@@ -73,6 +90,7 @@ interface GameState {
   gameResult: GameResult
   defeatedEnemies: number
   maxFloorReached: number
+  meta: MetaState // ラン跨ぎ永続データ
 }
 
 export const useGameStore = defineStore('game', {
@@ -106,6 +124,10 @@ export const useGameStore = defineStore('game', {
     gameResult: 'active',
     defeatedEnemies: 0,
     maxFloorReached: 1,
+    meta: {
+      gold: 0,
+      lastRun: null,
+    },
   }),
 
   getters: {
@@ -179,7 +201,48 @@ export const useGameStore = defineStore('game', {
     },
 
     resetGame() {
+      // meta（永続ゴールド等）はランを跨いで保持する
+      const preservedMeta: MetaState = JSON.parse(JSON.stringify(this.meta))
       this.$reset()
+      this.meta = preservedMeta
+    },
+
+    // --- 拠点永続データ（localStorage レイヤ） ---
+
+    persistMeta() {
+      if (typeof localStorage === 'undefined') return
+      localStorage.setItem(META_STORAGE_KEY, JSON.stringify(this.meta))
+    },
+
+    loadMeta(): boolean {
+      if (typeof localStorage === 'undefined') return false
+      const saved = localStorage.getItem(META_STORAGE_KEY)
+      if (!saved) return false
+      try {
+        const parsed = JSON.parse(saved)
+        this.meta = {
+          gold: typeof parsed.gold === 'number' ? parsed.gold : 0,
+          lastRun: parsed.lastRun ?? null,
+        }
+        return true
+      } catch {
+        localStorage.removeItem(META_STORAGE_KEY)
+        return false
+      }
+    },
+
+    // 現ランで稼いだゴールドを拠点（永続）ゴールドへ預ける
+    bankRunGold(): number {
+      const amount = this.player.gold
+      this.meta.gold += amount
+      this.player.gold = 0
+      this.persistMeta()
+      return amount
+    },
+
+    setLastRun(info: LastRun) {
+      this.meta.lastRun = info
+      this.persistMeta()
     },
 
     addMessage(message: string) {
@@ -245,17 +308,14 @@ export const useGameStore = defineStore('game', {
 
       // ゴールドはプレイヤーの所持金に加算
       if (def.type === 'gold') {
-        const goldAmount =
-          amount > 1 ? amount : gameConfig.goldConfig?.defaultDropAmount ?? 10
+        const goldAmount = amount > 1 ? amount : (gameConfig.goldConfig?.defaultDropAmount ?? 10)
         this.player.gold += goldAmount
         return { message: `${goldAmount}Gを拾った！`, toGold: true }
       }
 
       // スタック可能アイテムは既存スタックに合算
       if (def.stackable) {
-        const existing = this.inventory.find(
-          (i) => i.itemId === itemId && !i.equipped
-        )
+        const existing = this.inventory.find((i) => i.itemId === itemId && !i.equipped)
         if (existing) {
           existing.stack = (existing.stack ?? 1) + amount
           return { message: `${def.name}を拾った！`, toGold: false }

@@ -389,6 +389,20 @@ export function useGameLoop() {
     initFloor(1)
   }
 
+  // ダンジオンから脱出して拠点へ戻る。現ランのゴールドは拠点に持ち帰る。
+  function escapeDungeon() {
+    const carried = store.player.gold
+    store.setLastRun({
+      result: 'escaped',
+      goldBanked: carried,
+      goldLost: 0,
+      floor: store.dungeon.floor,
+    })
+    store.bankRunGold()
+    // gameResult の変化を GameCanvas が監視して /village へ遷移する
+    store.setGameResult('escaped')
+  }
+
   function goNextFloor(): string[] | { cleared: true; messages: string[] } {
     const { floor, totalFloors } = store.dungeon
 
@@ -416,5 +430,6 @@ export function useGameLoop() {
     initFloor,
     initDungeon,
     goNextFloor,
+    escapeDungeon,
   }
 }
