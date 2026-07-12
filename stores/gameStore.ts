@@ -1,11 +1,11 @@
 import { defineStore } from 'pinia'
-import { ITEMS, type EquipmentData } from '~/game/data/items'
+import { ITEMS, makeEquipmentData, type EquipmentData } from '~/game/data/items'
+import { useItem as applyUseItem } from '~/game/systems/ItemSystem'
 import {
-  useItem as applyUseItem,
-  equipItem as calcEquip,
-  unequipItem as calcUnequip,
-} from '~/game/systems/ItemSystem'
-import { computeDeathGoldLoss, rollSafeGold } from '~/game/systems/EconomySystem'
+  computeDeathGoldLoss,
+  rollSafeGold,
+  computeEnhanceCost,
+} from '~/game/systems/EconomySystem'
 import { TILE } from '~/game/data/maps'
 import gameConfig from '~/game/data/gameConfig.json'
 
@@ -74,10 +74,21 @@ interface LastRun {
 interface MetaState {
   gold: number // 拠点に預けた永続ゴールド（鍛冶で使用）
   lastRun: LastRun | null
+  storage: InventoryItem[] // 持ち帰った所持品（装備の強化はここに永続）
 }
 
 // localStorage キー（sessionStorage の現ラン継続とは別レイヤ）
 const META_STORAGE_KEY = 'katabasis_meta'
+
+// 装備エントリの実効ボーナス（強化込み）。未装備データは +0 として算出。
+function equipBonusOf(entry: InventoryItem): { attack: number; defense: number } {
+  const def = ITEMS[entry.itemId]
+  if (!def || !def.equippable) return { attack: 0, defense: 0 }
+  const data =
+    entry.equipmentData ??
+    makeEquipmentData(def, 0, gameConfig.equipmentConfig.enhanceBonusPerLevel)
+  return { attack: data.attackBonus, defense: data.defenseBonus }
+}
 
 interface GameState {
   player: PlayerState
@@ -129,6 +140,7 @@ export const useGameStore = defineStore('game', {
     meta: {
       gold: 0,
       lastRun: null,
+      storage: [],
     },
   }),
 
@@ -225,6 +237,7 @@ export const useGameStore = defineStore('game', {
         this.meta = {
           gold: typeof parsed.gold === 'number' ? parsed.gold : 0,
           lastRun: parsed.lastRun ?? null,
+          storage: Array.isArray(parsed.storage) ? parsed.storage : [],
         }
         return true
       } catch {
@@ -247,12 +260,14 @@ export const useGameStore = defineStore('game', {
       this.persistMeta()
     },
 
-    // 死亡時のペナルティ適用: 現ランgoldの一定割合をロスト、残りは拠点へ持ち帰る
+    // 死亡時のペナルティ適用: 現ランgoldの一定割合をロスト、残りは拠点へ持ち帰る。
+    // 持ち帰り品（storage）も失う = 死亡は全ロスト。
     applyDeathPenalty(): { lost: number; kept: number } {
       const rate = gameConfig.deathPenalty?.goldLossRate ?? 1
       const { lost, kept } = computeDeathGoldLoss(this.player.gold, rate)
       this.meta.gold += kept
       this.player.gold = 0
+      this.meta.storage = []
       this.setLastRun({
         result: 'dead',
         goldBanked: kept,
@@ -260,6 +275,53 @@ export const useGameStore = defineStore('game', {
         floor: this.dungeon.floor,
       })
       return { lost, kept }
+    },
+
+    // --- 持ち帰り品（belongings）: 脱出/踏破で拠点へ、死亡で消失、次ラン開始時に再装填 ---
+
+    // 現在の所持品を拠点倉庫へスナップショット保存（脱出・踏破時）
+    saveBelongings() {
+      this.meta.storage = JSON.parse(JSON.stringify(this.inventory))
+      this.persistMeta()
+    },
+
+    // 拠点倉庫の所持品を現ランのインベントリへ展開し、装備中ボーナスを再適用（ラン開始時）
+    loadBelongingsIntoInventory() {
+      this.inventory = JSON.parse(JSON.stringify(this.meta.storage))
+      for (const entry of this.inventory) {
+        if (!entry.equipped) continue
+        const bonus = equipBonusOf(entry)
+        this.player.attack += bonus.attack
+        this.player.defense += bonus.defense
+      }
+    },
+
+    // 装備の強化（鍛冶）。拠点倉庫の装備を対象に meta.gold を消費して enhanceLevel++。
+    enhanceEquipment(storageIndex: number): { success: boolean; message: string } {
+      const entry = this.meta.storage[storageIndex]
+      if (!entry) return { success: false, message: '' }
+      const def = ITEMS[entry.itemId]
+      if (!def || !def.equippable) {
+        return { success: false, message: 'これは強化できない' }
+      }
+      const cfg = gameConfig.equipmentConfig
+      const data = entry.equipmentData ?? makeEquipmentData(def, 0, cfg.enhanceBonusPerLevel)
+      if (data.enhanceLevel >= cfg.maxEnhanceLevel) {
+        return { success: false, message: `${def.name}はこれ以上強化できない` }
+      }
+      const cost = computeEnhanceCost(
+        data.enhanceLevel,
+        cfg.enhanceCostBase,
+        cfg.enhanceCostMultiplier
+      )
+      if (this.meta.gold < cost) {
+        return { success: false, message: `ゴールドが足りない（必要 ${cost}G）` }
+      }
+      this.meta.gold -= cost
+      const newLevel = data.enhanceLevel + 1
+      entry.equipmentData = makeEquipmentData(def, newLevel, cfg.enhanceBonusPerLevel)
+      this.persistMeta()
+      return { success: true, message: `${def.name}を +${newLevel} に強化した！（-${cost}G）` }
     },
 
     addMessage(message: string) {
@@ -343,6 +405,14 @@ export const useGameStore = defineStore('game', {
       const entry: InventoryItem = { itemId, name: def.name }
       if (def.stackable) {
         entry.stack = amount
+      }
+      // 装備品は強化データ（+0）を付与しておく（強化表示・鍛冶の対象になる）
+      if (def.equippable) {
+        entry.equipmentData = makeEquipmentData(
+          def,
+          0,
+          gameConfig.equipmentConfig.enhanceBonusPerLevel
+        )
       }
       this.inventory.push(entry)
       return { message: `${def.name}を拾った！`, toGold: false }
@@ -441,43 +511,47 @@ export const useGameStore = defineStore('game', {
       if (!entry) return { success: false, message: '' }
       const def = ITEMS[entry.itemId]
       if (!def) return { success: false, message: '' }
-
-      // 既に装備済みなら外す
-      if (entry.equipped) {
-        const unequipped = calcUnequip(def)
-        this.player.attack += unequipped.attackDelta
-        this.player.defense += unequipped.defenseDelta
-        entry.equipped = false
-        return { success: true, message: unequipped.message }
+      if (!def.equippable) {
+        return { success: false, message: `${def.name}は装備できない` }
       }
 
-      // 同タイプの装備中アイテムを検索（1スロット1装備）
+      // 既に装備済みなら外す（強化込みボーナスを差し引く）
+      if (entry.equipped) {
+        const bonus = equipBonusOf(entry)
+        this.player.attack -= bonus.attack
+        this.player.defense -= bonus.defense
+        entry.equipped = false
+        return { success: true, message: `${def.name}を外した` }
+      }
+
+      // 同タイプの装備中アイテムを外す（1スロット1装備）
       const currentIndex = this.inventory.findIndex(
         (i, idx) => idx !== index && i.equipped && ITEMS[i.itemId]?.type === def.type
       )
-      const currentId = currentIndex >= 0 ? this.inventory[currentIndex].itemId : null
-      const result = calcEquip(def, currentId)
-      if (!result.success) {
-        return { success: false, message: result.message }
-      }
       if (currentIndex >= 0) {
-        this.inventory[currentIndex].equipped = false
+        const current = this.inventory[currentIndex]
+        const curBonus = equipBonusOf(current)
+        this.player.attack -= curBonus.attack
+        this.player.defense -= curBonus.defense
+        current.equipped = false
       }
-      this.player.attack += result.attackDelta
-      this.player.defense += result.defenseDelta
+
+      // 新しい装備の強化込みボーナスを加算
+      const bonus = equipBonusOf(entry)
+      this.player.attack += bonus.attack
+      this.player.defense += bonus.defense
       entry.equipped = true
-      return { success: true, message: result.message }
+      return { success: true, message: `${def.name}を装備した` }
     },
 
     dropInventoryItem(index: number): { success: boolean; message: string; itemId: string | null } {
       const entry = this.inventory[index]
       if (!entry) return { success: false, message: '', itemId: null }
-      const def = ITEMS[entry.itemId]
-      // 装備中なら先に外す
-      if (entry.equipped && def) {
-        const u = calcUnequip(def)
-        this.player.attack += u.attackDelta
-        this.player.defense += u.defenseDelta
+      // 装備中なら先に外す（強化込みボーナスを差し引く）
+      if (entry.equipped) {
+        const bonus = equipBonusOf(entry)
+        this.player.attack -= bonus.attack
+        this.player.defense -= bonus.defense
       }
       const name = entry.name
       const itemId = entry.itemId

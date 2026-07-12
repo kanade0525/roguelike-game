@@ -26,3 +26,10 @@ export function rollSafeGold(
   const max = Math.max(min, Math.floor(maxGold))
   return min + Math.floor(rng() * (max - min + 1))
 }
+
+// 装備強化コスト: base * (multiplier ^ 現在の強化レベル)。
+// currentLevel は「これから +1 する前の」レベル。
+export function computeEnhanceCost(currentLevel: number, base: number, multiplier: number): number {
+  const lvl = Math.max(0, Math.floor(currentLevel))
+  return Math.floor(base * Math.pow(multiplier, lvl))
+}

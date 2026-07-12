@@ -2,13 +2,50 @@
   import { computed, onMounted, ref } from 'vue'
   import { useGameStore } from '~/stores/gameStore'
   import { DUNGEONS, DEFAULT_DUNGEON_ID } from '~/game/dungeon'
+  import { ITEMS } from '~/game/data/items'
+  import { computeEnhanceCost } from '~/game/systems/EconomySystem'
+  import gameConfig from '~/game/data/gameConfig.json'
 
-  // 拠点画面（村）: 脱出・帰還の行き先、永続ゴールドの表示、ダンジョンへの出発
+  // 拠点画面（村）: 脱出・帰還の行き先、永続ゴールドの表示、鍛冶、ダンジョンへの出発
   const router = useRouter()
   const gameStore = useGameStore()
 
+  const equipCfg = gameConfig.equipmentConfig
+
   const gold = computed(() => gameStore.meta.gold)
   const lastRun = computed(() => gameStore.meta.lastRun)
+
+  // 鍛冶: 拠点倉庫の装備一覧（強化対象）。index は meta.storage 上の位置。
+  const equipmentList = computed(() =>
+    gameStore.meta.storage
+      .map((entry, index) => ({ entry, index }))
+      .filter(({ entry }) => ITEMS[entry.itemId]?.equippable)
+      .map(({ entry, index }) => {
+        const def = ITEMS[entry.itemId]
+        const level = entry.equipmentData?.enhanceLevel ?? 0
+        const maxed = level >= equipCfg.maxEnhanceLevel
+        const cost = computeEnhanceCost(
+          level,
+          equipCfg.enhanceCostBase,
+          equipCfg.enhanceCostMultiplier
+        )
+        return {
+          index,
+          name: def?.name ?? entry.itemId,
+          level,
+          maxed,
+          cost,
+          canAfford: gameStore.meta.gold >= cost,
+        }
+      })
+  )
+
+  const blacksmithMsg = ref('')
+
+  const enhance = (index: number) => {
+    const result = gameStore.enhanceEquipment(index)
+    blacksmithMsg.value = result.message
+  }
 
   const lastRunLabel = computed(() => {
     const r = lastRun.value
@@ -77,10 +114,31 @@
       </p>
     </div>
 
-    <!-- 鍛冶（PR4で中身を実装するプレースホルダ） -->
+    <!-- 鍛冶屋: 持ち帰った装備を gold で強化 -->
     <div class="shop-panel nes-container is-dark is-rounded">
       <p class="shop-title">鍛冶屋</p>
-      <p class="shop-note nes-text is-disabled">まだ準備中だ…（近日開放）</p>
+      <p v-if="equipmentList.length === 0" class="shop-note nes-text is-disabled">
+        強化できる装備がない
+      </p>
+      <ul v-else class="equip-list">
+        <li v-for="eq in equipmentList" :key="eq.index" class="equip-row">
+          <span class="equip-name">
+            {{ eq.name }}
+            <span v-if="eq.level > 0" class="equip-level">+{{ eq.level }}</span>
+          </span>
+          <button
+            v-if="!eq.maxed"
+            class="nes-btn is-small enhance-btn"
+            :class="{ 'is-disabled': !eq.canAfford }"
+            :disabled="!eq.canAfford"
+            @click="enhance(eq.index)"
+          >
+            強化 {{ eq.cost }}G
+          </button>
+          <span v-else class="equip-maxed nes-text is-disabled">MAX</span>
+        </li>
+      </ul>
+      <p v-if="blacksmithMsg" class="shop-msg">{{ blacksmithMsg }}</p>
     </div>
 
     <!-- ダンジョンへ出発 -->
@@ -186,6 +244,46 @@
   .shop-note {
     font-size: 0.6rem;
     margin: 0;
+  }
+
+  .equip-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .equip-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    font-size: 0.65rem;
+  }
+
+  .equip-name {
+    flex: 1;
+  }
+
+  .equip-level {
+    color: #ffd700;
+  }
+
+  .enhance-btn {
+    font-size: 0.55rem !important;
+    padding: 0.3rem 0.5rem !important;
+  }
+
+  .equip-maxed {
+    font-size: 0.6rem;
+  }
+
+  .shop-msg {
+    margin: 0.6rem 0 0;
+    font-size: 0.6rem;
+    color: #7fdfa0;
   }
 
   .dungeon-list {

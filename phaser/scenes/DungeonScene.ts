@@ -15,6 +15,15 @@ const ITEM_TINT: Record<string, number> = {
   other: 0xcccccc,
 }
 
+// インベントリ描画に渡すエントリ（強化レベル・スタック含む）
+type InventoryUIEntry = {
+  itemId: string
+  name: string
+  equipped?: boolean
+  stack?: number
+  equipmentData?: { enhanceLevel: number }
+}
+
 export class DungeonScene extends Phaser.Scene {
   // 表示するタイル数（ビューポート）
   private viewTilesX = 8
@@ -598,9 +607,9 @@ export class DungeonScene extends Phaser.Scene {
         exploredTiles: string[]
       ) => void
       hideMinimap: () => void
-      showInventory: (inventory: { itemId: string; name: string; equipped?: boolean }[]) => void
+      showInventory: (inventory: InventoryUIEntry[]) => void
       hideInventory: () => void
-      refreshInventory: (inventory: { itemId: string; name: string; equipped?: boolean }[]) => void
+      refreshInventory: (inventory: InventoryUIEntry[]) => void
       moveInventoryCursor: (dx: number, dy: number) => void
       getInventorySelectedIndex: () => number
     }
@@ -1078,8 +1087,9 @@ export class DungeonScene extends Phaser.Scene {
       ease: 'Power2',
       onComplete: () => {
         this.time.delayedCall(1500, () => {
-          // 踏破は生還扱い: 現ランgoldを拠点へ持ち帰る (issue #37)
+          // 踏破は生還扱い: 現ランgoldと所持品を拠点へ持ち帰る (issue #37)
           const banked = this.gameStore.bankRunGold()
+          this.gameStore.saveBelongings()
           this.gameStore.setLastRun({
             result: 'cleared',
             goldBanked: banked,

@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { computeDeathGoldLoss, rollSafeGold } from '../../../game/systems/EconomySystem'
+import {
+  computeDeathGoldLoss,
+  rollSafeGold,
+  computeEnhanceCost,
+} from '../../../game/systems/EconomySystem'
 
 describe('EconomySystem.computeDeathGoldLoss', () => {
   it('lossRate=1 で全ロスト', () => {
@@ -65,5 +69,38 @@ describe('EconomySystem.rollSafeGold', () => {
 
   it('min>max でも min にクランプされる', () => {
     expect(rollSafeGold(200, 50, () => 0.5)).toBe(200)
+  })
+})
+
+describe('EconomySystem.computeEnhanceCost', () => {
+  // gameConfig 既定: base=100, multiplier=1.5
+  it('level0 は base', () => {
+    expect(computeEnhanceCost(0, 100, 1.5)).toBe(100)
+  })
+
+  it('level1 は base*1.5', () => {
+    expect(computeEnhanceCost(1, 100, 1.5)).toBe(150)
+  })
+
+  it('level2 は base*1.5^2（端数切り捨て）', () => {
+    expect(computeEnhanceCost(2, 100, 1.5)).toBe(225)
+  })
+
+  it('level3 は切り捨てで337', () => {
+    // 100 * 3.375 = 337.5 -> 337
+    expect(computeEnhanceCost(3, 100, 1.5)).toBe(337)
+  })
+
+  it('レベルが上がるほど単調増加する', () => {
+    let prev = -1
+    for (let lvl = 0; lvl <= 9; lvl++) {
+      const c = computeEnhanceCost(lvl, 100, 1.5)
+      expect(c).toBeGreaterThan(prev)
+      prev = c
+    }
+  })
+
+  it('負のレベルは0扱い', () => {
+    expect(computeEnhanceCost(-1, 100, 1.5)).toBe(100)
   })
 })
