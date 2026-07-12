@@ -2,6 +2,7 @@ import { useGameStore } from '~/stores/gameStore'
 import { TurnManager } from '~/game/systems/TurnManager'
 import { CombatSystem } from '~/game/systems/CombatSystem'
 import { decideAction } from '~/game/systems/EnemyAI'
+import { canMoveDiagonally } from '~/game/systems/movement'
 import { generateFloor } from '~/game/systems/DungeonGenerator'
 import { getFloorDifficulty } from '~/game/data/floorConfig'
 import { getDungeon, DEFAULT_DUNGEON_ID } from '~/game/dungeon'
@@ -271,6 +272,15 @@ export function useGameLoop() {
       newX < 0 ||
       newX >= map[0].length ||
       map[newY][newX] === 1
+    ) {
+      return null
+    }
+
+    // 斜め移動時は壁角のすり抜けを禁止
+    if (
+      dx !== 0 &&
+      dy !== 0 &&
+      !canMoveDiagonally(map, store.player.position.x, store.player.position.y, dx, dy)
     ) {
       return null
     }

@@ -1,3 +1,5 @@
+import { canMoveDiagonally } from './movement'
+
 interface Position {
   x: number
   y: number
@@ -22,6 +24,10 @@ const DIRECTIONS = [
   { dx: 0, dy: 1 }, // 下
   { dx: -1, dy: 0 }, // 左
   { dx: 1, dy: 0 }, // 右
+  { dx: -1, dy: -1 }, // 左上
+  { dx: 1, dy: -1 }, // 右上
+  { dx: -1, dy: 1 }, // 左下
+  { dx: 1, dy: 1 }, // 右下
 ]
 
 const AI_CONFIG: Record<string, { detectRange: number; chaseRange: number }> = {
@@ -40,12 +46,33 @@ function chebyshevDistance(a: Position, b: Position): number {
 export function isAdjacent(a: Position, b: Position): boolean {
   const dx = Math.abs(a.x - b.x)
   const dy = Math.abs(a.y - b.y)
-  return (dx === 1 && dy === 0) || (dx === 0 && dy === 1)
+  // Chebyshev 距離 1（縦横斜めの隣接すべて true、同一マスは false）
+  return dx <= 1 && dy <= 1 && dx + dy > 0
+}
+
+/**
+ * 指定マスへ移動可能か判定する（範囲外・壁・占有・斜め角抜けを排除）。
+ */
+function canEnter(
+  enemy: Position,
+  nx: number,
+  ny: number,
+  map: number[][],
+  occupied: Position[]
+): boolean {
+  if (ny < 0 || ny >= map.length || nx < 0 || nx >= map[0].length) return false
+  if (map[ny][nx] === 1) return false
+  if (occupied.some((p) => p.x === nx && p.y === ny)) return false
+  const dx = nx - enemy.x
+  const dy = ny - enemy.y
+  // 斜め移動時は壁角のすり抜けを禁止
+  if (dx !== 0 && dy !== 0 && !canMoveDiagonally(map, enemy.x, enemy.y, dx, dy)) return false
+  return true
 }
 
 /**
  * ランダム移動AI
- * 4方向からランダムに移動先を選ぶ。壁・範囲外・占有済みマスは避ける。
+ * 8方向からランダムに移動先を選ぶ。壁・範囲外・占有済みマス・斜め角抜けは避ける。
  */
 export function randomMove(
   enemy: Position,
@@ -59,20 +86,17 @@ export function randomMove(
   for (const { dx, dy } of shuffled) {
     const nx = enemy.x + dx
     const ny = enemy.y + dy
-
-    if (ny < 0 || ny >= map.length || nx < 0 || nx >= map[0].length) continue
-    if (map[ny][nx] === 1) continue
-    if (occupied.some((p) => p.x === nx && p.y === ny)) continue
-
-    return { x: nx, y: ny }
+    if (canEnter(enemy, nx, ny, map, occupied)) {
+      return { x: nx, y: ny }
+    }
   }
 
   return null
 }
 
 /**
- * プレイヤー方向への貪欲移動
- * dx/dyの大きい方を優先し、壁ならもう一方を試行
+ * プレイヤー方向への貪欲移動（8方向）
+ * まず斜めを含めた理想方向を試し、塞がれていれば直交方向へフォールバックする。
  */
 export function moveToward(
   enemy: Position,
@@ -82,23 +106,31 @@ export function moveToward(
 ): Position | null {
   const dx = target.x - enemy.x
   const dy = target.y - enemy.y
+  const sx = Math.sign(dx)
+  const sy = Math.sign(dy)
 
-  // 優先方向を決定（距離が大きい軸を先に試す）
   const candidates: { nx: number; ny: number }[] = []
 
+  // 1. 斜め方向（両軸ともズレている場合）
+  if (sx !== 0 && sy !== 0) {
+    candidates.push({ nx: enemy.x + sx, ny: enemy.y + sy })
+  }
+
+  // 2. 直交方向フォールバック（距離が大きい軸を優先）
+  const straightX = { nx: enemy.x + sx, ny: enemy.y }
+  const straightY = { nx: enemy.x, ny: enemy.y + sy }
   if (Math.abs(dx) >= Math.abs(dy)) {
-    if (dx !== 0) candidates.push({ nx: enemy.x + Math.sign(dx), ny: enemy.y })
-    if (dy !== 0) candidates.push({ nx: enemy.x, ny: enemy.y + Math.sign(dy) })
+    if (sx !== 0) candidates.push(straightX)
+    if (sy !== 0) candidates.push(straightY)
   } else {
-    if (dy !== 0) candidates.push({ nx: enemy.x, ny: enemy.y + Math.sign(dy) })
-    if (dx !== 0) candidates.push({ nx: enemy.x + Math.sign(dx), ny: enemy.y })
+    if (sy !== 0) candidates.push(straightY)
+    if (sx !== 0) candidates.push(straightX)
   }
 
   for (const { nx, ny } of candidates) {
-    if (ny < 0 || ny >= map.length || nx < 0 || nx >= map[0].length) continue
-    if (map[ny][nx] === 1) continue
-    if (occupied.some((p) => p.x === nx && p.y === ny)) continue
-    return { x: nx, y: ny }
+    if (canEnter(enemy, nx, ny, map, occupied)) {
+      return { x: nx, y: ny }
+    }
   }
 
   return null

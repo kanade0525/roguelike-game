@@ -63,6 +63,10 @@ export class DungeonScene extends Phaser.Scene {
   // 演出中の入力ロック
   private inputLocked = false
 
+  // キーボード8方向移動: 押下中の移動キー集合と、1フレーム内の移動合成フラグ
+  private heldMoveKeys = new Set<string>()
+  private movePending = false
+
   // BGM
   private currentBgm: Phaser.Sound.BaseSound | null = null
   private currentBgmKey = ''
@@ -497,7 +501,8 @@ export class DungeonScene extends Phaser.Scene {
       const x = this.offsetX + screenTileX * this.tileWidth + this.tileWidth / 2
       const y = this.offsetY + screenTileY * this.tileHeight + this.tileHeight / 2
       const def = ITEMS[item.itemId]
-      const spriteKey = def?.sprite && this.textures.exists(def.sprite) ? def.sprite : 'weapon_sword'
+      const spriteKey =
+        def?.sprite && this.textures.exists(def.sprite) ? def.sprite : 'weapon_sword'
       const sprite = this.add.image(x, y, spriteKey)
       // 専用スプライト (flask 等) は元画像が小さいので大きめに描画する
       const scaleFactor = spriteKey === 'weapon_sword' ? 0.35 : 0.55
@@ -541,37 +546,71 @@ export class DungeonScene extends Phaser.Scene {
 
   // --- 入力 ---
 
+  private static readonly MOVE_KEYS = [
+    'ArrowUp',
+    'KeyW',
+    'ArrowDown',
+    'KeyS',
+    'ArrowLeft',
+    'KeyA',
+    'ArrowRight',
+    'KeyD',
+  ]
+
   private setupInput() {
-    this.input.keyboard?.on('keydown', (event: KeyboardEvent) => {
-      let dx = 0
-      let dy = 0
+    const keyboard = this.input.keyboard
+    if (!keyboard) return
 
-      switch (event.code) {
-        case 'ArrowUp':
-        case 'KeyW':
-          dy = -1
-          break
-        case 'ArrowDown':
-        case 'KeyS':
-          dy = 1
-          break
-        case 'ArrowLeft':
-        case 'KeyA':
-          dx = -1
-          break
-        case 'ArrowRight':
-        case 'KeyD':
-          dx = 1
-          break
-        case 'Enter':
-          this.handleAction('confirm')
-          return
+    keyboard.on('keydown', (event: KeyboardEvent) => {
+      if (event.code === 'Enter') {
+        this.handleAction('confirm')
+        return
       }
+      if (DungeonScene.MOVE_KEYS.includes(event.code)) {
+        this.heldMoveKeys.add(event.code)
+        this.scheduleMove()
+      }
+    })
 
+    keyboard.on('keyup', (event: KeyboardEvent) => {
+      this.heldMoveKeys.delete(event.code)
+    })
+
+    // フォーカスを失うとkeyupを取りこぼしてキーが押しっぱなし扱いになるためクリアする
+    this.game.events.on(Phaser.Core.Events.BLUR, this.clearHeldMoveKeys, this)
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.game.events.off(Phaser.Core.Events.BLUR, this.clearHeldMoveKeys, this)
+      this.heldMoveKeys.clear()
+    })
+  }
+
+  private clearHeldMoveKeys() {
+    this.heldMoveKeys.clear()
+  }
+
+  // 同一フレーム内の複数キー押下を1回の移動にまとめ、斜め入力を取りこぼさない
+  private scheduleMove() {
+    if (this.movePending) return
+    this.movePending = true
+    requestAnimationFrame(() => {
+      this.movePending = false
+      const { dx, dy } = this.composeMoveDirection()
       if (dx !== 0 || dy !== 0) {
         this.tryMove(dx, dy)
       }
     })
+  }
+
+  // 押下中の移動キー集合から dx,dy を合成する（例: 上+右 → {dx:1, dy:-1}）
+  private composeMoveDirection(): { dx: number; dy: number } {
+    let dx = 0
+    let dy = 0
+    const keys = this.heldMoveKeys
+    if (keys.has('ArrowUp') || keys.has('KeyW')) dy -= 1
+    if (keys.has('ArrowDown') || keys.has('KeyS')) dy += 1
+    if (keys.has('ArrowLeft') || keys.has('KeyA')) dx -= 1
+    if (keys.has('ArrowRight') || keys.has('KeyD')) dx += 1
+    return { dx, dy }
   }
 
   private getUiScene() {
@@ -595,13 +634,9 @@ export class DungeonScene extends Phaser.Scene {
         exploredTiles: string[]
       ) => void
       hideMinimap: () => void
-      showInventory: (
-        inventory: { itemId: string; name: string; equipped?: boolean }[]
-      ) => void
+      showInventory: (inventory: { itemId: string; name: string; equipped?: boolean }[]) => void
       hideInventory: () => void
-      refreshInventory: (
-        inventory: { itemId: string; name: string; equipped?: boolean }[]
-      ) => void
+      refreshInventory: (inventory: { itemId: string; name: string; equipped?: boolean }[]) => void
       moveInventoryCursor: (dx: number, dy: number) => void
       getInventorySelectedIndex: () => number
     }
@@ -624,7 +659,9 @@ export class DungeonScene extends Phaser.Scene {
       return
     }
 
-    const dir = dx === -1 ? '左' : dx === 1 ? '右' : dy === -1 ? '上' : '下'
+    const h = dx === -1 ? '左' : dx === 1 ? '右' : ''
+    const v = dy === -1 ? '上' : dy === 1 ? '下' : ''
+    const dir = `${h}${v}` || '?'
     console.log(`[Move] ${dir}`)
     const result: ActionResult | null = this.gameLoop.playerMove(dx, dy)
 

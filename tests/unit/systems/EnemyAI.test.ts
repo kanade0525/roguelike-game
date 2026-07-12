@@ -28,25 +28,39 @@ describe('EnemyAI', () => {
       }
     })
 
-    it('占有済みマスには移動しない', () => {
+    it('周囲8マスすべて占有済みなら移動しない', () => {
       const occupied = [
+        { x: 1, y: 1 },
         { x: 2, y: 1 },
+        { x: 3, y: 1 },
         { x: 1, y: 2 },
         { x: 3, y: 2 },
+        { x: 1, y: 3 },
         { x: 2, y: 3 },
+        { x: 3, y: 3 },
       ]
       const result = randomMove({ x: 2, y: 2 }, map, occupied)
       expect(result).toBeNull()
     })
 
-    it('移動先は隣接マス（距離1）である', () => {
+    it('移動先はChebyshev距離1（8方向の隣接）である', () => {
       const pos = { x: 2, y: 2 }
       const result = randomMove(pos, map, [])
       if (result) {
         const dx = Math.abs(result.x - pos.x)
         const dy = Math.abs(result.y - pos.y)
-        expect(dx + dy).toBe(1)
+        expect(Math.max(dx, dy)).toBe(1)
       }
+    })
+
+    it('斜めを含む8方向に移動できる', () => {
+      const seen = new Set<string>()
+      for (let i = 0; i < 300; i++) {
+        const result = randomMove({ x: 2, y: 2 }, map, [])
+        if (result) seen.add(`${result.x - 2},${result.y - 2}`)
+      }
+      const diagonals = ['-1,-1', '1,-1', '-1,1', '1,1']
+      expect(diagonals.some((d) => seen.has(d))).toBe(true)
     })
 
     it('空マップでnullを返す', () => {
@@ -56,19 +70,23 @@ describe('EnemyAI', () => {
   })
 
   describe('isAdjacent', () => {
-    it('隣接マスでtrue', () => {
+    it('縦横の隣接マスでtrue', () => {
       expect(isAdjacent({ x: 2, y: 2 }, { x: 3, y: 2 })).toBe(true)
       expect(isAdjacent({ x: 2, y: 2 }, { x: 2, y: 3 })).toBe(true)
       expect(isAdjacent({ x: 2, y: 2 }, { x: 1, y: 2 })).toBe(true)
       expect(isAdjacent({ x: 2, y: 2 }, { x: 2, y: 1 })).toBe(true)
     })
 
-    it('斜めはfalse', () => {
-      expect(isAdjacent({ x: 2, y: 2 }, { x: 3, y: 3 })).toBe(false)
+    it('斜めの隣接マスでもtrue（8方向）', () => {
+      expect(isAdjacent({ x: 2, y: 2 }, { x: 3, y: 3 })).toBe(true)
+      expect(isAdjacent({ x: 2, y: 2 }, { x: 1, y: 1 })).toBe(true)
+      expect(isAdjacent({ x: 2, y: 2 }, { x: 3, y: 1 })).toBe(true)
+      expect(isAdjacent({ x: 2, y: 2 }, { x: 1, y: 3 })).toBe(true)
     })
 
-    it('離れていたらfalse', () => {
+    it('Chebyshev距離2以上はfalse', () => {
       expect(isAdjacent({ x: 2, y: 2 }, { x: 4, y: 2 })).toBe(false)
+      expect(isAdjacent({ x: 2, y: 2 }, { x: 4, y: 4 })).toBe(false)
     })
 
     it('同じ位置はfalse', () => {
@@ -94,8 +112,26 @@ describe('EnemyAI', () => {
       expect(result).toEqual({ x: 1, y: 2 })
     })
 
-    it('完全に塞がれたらnull', () => {
+    it('斜め方向へ直接近づく（8方向）', () => {
+      const result = moveToward({ x: 1, y: 1 }, { x: 3, y: 3 }, map, [])
+      expect(result).toEqual({ x: 2, y: 2 })
+    })
+
+    it('壁角をすり抜けず直交方向へフォールバックする', () => {
+      // (1,1)から右下(2,2)へ行きたいが (2,1) が壁 → 斜め不可、(1,2)へ
+      const cornerMap = [
+        [1, 1, 1, 1],
+        [1, 0, 1, 1],
+        [1, 0, 0, 1],
+        [1, 1, 1, 1],
+      ]
+      const result = moveToward({ x: 1, y: 1 }, { x: 2, y: 2 }, cornerMap, [])
+      expect(result).toEqual({ x: 1, y: 2 })
+    })
+
+    it('候補マスがすべて塞がれたらnull', () => {
       const occupied = [
+        { x: 2, y: 2 },
         { x: 2, y: 1 },
         { x: 1, y: 2 },
       ]
@@ -122,6 +158,12 @@ describe('EnemyAI', () => {
     it('隣接 → attack', () => {
       const enemy = { x: 2, y: 2, type: 'skeleton', aiState: 'idle' as const }
       const action = decideAction(enemy, { x: 3, y: 2 }, map, [])
+      expect(action.type).toBe('attack')
+    })
+
+    it('斜め隣接 → attack（8方向攻撃）', () => {
+      const enemy = { x: 2, y: 2, type: 'skeleton', aiState: 'chase' as const }
+      const action = decideAction(enemy, { x: 3, y: 3 }, map, [])
       expect(action.type).toBe('attack')
     })
 
