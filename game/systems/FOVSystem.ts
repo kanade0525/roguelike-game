@@ -14,6 +14,12 @@ import { TILE } from '../data/maps'
  * @param range 視界半径（Chebyshev距離）
  * @returns "x,y" 形式の可視座標の Set
  */
+// FOVインスタンスはマップ（配列参照）が変わらない限り使い回す。
+// currentMap はフロア/生成ごとに新しい配列参照へ差し替わるため、参照比較でキャッシュを無効化できる。
+// これにより毎移動での PreciseShadowcasting 再生成コストを避ける。
+let cachedMap: number[][] | null = null
+let cachedFov: InstanceType<typeof FOV.PreciseShadowcasting> | null = null
+
 export function computeVisible(map: number[][], x: number, y: number, range: number): Set<string> {
   const visible = new Set<string>()
   if (map.length === 0 || map[0].length === 0) return visible
@@ -24,15 +30,18 @@ export function computeVisible(map: number[][], x: number, y: number, range: num
   const inBounds = (px: number, py: number): boolean =>
     px >= 0 && px < width && py >= 0 && py < height
 
-  // 光が通る = マップ範囲内かつ壁でない
-  const lightPasses = (px: number, py: number): boolean => {
-    if (!inBounds(px, py)) return false
-    return map[py][px] !== TILE.WALL
+  if (map !== cachedMap || cachedFov === null) {
+    // 光が通る = マップ範囲内かつ壁でない
+    const lightPasses = (px: number, py: number): boolean => {
+      if (px < 0 || px >= width || py < 0 || py >= height) return false
+      return map[py][px] !== TILE.WALL
+    }
+    cachedFov = new FOV.PreciseShadowcasting(lightPasses, { topology: 8 })
+    cachedMap = map
   }
 
-  const fov = new FOV.PreciseShadowcasting(lightPasses, { topology: 8 })
   // compute のコールバックは可視セル（visibility > 0）に対してのみ呼ばれる
-  fov.compute(x, y, range, (cx: number, cy: number) => {
+  cachedFov.compute(x, y, range, (cx: number, cy: number) => {
     if (inBounds(cx, cy)) {
       visible.add(`${cx},${cy}`)
     }

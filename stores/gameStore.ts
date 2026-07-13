@@ -69,6 +69,8 @@ interface LastRun {
   goldBanked: number // 拠点に預けたゴールド
   goldLost: number // 死亡ペナルティ等で失ったゴールド
   floor: number // 到達フロア
+  safeGold?: number // 謎の金庫の開封で得たゴールド
+  safeCount?: number // 開封した謎の金庫の個数
 }
 
 // ラン跨ぎで永続する拠点データ（localStorage 保存）
@@ -276,15 +278,19 @@ export const useGameStore = defineStore('game', {
         goldBanked: kept,
         goldLost: lost,
         floor: this.dungeon.floor,
+        safeGold: 0,
+        safeCount: 0,
       })
       return { lost, kept }
     },
 
     // --- 持ち帰り品（belongings）: 脱出/踏破で拠点へ、死亡で消失、次ラン開始時に再装填 ---
 
-    // 現在の所持品を拠点倉庫へスナップショット保存（脱出・踏破時）
+    // 現在の所持品のうち「装備品のみ」を拠点倉庫へ持ち帰る（消耗品・特殊アイテムはランで完結）。
+    // これにより消耗品のラン跨ぎ無限ストックや、謎の金庫の storage 経由での複製を防ぐ。
     saveBelongings() {
-      this.meta.storage = JSON.parse(JSON.stringify(this.inventory))
+      const equipment = this.inventory.filter((e) => ITEMS[e.itemId]?.equippable)
+      this.meta.storage = JSON.parse(JSON.stringify(equipment))
       this.persistMeta()
     },
 
@@ -435,6 +441,17 @@ export const useGameStore = defineStore('game', {
       const def = ITEMS[entry.itemId]
       if (!def) return { success: false, message: '' }
       const result = applyUseItem(def, this.player)
+
+      // 巻物の状態変更系を先に適用（'escape' は経路集約のため呼び出し側で処理）。
+      // teleport は移動先が無ければ失敗させ、アイテムを消費しない。
+      if (result.scrollAction === 'teleport') {
+        if (!this.teleportPlayerRandom()) {
+          return { success: false, message: 'ここでは移動できなかった' }
+        }
+      } else if (result.scrollAction === 'revealMap') {
+        this.revealEntireMap()
+      }
+
       if (result.consumed) {
         const currentStack = entry.stack ?? 1
         if (currentStack > 1) {
@@ -442,12 +459,6 @@ export const useGameStore = defineStore('game', {
         } else {
           this.inventory.splice(index, 1)
         }
-      }
-      // 巻物の状態変更系はストアで適用（'escape' は経路集約のため呼び出し側で処理）
-      if (result.scrollAction === 'teleport') {
-        this.teleportPlayerRandom()
-      } else if (result.scrollAction === 'revealMap') {
-        this.revealEntireMap()
       }
       return {
         success: result.success,

@@ -65,17 +65,18 @@
 
   const selectedDungeonId = ref(DEFAULT_DUNGEON_ID)
 
-  // 持ち帰った謎の金庫の開封結果
-  const safeResult = ref<{ count: number; gold: number } | null>(null)
+  // 直近ランの謎の金庫の開封結果（開封はダンジョン出口で精算済み。ここは表示のみ）
+  const safeResult = computed(() => {
+    const r = gameStore.meta.lastRun
+    if (r && (r.safeGold ?? 0) > 0) {
+      return { count: r.safeCount ?? 0, gold: r.safeGold ?? 0 }
+    }
+    return null
+  })
 
   onMounted(() => {
     // localStorage から永続データを同期
     gameStore.loadMeta()
-    // 持ち帰った謎の金庫を開封してゴールドを獲得
-    const opened = gameStore.openStrangeSafes()
-    if (opened.count > 0) {
-      safeResult.value = opened
-    }
   })
 
   const departDungeon = () => {

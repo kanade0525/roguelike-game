@@ -4,6 +4,7 @@ import { getDungeon } from '../../game/dungeon'
 import { ITEMS } from '../../game/data/items'
 import gameConfig from '../../game/data/gameConfig.json'
 import type { CombatEvent, ActionResult } from '../../composables/useGameLoop'
+import type { InventoryEntry } from '../ui/InventoryOverlay'
 
 const ITEM_TINT: Record<string, number> = {
   weapon: 0xffffff,
@@ -20,15 +21,6 @@ const ITEM_TINT: Record<string, number> = {
 const DIM_TINT = 0x555566
 
 type TileVisibility = 'visible' | 'explored' | 'hidden'
-
-// インベントリ描画に渡すエントリ（強化レベル・スタック含む）
-type InventoryUIEntry = {
-  itemId: string
-  name: string
-  equipped?: boolean
-  stack?: number
-  equipmentData?: { enhanceLevel: number }
-}
 
 export class DungeonScene extends Phaser.Scene {
   // 表示するタイル数（ビューポート）
@@ -83,6 +75,9 @@ export class DungeonScene extends Phaser.Scene {
   // キーボード8方向移動: 押下中の移動キー集合と、1フレーム内の移動合成フラグ
   private heldMoveKeys = new Set<string>()
   private movePending = false
+  // keydown 時点で確定した移動方向（rAF発火時に keyup 済みでも取りこぼさないため）
+  private pendingMove: { dx: number; dy: number } | null = null
+  private moveRafId = 0
 
   // FOV（視界）: 有効フラグと、drawScene 内で使い回す可視/探索済み集合
   private fovActive = false
@@ -628,6 +623,8 @@ export class DungeonScene extends Phaser.Scene {
       }
       if (DungeonScene.MOVE_KEYS.includes(event.code)) {
         this.heldMoveKeys.add(event.code)
+        // 押下時点の方向を確定させる（rAF発火時に素早いkeyupで取りこぼすのを防ぐ）
+        this.pendingMove = this.composeMoveDirection()
         this.scheduleMove()
       }
     })
@@ -640,23 +637,29 @@ export class DungeonScene extends Phaser.Scene {
     this.game.events.on(Phaser.Core.Events.BLUR, this.clearHeldMoveKeys, this)
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.game.events.off(Phaser.Core.Events.BLUR, this.clearHeldMoveKeys, this)
+      // 予約済みの移動rAFが破棄後シーンで発火するのを防ぐ
+      cancelAnimationFrame(this.moveRafId)
+      this.movePending = false
+      this.pendingMove = null
       this.heldMoveKeys.clear()
     })
   }
 
   private clearHeldMoveKeys() {
     this.heldMoveKeys.clear()
+    this.pendingMove = null
   }
 
   // 同一フレーム内の複数キー押下を1回の移動にまとめ、斜め入力を取りこぼさない
   private scheduleMove() {
     if (this.movePending) return
     this.movePending = true
-    requestAnimationFrame(() => {
+    this.moveRafId = requestAnimationFrame(() => {
       this.movePending = false
-      const { dx, dy } = this.composeMoveDirection()
-      if (dx !== 0 || dy !== 0) {
-        this.tryMove(dx, dy)
+      const move = this.pendingMove
+      this.pendingMove = null
+      if (move && (move.dx !== 0 || move.dy !== 0)) {
+        this.tryMove(move.dx, move.dy)
       }
     })
   }
@@ -694,9 +697,9 @@ export class DungeonScene extends Phaser.Scene {
         exploredTiles: string[]
       ) => void
       hideMinimap: () => void
-      showInventory: (inventory: InventoryUIEntry[]) => void
+      showInventory: (inventory: InventoryEntry[]) => void
       hideInventory: () => void
-      refreshInventory: (inventory: InventoryUIEntry[]) => void
+      refreshInventory: (inventory: InventoryEntry[]) => void
       moveInventoryCursor: (dx: number, dy: number) => void
       getInventorySelectedIndex: () => number
     }
@@ -1176,14 +1179,17 @@ export class DungeonScene extends Phaser.Scene {
       ease: 'Power2',
       onComplete: () => {
         this.time.delayedCall(1500, () => {
-          // 踏破は生還扱い: 現ランgoldと所持品を拠点へ持ち帰る (issue #37)
+          // 踏破は生還扱い: 現ランgoldと装備品を拠点へ持ち帰り、謎の金庫は出口で精算 (issue #37)
           const banked = this.gameStore.bankRunGold()
+          const safes = this.gameStore.openStrangeSafes()
           this.gameStore.saveBelongings()
           this.gameStore.setLastRun({
             result: 'cleared',
             goldBanked: banked,
             goldLost: 0,
             floor: this.gameStore.dungeon.floor,
+            safeGold: safes.gold,
+            safeCount: safes.count,
           })
           this.gameStore.setGameResult('cleared')
           overlay.destroy()

@@ -404,14 +404,18 @@ export function useGameLoop() {
   // ダンジオンから脱出して拠点へ戻る。現ランのゴールドは拠点に持ち帰る。
   function escapeDungeon() {
     const carried = store.player.gold
+    // 謎の金庫は出口で精算（拠点倉庫を経由させないことで複製を防ぐ）
+    const safes = store.openStrangeSafes()
     store.setLastRun({
       result: 'escaped',
       goldBanked: carried,
       goldLost: 0,
       floor: store.dungeon.floor,
+      safeGold: safes.gold,
+      safeCount: safes.count,
     })
     store.bankRunGold()
-    store.saveBelongings() // 所持品を拠点へ持ち帰る
+    store.saveBelongings() // 装備品のみ拠点へ持ち帰る
     // gameResult の変化を GameCanvas が監視して /village へ遷移する
     store.setGameResult('escaped')
   }

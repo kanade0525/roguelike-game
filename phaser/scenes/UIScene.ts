@@ -5,16 +5,7 @@ import { Controller } from '../ui/Controller'
 import { MenuOverlay } from '../ui/MenuOverlay'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
 import { MinimapOverlay } from '../ui/MinimapOverlay'
-import { InventoryOverlay } from '../ui/InventoryOverlay'
-
-// インベントリ描画に渡すエントリ（強化レベル・スタック含む）
-type InventoryUIEntry = {
-  itemId: string
-  name: string
-  equipped?: boolean
-  stack?: number
-  equipmentData?: { enhanceLevel: number }
-}
+import { InventoryOverlay, type InventoryEntry } from '../ui/InventoryOverlay'
 
 export class UIScene extends Phaser.Scene {
   private statusBar!: StatusBar
@@ -133,7 +124,7 @@ export class UIScene extends Phaser.Scene {
 
   // --- インベントリ ---
 
-  showInventory(inventory: InventoryUIEntry[]) {
+  showInventory(inventory: InventoryEntry[]) {
     this.inventory.show(inventory)
   }
 
@@ -141,7 +132,7 @@ export class UIScene extends Phaser.Scene {
     this.inventory.hide()
   }
 
-  refreshInventory(inventory: InventoryUIEntry[]) {
+  refreshInventory(inventory: InventoryEntry[]) {
     this.inventory.refresh(inventory)
   }
 
