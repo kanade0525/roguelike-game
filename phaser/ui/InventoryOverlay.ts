@@ -9,7 +9,7 @@ const BASE_STYLE: Phaser.Types.GameObjects.Text.TextStyle = {
   letterSpacing: 1,
 }
 
-interface InventoryEntry {
+export interface InventoryEntry {
   itemId: string
   name: string
   equipped?: boolean

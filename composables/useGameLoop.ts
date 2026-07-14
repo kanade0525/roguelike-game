@@ -2,6 +2,7 @@ import { useGameStore } from '~/stores/gameStore'
 import { TurnManager } from '~/game/systems/TurnManager'
 import { CombatSystem } from '~/game/systems/CombatSystem'
 import { decideAction } from '~/game/systems/EnemyAI'
+import { canMoveDiagonally } from '~/game/systems/movement'
 import { generateFloor } from '~/game/systems/DungeonGenerator'
 import { getFloorDifficulty } from '~/game/data/floorConfig'
 import { getDungeon, DEFAULT_DUNGEON_ID } from '~/game/dungeon'
@@ -275,12 +276,21 @@ export function useGameLoop() {
       return null
     }
 
+    // 斜め移動時は壁角のすり抜けを禁止
+    if (
+      dx !== 0 &&
+      dy !== 0 &&
+      !canMoveDiagonally(map, store.player.position.x, store.player.position.y, dx, dy)
+    ) {
+      return null
+    }
+
     if (store.enemies.some((e) => e.x === newX && e.y === newY)) {
       return null
     }
 
     store.setPlayerPosition(newX, newY)
-    store.revealAround(newX, newY)
+    store.recomputeFov(newX, newY)
 
     const item = store.floorItems.find((i) => i.x === newX && i.y === newY)
     if (item) {
@@ -372,7 +382,7 @@ export function useGameLoop() {
     store.clearFloorItems()
     store.clearExplored()
     turnManager.reset()
-    store.revealAround(generated.playerStart.x, generated.playerStart.y)
+    store.recomputeFov(generated.playerStart.x, generated.playerStart.y)
 
     for (const item of generated.items) {
       store.addFloorItem(item)
@@ -387,6 +397,27 @@ export function useGameLoop() {
     store.resetGame()
     store.setDungeon(dungeonId, dungeon.floors.length)
     initFloor(1)
+    // 拠点に持ち帰った所持品（強化済み装備など）を引き継いで開始
+    store.loadBelongingsIntoInventory()
+  }
+
+  // ダンジオンから脱出して拠点へ戻る。現ランのゴールドは拠点に持ち帰る。
+  function escapeDungeon() {
+    const carried = store.player.gold
+    // 謎の金庫は出口で精算（拠点倉庫を経由させないことで複製を防ぐ）
+    const safes = store.openStrangeSafes()
+    store.setLastRun({
+      result: 'escaped',
+      goldBanked: carried,
+      goldLost: 0,
+      floor: store.dungeon.floor,
+      safeGold: safes.gold,
+      safeCount: safes.count,
+    })
+    store.bankRunGold()
+    store.saveBelongings() // 装備品のみ拠点へ持ち帰る
+    // gameResult の変化を GameCanvas が監視して /village へ遷移する
+    store.setGameResult('escaped')
   }
 
   function goNextFloor(): string[] | { cleared: true; messages: string[] } {
@@ -416,5 +447,6 @@ export function useGameLoop() {
     initFloor,
     initDungeon,
     goNextFloor,
+    escapeDungeon,
   }
 }

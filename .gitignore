@@ -30,3 +30,6 @@ test-results/
 playwright-report/
 coverage/
 .vscode/settings.json
+
+# git worktrees created by background agents
+.claude/worktrees/

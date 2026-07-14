@@ -5,7 +5,7 @@ import { Controller } from '../ui/Controller'
 import { MenuOverlay } from '../ui/MenuOverlay'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
 import { MinimapOverlay } from '../ui/MinimapOverlay'
-import { InventoryOverlay } from '../ui/InventoryOverlay'
+import { InventoryOverlay, type InventoryEntry } from '../ui/InventoryOverlay'
 
 export class UIScene extends Phaser.Scene {
   private statusBar!: StatusBar
@@ -124,7 +124,7 @@ export class UIScene extends Phaser.Scene {
 
   // --- インベントリ ---
 
-  showInventory(inventory: { itemId: string; name: string; equipped?: boolean }[]) {
+  showInventory(inventory: InventoryEntry[]) {
     this.inventory.show(inventory)
   }
 
@@ -132,7 +132,7 @@ export class UIScene extends Phaser.Scene {
     this.inventory.hide()
   }
 
-  refreshInventory(inventory: { itemId: string; name: string; equipped?: boolean }[]) {
+  refreshInventory(inventory: InventoryEntry[]) {
     this.inventory.refresh(inventory)
   }
 

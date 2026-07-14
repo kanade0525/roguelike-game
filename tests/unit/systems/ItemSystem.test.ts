@@ -1,12 +1,17 @@
 import { describe, it, expect } from 'vitest'
 import { useItem, equipItem, unequipItem } from '../../../game/systems/ItemSystem'
-import {
-  ITEMS,
-  computeEquipmentStats,
-  makeEquipmentData,
-} from '../../../game/data/items'
+import { ITEMS, computeEquipmentStats, makeEquipmentData } from '../../../game/data/items'
 
-function makePlayer(overrides: Partial<{ hp: number; maxHp: number; satiation: number; maxSatiation: number; attack: number; defense: number }> = {}) {
+function makePlayer(
+  overrides: Partial<{
+    hp: number
+    maxHp: number
+    satiation: number
+    maxSatiation: number
+    attack: number
+    defense: number
+  }> = {}
+) {
   return {
     hp: 50,
     maxHp: 100,
@@ -59,6 +64,32 @@ describe('ItemSystem.useItem', () => {
     const result = useItem(ITEMS.antidote, player)
     expect(result.success).toBe(true)
     expect(result.consumed).toBe(true)
+  })
+
+  it('リレミトの巻物は scrollAction=escape を返す', () => {
+    const player = makePlayer()
+    const result = useItem(ITEMS.escape_scroll, player)
+    expect(result.success).toBe(true)
+    expect(result.consumed).toBe(true)
+    expect(result.scrollAction).toBe('escape')
+  })
+
+  it('ワープの巻物は scrollAction=teleport を返す', () => {
+    const result = useItem(ITEMS.teleport_scroll, makePlayer())
+    expect(result.scrollAction).toBe('teleport')
+    expect(result.consumed).toBe(true)
+  })
+
+  it('地図の巻物は scrollAction=revealMap を返す', () => {
+    const result = useItem(ITEMS.map_scroll, makePlayer())
+    expect(result.scrollAction).toBe('revealMap')
+  })
+
+  it('謎の金庫は使用できない（special）', () => {
+    const result = useItem(ITEMS.strange_safe, makePlayer())
+    expect(result.success).toBe(false)
+    expect(result.consumed).toBe(false)
+    expect(result.scrollAction).toBeUndefined()
   })
 })
 
@@ -131,10 +162,11 @@ describe('ITEMS データ整合性', () => {
     }
   })
 
-  it('gold タイプのアイテムが存在する', () => {
-    // scroll / special は M3 範囲外なので具体的アイテムは未定義 (型は items.ts に予約済み)
+  it('gold / scroll / special タイプのアイテムが存在する', () => {
     const types = Object.values(ITEMS).map((i) => i.type)
     expect(types).toContain('gold')
+    expect(types).toContain('scroll')
+    expect(types).toContain('special')
   })
 
   it('ポーション・食料・スクロール・ゴールドは stackable=true', () => {

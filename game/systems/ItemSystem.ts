@@ -13,6 +13,8 @@ export interface UseResult {
   success: boolean
   message: string
   consumed: boolean
+  // 巻物の効果種別。実際の副作用（移動・地図開示・脱出）は呼び出し側（store/scene）が処理する
+  scrollAction?: 'teleport' | 'revealMap' | 'escape'
 }
 
 export function useItem(itemDef: ItemDef, player: PlayerLike): UseResult {
@@ -21,6 +23,17 @@ export function useItem(itemDef: ItemDef, player: PlayerLike): UseResult {
   }
 
   const effect = itemDef.effect ?? {}
+
+  // 巻物: 効果本体は呼び出し側で処理するため、種別だけ返す
+  if (effect.scrollAction) {
+    return {
+      success: true,
+      message: `${itemDef.name}を読んだ`,
+      consumed: true,
+      scrollAction: effect.scrollAction,
+    }
+  }
+
   const messages: string[] = []
 
   if (typeof effect.hp === 'number' && effect.hp > 0) {
@@ -65,10 +78,7 @@ export interface EquipResult {
   defenseDelta: number
 }
 
-export function equipItem(
-  itemDef: ItemDef,
-  currentEquippedId: string | null
-): EquipResult {
+export function equipItem(itemDef: ItemDef, currentEquippedId: string | null): EquipResult {
   if (!itemDef.equippable) {
     return {
       success: false,
@@ -94,9 +104,11 @@ export function equipItem(
   }
 }
 
-export function unequipItem(
-  itemDef: ItemDef
-): { attackDelta: number; defenseDelta: number; message: string } {
+export function unequipItem(itemDef: ItemDef): {
+  attackDelta: number
+  defenseDelta: number
+  message: string
+} {
   const attack = itemDef.effect?.attack ?? 0
   const defense = itemDef.effect?.defense ?? 0
   return {

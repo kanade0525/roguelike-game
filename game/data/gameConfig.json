@@ -14,6 +14,7 @@
     "defense": 5,
     "dodge": 0.05,
     "viewRange": 6,
+    "fovEnabled": true,
     "initialGold": 0
   },
   "enemyTypes": {
@@ -46,6 +47,13 @@
     "defaultDropAmount": 12,
     "dropVariance": 7,
     "dropChance": 0.6
+  },
+  "deathPenalty": {
+    "goldLossRate": 1.0
+  },
+  "strangeSafe": {
+    "minGold": 50,
+    "maxGold": 200
   },
   "dungeonConfig": {
     "floorsTotal": 10,
