@@ -65,15 +65,6 @@
 
   const selectedDungeonId = ref(DEFAULT_DUNGEON_ID)
 
-  // 直近ランの謎の金庫の開封結果（開封はダンジョン出口で精算済み。ここは表示のみ）
-  const safeResult = computed(() => {
-    const r = gameStore.meta.lastRun
-    if (r && (r.safeGold ?? 0) > 0) {
-      return { count: r.safeCount ?? 0, gold: r.safeGold ?? 0 }
-    }
-    return null
-  })
-
   onMounted(() => {
     // localStorage から永続データを同期
     gameStore.loadMeta()
@@ -109,9 +100,7 @@
         前回: {{ lastRunLabel }} / B{{ lastRun.floor }}F
         <template v-if="lastRun.goldBanked > 0"> ・ +{{ lastRun.goldBanked }}G</template>
         <template v-if="lastRun.goldLost > 0"> ・ -{{ lastRun.goldLost }}G</template>
-      </p>
-      <p v-if="safeResult" class="safe-result">
-        謎の金庫を開けた！ +{{ safeResult.gold }}G（{{ safeResult.count }}個）
+        <template v-if="(lastRun.safeGold ?? 0) > 0"> ・ 金庫 +{{ lastRun.safeGold }}G</template>
       </p>
     </div>
 
@@ -228,12 +217,6 @@
 
   .lastrun.is-dead {
     color: #ff8a8a;
-  }
-
-  .safe-result {
-    margin: 0.4rem 0 0;
-    font-size: 0.6rem;
-    color: #ffd700;
   }
 
   .shop-title,

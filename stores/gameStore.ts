@@ -294,6 +294,23 @@ export const useGameStore = defineStore('game', {
       this.persistMeta()
     },
 
+    // 生還（脱出・踏破）時のラン終了会計を集約: 金庫精算 → ランgold銀行 → 装備持ち帰り → lastRun。
+    // 脱出・踏破の両出口で同一処理を使い、ドリフトを防ぐ。死亡は損失ロジックが別物のため applyDeathPenalty 側。
+    finishSurvivedRun(result: 'escaped' | 'cleared') {
+      const carried = this.player.gold
+      const safes = this.openStrangeSafes()
+      this.bankRunGold()
+      this.saveBelongings()
+      this.setLastRun({
+        result,
+        goldBanked: carried,
+        goldLost: 0,
+        floor: this.dungeon.floor,
+        safeGold: safes.gold,
+        safeCount: safes.count,
+      })
+    },
+
     // 拠点倉庫の所持品を現ランのインベントリへ展開し、装備中ボーナスを再適用（ラン開始時）
     loadBelongingsIntoInventory() {
       this.inventory = JSON.parse(JSON.stringify(this.meta.storage))
