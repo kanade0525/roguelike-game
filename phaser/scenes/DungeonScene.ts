@@ -1179,18 +1179,8 @@ export class DungeonScene extends Phaser.Scene {
       ease: 'Power2',
       onComplete: () => {
         this.time.delayedCall(1500, () => {
-          // 踏破は生還扱い: 現ランgoldと装備品を拠点へ持ち帰り、謎の金庫は出口で精算 (issue #37)
-          const banked = this.gameStore.bankRunGold()
-          const safes = this.gameStore.openStrangeSafes()
-          this.gameStore.saveBelongings()
-          this.gameStore.setLastRun({
-            result: 'cleared',
-            goldBanked: banked,
-            goldLost: 0,
-            floor: this.gameStore.dungeon.floor,
-            safeGold: safes.gold,
-            safeCount: safes.count,
-          })
+          // 踏破は生還扱い: ラン終了の会計処理を store に集約 (issue #37)
+          this.gameStore.finishSurvivedRun('cleared')
           this.gameStore.setGameResult('cleared')
           overlay.destroy()
         })
