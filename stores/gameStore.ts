@@ -108,7 +108,6 @@ interface GameState {
   defeatedEnemies: number
   maxFloorReached: number
   meta: MetaState // ラン跨ぎ永続データ
-  villageFacility: string | null // 拠点で接触中の施設（'blacksmith'|'dungeon'|'exit'|null）。VillageScene→village.vue の橋渡し
 }
 
 export const useGameStore = defineStore('game', {
@@ -148,7 +147,6 @@ export const useGameStore = defineStore('game', {
       lastRun: null,
       storage: [],
     },
-    villageFacility: null,
   }),
 
   getters: {
@@ -188,11 +186,6 @@ export const useGameStore = defineStore('game', {
 
     setGameResult(result: GameResult) {
       this.gameResult = result
-    },
-
-    // 拠点で接触中の施設を設定（VillageScene が呼び、village.vue がモーダル表示に使う）
-    setVillageFacility(facility: string | null) {
-      this.villageFacility = facility
     },
 
     incrementDefeatedEnemies() {

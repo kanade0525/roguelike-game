@@ -6,6 +6,7 @@ import { MenuOverlay } from '../ui/MenuOverlay'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
 import { MinimapOverlay } from '../ui/MinimapOverlay'
 import { InventoryOverlay, type InventoryEntry } from '../ui/InventoryOverlay'
+import { ListMenuOverlay, type ListRow } from '../ui/ListMenuOverlay'
 
 export class UIScene extends Phaser.Scene {
   private statusBar!: StatusBar
@@ -14,9 +15,17 @@ export class UIScene extends Phaser.Scene {
   private confirm!: ConfirmDialog
   private minimap!: MinimapOverlay
   private inventory!: InventoryOverlay
+  private listMenu!: ListMenuOverlay
+
+  // 入力イベントの送り先（DungeonScene / VillageScene）
+  private gameplayKey = 'DungeonScene'
 
   constructor() {
     super({ key: 'UIScene' })
+  }
+
+  init(data: { gameplayKey?: string }) {
+    this.gameplayKey = data?.gameplayKey ?? 'DungeonScene'
   }
 
   create() {
@@ -31,12 +40,15 @@ export class UIScene extends Phaser.Scene {
     this.confirm = new ConfirmDialog(this)
     this.minimap = new MinimapOverlay(this)
     this.inventory = new InventoryOverlay(this)
+    this.listMenu = new ListMenuOverlay(this)
 
-    // 初期メッセージ
-    this.addMessage('ダンジョンに足を踏み入れた！')
+    // 初期メッセージ（ダンジョンのみ）
+    if (this.gameplayKey === 'DungeonScene') {
+      this.addMessage('ダンジョンに足を踏み入れた！')
+    }
   }
 
-  // --- 公開API（DungeonSceneから呼ばれる） ---
+  // --- 公開API ---
 
   addMessage(message: string) {
     this.messageLog.addMessage(message)
@@ -148,15 +160,43 @@ export class UIScene extends Phaser.Scene {
     return this.inventory.getSelectedIndex()
   }
 
-  // --- イベント転送 ---
+  // --- リストメニュー（拠点施設: 鍛冶屋・ダンジョン選択） ---
+
+  showListMenu(title: string, subtitle: string, rows: ListRow[], onSelect: (index: number) => void) {
+    this.listMenu.show(title, subtitle, rows, onSelect)
+  }
+
+  refreshListMenu(rows: ListRow[], subtitle?: string) {
+    this.listMenu.refresh(rows, subtitle)
+  }
+
+  hideListMenu() {
+    this.listMenu.hide()
+  }
+
+  isListMenuOpen(): boolean {
+    return this.listMenu.isOpen()
+  }
+
+  moveListCursor(dy: number) {
+    this.listMenu.moveCursor(dy)
+  }
+
+  selectListItem() {
+    this.listMenu.select()
+  }
+
+  getListSelectedIndex(): number {
+    return this.listMenu.getSelectedIndex()
+  }
+
+  // --- イベント転送（アクティブなゲームプレイシーンへ） ---
 
   private emitMove(dx: number, dy: number) {
-    const dungeonScene = this.scene.get('DungeonScene')
-    dungeonScene.events.emit('playerMove', dx, dy)
+    this.scene.get(this.gameplayKey).events.emit('playerMove', dx, dy)
   }
 
   private emitAction(action: string) {
-    const dungeonScene = this.scene.get('DungeonScene')
-    dungeonScene.events.emit('playerAction', action)
+    this.scene.get(this.gameplayKey).events.emit('playerAction', action)
   }
 }
