@@ -228,6 +228,14 @@ export const useGameStore = defineStore('game', {
       this.meta = preservedMeta
     },
 
+    // 完全な新規開始（「はじめから」）: 永続データ(meta)と localStorage も含め全リセット
+    newGame() {
+      this.$reset()
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem(META_STORAGE_KEY)
+      }
+    },
+
     // --- 拠点永続データ（localStorage レイヤ） ---
 
     persistMeta() {
