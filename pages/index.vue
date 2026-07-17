@@ -1,23 +1,33 @@
 <script setup lang="ts">
+  import { onMounted, ref } from 'vue'
+  import { useGameStore } from '~/stores/gameStore'
+
   // タイトル画面
   const router = useRouter()
+  const gameStore = useGameStore()
 
+  // はじめから: 永続データ(meta/localStorage)を含め全リセットして拠点の村から開始
   const startGame = () => {
+    gameStore.newGame()
     sessionStorage.removeItem('gameState')
-    router.push('/game')
-  }
-
-  const goVillage = () => {
     router.push('/village')
   }
 
+  // つづきから: 保存済みの永続データを引き継いで拠点の村から再開
   const continueGame = () => {
-    // TODO: セーブデータ読み込み
-    router.push('/game')
+    router.push('/village')
   }
 
-  // セーブデータの有無（仮）
+  const openSettings = () => {
+    router.push('/settings')
+  }
+
+  // セーブデータ（永続データ）の有無
   const hasSaveData = ref(false)
+  onMounted(() => {
+    hasSaveData.value =
+      typeof localStorage !== 'undefined' && !!localStorage.getItem('katabasis_meta')
+  })
 </script>
 
 <template>
@@ -31,7 +41,6 @@
     <!-- メニューボタン -->
     <div class="menu nes-container is-dark is-rounded">
       <button class="nes-btn is-primary menu-btn" @click="startGame">はじめから</button>
-      <button class="nes-btn menu-btn" @click="goVillage">きょてんへ</button>
       <button
         class="nes-btn menu-btn"
         :class="{ 'is-disabled': !hasSaveData }"
@@ -40,7 +49,7 @@
       >
         つづきから
       </button>
-      <button class="nes-btn menu-btn is-disabled" disabled>せってい</button>
+      <button class="nes-btn menu-btn" @click="openSettings">せってい</button>
     </div>
   </div>
 </template>

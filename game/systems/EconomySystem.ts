@@ -33,3 +33,26 @@ export function computeEnhanceCost(currentLevel: number, base: number, multiplie
   const lvl = Math.max(0, Math.floor(currentLevel))
   return Math.floor(base * Math.pow(multiplier, lvl))
 }
+
+// 死亡時のアイテム分割: 所持アイテムの半分（floor(n/2)）をランダムに失い、残りを持ち帰る。
+// rng は 0<=x<1 を返す関数（テスト時に注入可能）。純粋関数（引数を破壊しない）。
+export function splitItemsOnDeath<T>(
+  items: T[],
+  rng: () => number = Math.random
+): { kept: T[]; lost: T[] } {
+  const n = items.length
+  const lostCount = Math.floor(n / 2)
+  if (lostCount <= 0) return { kept: [...items], lost: [] }
+
+  // Fisher-Yates の部分シャッフルで失う lostCount 個の index を選ぶ
+  const indices = items.map((_, i) => i)
+  for (let i = 0; i < lostCount; i++) {
+    const j = i + Math.floor(rng() * (n - i))
+    ;[indices[i], indices[j]] = [indices[j], indices[i]]
+  }
+  const lostSet = new Set(indices.slice(0, lostCount))
+  const kept: T[] = []
+  const lost: T[] = []
+  items.forEach((item, i) => (lostSet.has(i) ? lost : kept).push(item))
+  return { kept, lost }
+}

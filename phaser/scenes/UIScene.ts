@@ -42,6 +42,20 @@ export class UIScene extends Phaser.Scene {
     this.inventory = new InventoryOverlay(this)
     this.listMenu = new ListMenuOverlay(this)
 
+    // HUD をストアの現在値で初期化（最初の1手を待たずに正しい HP/Lv/満腹/ゴールドを表示する）
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const store = this.game.registry.get('gameStore') as any
+    if (store) {
+      this.statusBar.updateHP(store.player.hp, store.player.maxHp)
+      this.statusBar.updateLevel(store.player.level)
+      this.statusBar.updateSatiation(store.player.satiation, store.player.maxSatiation)
+      this.statusBar.updateFloor(store.dungeon.floor)
+      // 拠点は永続ゴールド(meta.gold)、ダンジョンは現ランのゴールド(player.gold)を表示
+      const gold =
+        this.gameplayKey === 'VillageScene' ? (store.meta?.gold ?? 0) : (store.player.gold ?? 0)
+      this.statusBar.updateGold(gold)
+    }
+
     // 初期メッセージ（ダンジョンのみ）
     if (this.gameplayKey === 'DungeonScene') {
       this.addMessage('ダンジョンに足を踏み入れた！')

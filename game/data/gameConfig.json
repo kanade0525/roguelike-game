@@ -49,7 +49,7 @@
     "dropChance": 0.6
   },
   "deathPenalty": {
-    "goldLossRate": 1.0
+    "goldLossRate": 0.5
   },
   "strangeSafe": {
     "minGold": 50,

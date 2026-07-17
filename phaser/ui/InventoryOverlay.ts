@@ -1,6 +1,7 @@
 import type Phaser from 'phaser'
 import { TEXT_COLOR, UI_COLOR } from '../../game/data/colors'
-import { ITEMS } from '../../game/data/items'
+import { ITEMS, computeEquipmentStats } from '../../game/data/items'
+import gameConfig from '../../game/data/gameConfig.json'
 
 const BASE_STYLE: Phaser.Types.GameObjects.Text.TextStyle = {
   fontSize: '14px',
@@ -195,6 +196,18 @@ export class InventoryOverlay {
     const def = ITEMS[entry.itemId]
     if (!def) {
       this.descText.setText(entry.name)
+      return
+    }
+    // 装備品は強化を反映した実効ステータスを表示（例: 剣+1 → 攻撃力+6）
+    if (def.equippable && def.effect) {
+      const lvl = entry.equipmentData?.enhanceLevel ?? 0
+      const bonusPerLevel = gameConfig.equipmentConfig?.enhanceBonusPerLevel ?? 1
+      const { attackBonus, defenseBonus } = computeEquipmentStats(def, lvl, bonusPerLevel)
+      const stats: string[] = []
+      if (attackBonus > 0) stats.push(`攻撃力+${attackBonus}`)
+      if (defenseBonus > 0) stats.push(`防御力+${defenseBonus}`)
+      const lvlText = lvl > 0 ? `（+${lvl}）` : ''
+      this.descText.setText(`${def.name}${lvlText}：${stats.join(' ') || def.description}`)
       return
     }
     this.descText.setText(`${def.name}：${def.description}`)

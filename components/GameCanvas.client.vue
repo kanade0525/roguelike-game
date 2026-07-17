@@ -4,11 +4,13 @@
   import { DungeonScene } from '~/phaser/scenes/DungeonScene'
   import { UIScene } from '~/phaser/scenes/UIScene'
   import { useGameStore } from '~/stores/gameStore'
+  import { useSettingsStore } from '~/stores/settingsStore'
   import { useGameLoop } from '~/composables/useGameLoop'
 
   const gameContainer = ref<HTMLDivElement | null>(null)
   let game: Phaser.Game | null = null
   const gameStore = useGameStore()
+  const settings = useSettingsStore()
   const gameLoop = useGameLoop()
   const router = useRouter()
 
@@ -27,6 +29,7 @@
         preBoot: (g) => {
           g.registry.set('gameStore', gameStore)
           g.registry.set('gameLoop', gameLoop)
+          g.registry.set('settingsStore', settings)
         },
       },
       scene: [DungeonScene, UIScene],
@@ -38,14 +41,18 @@
     await nextTick()
     if (!gameContainer.value) return
 
-    // sessionStorageから状態を復元、なければ新規初期化
+    // ユーザー設定（音量）を localStorage から読み込む（Phaser 起動前）
+    settings.load()
+
+    // sessionStorageから状態を復元
     const restored = gameStore.restoreFromSession()
+    // 拠点の永続データ（gold/持ち物）は localStorage を正として先に同期する。
+    // 新規ダイブ時の initDungeon→loadBelongings が meta を参照するため、必ず initDungeon より前に。
+    gameStore.loadMeta()
+    // 復元できていなければ新規初期化（meta から持ち物・ゴールドを引き継ぐ）
     if (!restored || gameStore.currentMap.length === 0) {
       gameLoop.initDungeon(gameStore.dungeon.dungeonId)
     }
-
-    // 拠点の永続データ（gold等）は localStorage を正として同期（session復元より優先）
-    gameStore.loadMeta()
 
     // 復元時にゲーム終了状態ならリザルト/拠点へ直接遷移
     if (gameStore.gameResult === 'escaped') {
