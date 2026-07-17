@@ -43,6 +43,7 @@
     exp: 0,
     satiation: 0,
     maxSatiation: 0,
+    gold: 0,
     posX: 0,
     posY: 0,
   })
@@ -57,6 +58,7 @@
     playerDraft.exp = store.player.exp
     playerDraft.satiation = store.player.satiation
     playerDraft.maxSatiation = store.player.maxSatiation
+    playerDraft.gold = store.player.gold ?? 0
     playerDraft.posX = store.player.position.x
     playerDraft.posY = store.player.position.y
   }
@@ -78,6 +80,7 @@
       exp: playerDraft.exp,
       satiation: playerDraft.satiation,
       maxSatiation: playerDraft.maxSatiation,
+      gold: Math.max(0, playerDraft.gold),
     }
     // 座標はドラフトと現在値が異なる時だけ反映する。
     // (パネル開きっぱなしでプレイ→保存時に古い座標で player が飛んでしまうのを防ぐ)
@@ -303,6 +306,10 @@
           <input v-model.number="playerDraft.satiation" type="number" min="0" >
           <label>/ 最大</label>
           <input v-model.number="playerDraft.maxSatiation" type="number" min="1" >
+        </div>
+        <div class="row">
+          <label>所持金</label>
+          <input v-model.number="playerDraft.gold" type="number" min="0" >
         </div>
         <div class="row">
           <label>X</label>
