@@ -22,6 +22,10 @@ export class DungeonScene extends BaseMapScene {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private gameLoop: any = null
 
+  // ユーザー設定（音量）
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private settings: any = null
+
   // デバッググリッド
   private debugContainer!: Phaser.GameObjects.Container
   private debugGridVisible = false
@@ -71,6 +75,7 @@ export class DungeonScene extends BaseMapScene {
   create() {
     this.gameStore = this.game.registry.get('gameStore')
     this.gameLoop = this.game.registry.get('gameLoop')
+    this.settings = this.game.registry.get('settingsStore')
 
     if (!this.gameStore || !this.gameLoop) {
       throw new Error('gameStore or gameLoop not found in registry')
@@ -557,8 +562,9 @@ export class DungeonScene extends BaseMapScene {
   // --- 戦闘演出 ---
 
   private playSE(key: string) {
-    if (this.cache.audio.exists(key)) {
-      this.sound.play(key, { volume: 0.5 })
+    const volume = this.settings?.seVolume ?? 0.5
+    if (volume > 0 && this.cache.audio.exists(key)) {
+      this.sound.play(key, { volume })
     }
   }
 
@@ -829,10 +835,10 @@ export class DungeonScene extends BaseMapScene {
     this.currentBgm = this.sound.add(key, { loop: true, volume: 0 })
     this.currentBgm.play()
     this.currentBgmKey = key
-    // フェードイン
+    // フェードイン（設定音量まで）
     this.tweens.add({
       targets: this.currentBgm,
-      volume: 0.3,
+      volume: this.settings?.bgmVolume ?? 0.3,
       duration: 1000,
       ease: 'Linear',
     })
@@ -865,7 +871,7 @@ export class DungeonScene extends BaseMapScene {
     this.currentBgm.resume()
     this.tweens.add({
       targets: this.currentBgm,
-      volume: 0.3,
+      volume: this.settings?.bgmVolume ?? 0.3,
       duration: 800,
       ease: 'Linear',
     })

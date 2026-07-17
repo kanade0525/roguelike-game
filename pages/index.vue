@@ -18,6 +18,10 @@
     router.push('/village')
   }
 
+  const openSettings = () => {
+    router.push('/settings')
+  }
+
   // セーブデータ（永続データ）の有無
   const hasSaveData = ref(false)
   onMounted(() => {
@@ -45,7 +49,7 @@
       >
         つづきから
       </button>
-      <button class="nes-btn menu-btn is-disabled" disabled>せってい</button>
+      <button class="nes-btn menu-btn" @click="openSettings">せってい</button>
     </div>
   </div>
 </template>

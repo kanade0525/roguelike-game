@@ -4,11 +4,13 @@
   import { DungeonScene } from '~/phaser/scenes/DungeonScene'
   import { UIScene } from '~/phaser/scenes/UIScene'
   import { useGameStore } from '~/stores/gameStore'
+  import { useSettingsStore } from '~/stores/settingsStore'
   import { useGameLoop } from '~/composables/useGameLoop'
 
   const gameContainer = ref<HTMLDivElement | null>(null)
   let game: Phaser.Game | null = null
   const gameStore = useGameStore()
+  const settings = useSettingsStore()
   const gameLoop = useGameLoop()
   const router = useRouter()
 
@@ -27,6 +29,7 @@
         preBoot: (g) => {
           g.registry.set('gameStore', gameStore)
           g.registry.set('gameLoop', gameLoop)
+          g.registry.set('settingsStore', settings)
         },
       },
       scene: [DungeonScene, UIScene],
@@ -37,6 +40,9 @@
   onMounted(async () => {
     await nextTick()
     if (!gameContainer.value) return
+
+    // ユーザー設定（音量）を localStorage から読み込む（Phaser 起動前）
+    settings.load()
 
     // sessionStorageから状態を復元
     const restored = gameStore.restoreFromSession()
