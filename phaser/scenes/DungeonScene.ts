@@ -594,8 +594,7 @@ export class DungeonScene extends BaseMapScene {
     this.inputLocked = true
     this.stopBgm()
     this.playSE('se_game_over')
-    // 持ち物全ロスト (issue #7) + gold ロスト (死亡ペナルティ, issue #37)
-    this.gameStore.clearInventory()
+    // 死亡ペナルティ: ゴールドとアイテムの半分をロスト（applyDeathPenalty が inventory/gold を処理）
     this.gameStore.applyDeathPenalty()
 
     // プレイヤー位置に赤フラッシュ

@@ -6,6 +6,7 @@ import {
   computeDeathGoldLoss,
   rollSafeGold,
   computeEnhanceCost,
+  splitItemsOnDeath,
 } from '~/game/systems/EconomySystem'
 import { TILE } from '~/game/data/maps'
 import gameConfig from '~/game/data/gameConfig.json'
@@ -71,6 +72,7 @@ interface LastRun {
   floor: number // 到達フロア
   safeGold?: number // 謎の金庫の開封で得たゴールド
   safeCount?: number // 開封した謎の金庫の個数
+  itemsLost?: number // 死亡でロストしたアイテム数
 }
 
 // ラン跨ぎで永続する拠点データ（localStorage 保存）
@@ -251,69 +253,64 @@ export const useGameStore = defineStore('game', {
       }
     },
 
-    // 現ランで稼いだゴールドを拠点（永続）ゴールドへ預ける
-    bankRunGold(): number {
-      const amount = this.player.gold
-      this.meta.gold += amount
-      this.player.gold = 0
-      this.persistMeta()
-      return amount
-    },
-
     setLastRun(info: LastRun) {
       this.meta.lastRun = info
       this.persistMeta()
     },
 
-    // 死亡時のペナルティ適用: 現ランgoldの一定割合をロスト、残りは拠点へ持ち帰る。
-    // 持ち帰り品（storage）も失う = 死亡は全ロスト。
-    applyDeathPenalty(): { lost: number; kept: number } {
-      const rate = gameConfig.deathPenalty?.goldLossRate ?? 1
-      const { lost, kept } = computeDeathGoldLoss(this.player.gold, rate)
-      this.meta.gold += kept
+    // 死亡ペナルティ: 所持ゴールドとアイテムの半分を失い、残り半分を拠点(meta)へ持ち帰る。
+    // 生還時と違い「半分ロスト」。inventory/gold のクリアもここで行う（呼び出し側で別途クリア不要）。
+    applyDeathPenalty(): { goldLost: number; goldKept: number; itemsLost: number } {
+      const rate = gameConfig.deathPenalty?.goldLossRate ?? 0.5
+      const { lost: goldLost, kept: goldKept } = computeDeathGoldLoss(this.player.gold, rate)
+      const { kept: keptItems, lost: lostItems } = splitItemsOnDeath(this.inventory)
+      this.meta.gold = goldKept
+      this.meta.storage = JSON.parse(JSON.stringify(keptItems))
       this.player.gold = 0
-      this.meta.storage = []
+      this.inventory = []
       this.setLastRun({
         result: 'dead',
-        goldBanked: kept,
-        goldLost: lost,
+        goldBanked: goldKept,
+        goldLost,
         floor: this.dungeon.floor,
         safeGold: 0,
         safeCount: 0,
+        itemsLost: lostItems.length,
       })
-      return { lost, kept }
+      return { goldLost, goldKept, itemsLost: lostItems.length }
     },
 
-    // --- 持ち帰り品（belongings）: 脱出/踏破で拠点へ、死亡で消失、次ラン開始時に再装填 ---
+    // --- 持ち物の持ち帰り: 生還で全保持して次ランへ引き継ぎ、死亡で半分ロスト ---
 
-    // 現在の所持品のうち「装備品のみ」を拠点倉庫へ持ち帰る（消耗品・特殊アイテムはランで完結）。
-    // これにより消耗品のラン跨ぎ無限ストックや、謎の金庫の storage 経由での複製を防ぐ。
+    // 現在の所持品を「すべて」拠点倉庫へ持ち帰る（消耗品・特殊アイテム含む）
     saveBelongings() {
-      const equipment = this.inventory.filter((e) => ITEMS[e.itemId]?.equippable)
-      this.meta.storage = JSON.parse(JSON.stringify(equipment))
+      this.meta.storage = JSON.parse(JSON.stringify(this.inventory))
       this.persistMeta()
     },
 
-    // 生還（脱出・踏破）時のラン終了会計を集約: 金庫精算 → ランgold銀行 → 装備持ち帰り → lastRun。
-    // 脱出・踏破の両出口で同一処理を使い、ドリフトを防ぐ。死亡は損失ロジックが別物のため applyDeathPenalty 側。
+    // 生還（脱出・踏破）時のラン終了会計を集約: 金庫精算 → 全アイテム＆ゴールドを拠点へ保持 → lastRun。
+    // 脱出・踏破の両出口で同一処理を使う。死亡は半分ロストのため applyDeathPenalty 側。
     finishSurvivedRun(result: 'escaped' | 'cleared') {
-      const carried = this.player.gold
-      const safes = this.openStrangeSafes()
-      this.bankRunGold()
-      this.saveBelongings()
+      const safes = this.openStrangeSafes() // 金庫を精算して player.gold に加算・inventory から除去
+      this.saveBelongings() // 全アイテムを拠点へ
+      this.meta.gold = this.player.gold // ゴールドも全額持ち帰り
       this.setLastRun({
         result,
-        goldBanked: carried,
+        goldBanked: this.player.gold,
         goldLost: 0,
         floor: this.dungeon.floor,
         safeGold: safes.gold,
         safeCount: safes.count,
+        itemsLost: 0,
       })
+      this.player.gold = 0
+      this.persistMeta()
     },
 
-    // 拠点倉庫の所持品を現ランのインベントリへ展開し、装備中ボーナスを再適用（ラン開始時）
+    // 拠点倉庫の所持品・ゴールドを現ランへ引き継ぐ（ダイブ開始時）。装備中ボーナスを再適用。
     loadBelongingsIntoInventory() {
       this.inventory = JSON.parse(JSON.stringify(this.meta.storage))
+      this.player.gold = this.meta.gold // ゴールドを引き継いでダイブ
       for (const entry of this.inventory) {
         if (!entry.equipped) continue
         const bonus = equipBonusOf(entry)
@@ -531,8 +528,8 @@ export const useGameStore = defineStore('game', {
         return false
       })
       if (count > 0) {
-        this.meta.gold += gold
-        this.persistMeta()
+        // 現ランのゴールドへ加算（finishSurvivedRun が meta.gold へ保持する）
+        this.player.gold += gold
       }
       return { count, gold }
     },

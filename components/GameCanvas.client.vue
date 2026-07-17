@@ -38,14 +38,15 @@
     await nextTick()
     if (!gameContainer.value) return
 
-    // sessionStorageから状態を復元、なければ新規初期化
+    // sessionStorageから状態を復元
     const restored = gameStore.restoreFromSession()
+    // 拠点の永続データ（gold/持ち物）は localStorage を正として先に同期する。
+    // 新規ダイブ時の initDungeon→loadBelongings が meta を参照するため、必ず initDungeon より前に。
+    gameStore.loadMeta()
+    // 復元できていなければ新規初期化（meta から持ち物・ゴールドを引き継ぐ）
     if (!restored || gameStore.currentMap.length === 0) {
       gameLoop.initDungeon(gameStore.dungeon.dungeonId)
     }
-
-    // 拠点の永続データ（gold等）は localStorage を正として同期（session復元より優先）
-    gameStore.loadMeta()
 
     // 復元時にゲーム終了状態ならリザルト/拠点へ直接遷移
     if (gameStore.gameResult === 'escaped') {

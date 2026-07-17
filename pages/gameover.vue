@@ -20,6 +20,7 @@
   const goldBanked = computed(() => gameStore.meta.lastRun?.goldBanked ?? 0)
   const goldLabel = computed(() => (isDead.value ? '失ったゴールド' : '持ち帰ったゴールド'))
   const goldValue = computed(() => (isDead.value ? goldLost.value : goldBanked.value))
+  const itemsLost = computed(() => gameStore.meta.lastRun?.itemsLost ?? 0)
 
   onMounted(() => {
     // 不正遷移対策: activeのままならタイトルへ戻す
@@ -65,6 +66,10 @@
         <div class="stat-row">
           <dt>{{ goldLabel }}</dt>
           <dd :class="{ 'gold-lost': isDead, 'gold-kept': !isDead }">{{ goldValue }} G</dd>
+        </div>
+        <div v-if="isDead && itemsLost > 0" class="stat-row">
+          <dt>失った道具</dt>
+          <dd class="gold-lost">{{ itemsLost }} 個</dd>
         </div>
       </dl>
     </div>
