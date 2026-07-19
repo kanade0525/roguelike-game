@@ -45,3 +45,18 @@ export const VILLAGE_FACILITIES: VillageFacility[] = [
 export function facilityAt(x: number, y: number): VillageFacility | undefined {
   return VILLAGE_FACILITIES.find((f) => f.x === x && f.y === y)
 }
+
+// 村のNPC（話しかけ対象）。施設と違い「乗れない」障害物として置き、隣接＋A で会話する。
+export interface VillageNpc {
+  x: number
+  y: number
+  npcId: string
+  name: string
+}
+
+export const VILLAGE_NPCS: VillageNpc[] = [{ x: 6, y: 3, npcId: 'chief', name: '村長' }]
+
+export function npcAt(x: number, y: number): VillageNpc | undefined {
+  return VILLAGE_NPCS.find((n) => n.x === x && n.y === y)
+}
+

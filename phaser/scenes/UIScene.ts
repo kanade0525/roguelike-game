@@ -7,6 +7,7 @@ import { ConfirmDialog } from '../ui/ConfirmDialog'
 import { MinimapOverlay } from '../ui/MinimapOverlay'
 import { InventoryOverlay, type InventoryEntry } from '../ui/InventoryOverlay'
 import { ListMenuOverlay, type ListRow } from '../ui/ListMenuOverlay'
+import { DialogOverlay, type DialogLine } from '../ui/DialogOverlay'
 
 export class UIScene extends Phaser.Scene {
   private statusBar!: StatusBar
@@ -16,6 +17,7 @@ export class UIScene extends Phaser.Scene {
   private minimap!: MinimapOverlay
   private inventory!: InventoryOverlay
   private listMenu!: ListMenuOverlay
+  private dialog!: DialogOverlay
 
   // 入力イベントの送り先（DungeonScene / VillageScene）
   private gameplayKey = 'DungeonScene'
@@ -41,6 +43,7 @@ export class UIScene extends Phaser.Scene {
     this.minimap = new MinimapOverlay(this)
     this.inventory = new InventoryOverlay(this)
     this.listMenu = new ListMenuOverlay(this)
+    this.dialog = new DialogOverlay(this)
 
     // HUD をストアの現在値で初期化（最初の1手を待たずに正しい HP/Lv/満腹/ゴールドを表示する）
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -202,6 +205,24 @@ export class UIScene extends Phaser.Scene {
 
   getListSelectedIndex(): number {
     return this.listMenu.getSelectedIndex()
+  }
+
+  // --- 会話 ---
+
+  showDialog(lines: DialogLine[], onDone?: () => void) {
+    this.dialog.show(lines, onDone)
+  }
+
+  advanceDialog() {
+    this.dialog.advance()
+  }
+
+  hideDialog() {
+    this.dialog.hide()
+  }
+
+  isDialogOpen(): boolean {
+    return this.dialog.isOpen()
   }
 
   // --- イベント転送（アクティブなゲームプレイシーンへ） ---

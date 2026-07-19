@@ -7,14 +7,27 @@ import {
   VILLAGE_MAP,
   VILLAGE_PLAYER_START,
   VILLAGE_FACILITIES,
+  VILLAGE_NPCS,
   facilityAt,
+  npcAt,
   type VillageFacility,
+  type VillageNpc,
 } from '../../game/village/villageMap'
 import { BaseMapScene } from './BaseMapScene'
 
 interface VillageNav {
   depart: (dungeonId: string) => void
   toTitle: () => void
+}
+
+// 仮の台本（Phase2 で game/story へ移し、物語進捗に連動させる）
+const NPC_DIALOG: Record<string, { speaker: string; text: string }[]> = {
+  chief: [
+    { speaker: '村長', text: '…よく来たな、探索者よ。' },
+    { speaker: '村長', text: 'この村は、地の底へ続く「深淵」の唯一の入口を見張るために築かれた。' },
+    { speaker: '村長', text: '静寂の森、暗黒城、そして深淵。下るほどに、還らぬ者が増えていく。' },
+    { speaker: '村長', text: 'それでも潜るというなら、止めはせぬ。…追って頼みたいこともある。' },
+  ],
 }
 
 /**
@@ -35,6 +48,10 @@ export class VillageScene extends BaseMapScene {
 
   preload() {
     this.loadSharedAssets()
+    // NPC（女性騎士）スプライト
+    for (let i = 0; i <= 3; i++) {
+      this.load.image(`npc_f${i}`, `/assets/tiles/knight_f_idle_anim_f${i}.png`)
+    }
   }
 
   create() {
@@ -51,6 +68,14 @@ export class VillageScene extends BaseMapScene {
     this.calculateTileSize()
     this.createContainers()
     this.createKnightAnimation()
+    if (!this.anims.exists('npc_idle_anim')) {
+      this.anims.create({
+        key: 'npc_idle_anim',
+        frames: [{ key: 'npc_f0' }, { key: 'npc_f1' }, { key: 'npc_f2' }, { key: 'npc_f3' }],
+        frameRate: 6,
+        repeat: -1,
+      })
+    }
     this.drawScene()
     this.setupInput()
     this.setupTouchInput()
@@ -66,6 +91,30 @@ export class VillageScene extends BaseMapScene {
       if (f.x < viewStartX || f.x >= endX || f.y < viewStartY || f.y >= endY) continue
       this.drawFacilityMarker(f, viewStartX, viewStartY)
     }
+    for (const n of VILLAGE_NPCS) {
+      if (n.x < viewStartX || n.x >= endX || n.y < viewStartY || n.y >= endY) continue
+      this.drawNpc(n, viewStartX, viewStartY)
+    }
+  }
+
+  private drawNpc(n: VillageNpc, viewStartX: number, viewStartY: number) {
+    const cx = this.offsetX + (n.x - viewStartX) * this.tileWidth + this.tileWidth / 2
+    const cy = this.offsetY + (n.y - viewStartY) * this.tileHeight + this.tileHeight * 0.8
+    const sprite = this.add.sprite(cx, cy, 'npc_f0')
+    sprite.setOrigin(0.5, 1.0)
+    sprite.setScale(this.tileScale * 0.6)
+    sprite.play('npc_idle_anim')
+    this.entityContainer.add(sprite)
+    const label = this.add
+      .text(cx, cy - this.tileHeight * 0.85, n.name, {
+        fontSize: '10px',
+        color: '#ffe08a',
+        fontFamily: '"DotGothic16", monospace',
+        stroke: '#000000',
+        strokeThickness: 3,
+      })
+      .setOrigin(0.5, 1)
+    this.entityContainer.add(label)
   }
 
   private drawFacilityMarker(f: VillageFacility, viewStartX: number, viewStartY: number) {
@@ -102,10 +151,12 @@ export class VillageScene extends BaseMapScene {
       ui.moveListCursor(dy)
       return
     }
+    if (ui.isDialogOpen()) return // 会話中は移動しない（送りは A のみ）
 
     const nx = this.gameStore.player.position.x + dx
     const ny = this.gameStore.player.position.y + dy
     if (!this.isFloor(nx, ny)) return
+    if (npcAt(nx, ny)) return // NPC は障害物（乗れない）
     if (dx !== 0 && dy !== 0 && !canMoveDiagonally(this.map, this.gameStore.player.position.x, this.gameStore.player.position.y, dx, dy)) {
       return
     }
@@ -121,6 +172,10 @@ export class VillageScene extends BaseMapScene {
     if (this.inputLocked) return
     const ui = this.getUiScene()
 
+    if (ui.isDialogOpen()) {
+      if (action === 'confirm') ui.advanceDialog()
+      return
+    }
     if (ui.isConfirmOpen()) {
       if (action === 'confirm') ui.confirmSelect()
       else if (action === 'inventory') ui.hideConfirm()
@@ -132,12 +187,27 @@ export class VillageScene extends BaseMapScene {
       return
     }
 
-    // 何も開いていない: A で足元の施設を開く
+    // 何も開いていない: A で 隣接NPCと会話 or 足元の施設を開く
     if (action === 'confirm') {
       const pos = this.gameStore.player.position
+      const npc = this.adjacentNpc(pos.x, pos.y)
+      if (npc) {
+        this.talkToNpc(npc)
+        return
+      }
       const f = facilityAt(pos.x, pos.y)
       if (f) this.openFacility(f.type)
     }
+  }
+
+  // プレイヤーに隣接（8近傍）するNPCを返す
+  private adjacentNpc(x: number, y: number): VillageNpc | undefined {
+    return VILLAGE_NPCS.find((n) => Math.abs(n.x - x) <= 1 && Math.abs(n.y - y) <= 1)
+  }
+
+  private talkToNpc(npc: VillageNpc) {
+    const lines = NPC_DIALOG[npc.npcId] ?? [{ speaker: npc.name, text: '…' }]
+    this.getUiScene().showDialog(lines)
   }
 
   // --- 施設 ---
