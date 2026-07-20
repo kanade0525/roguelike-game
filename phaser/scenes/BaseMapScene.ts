@@ -434,6 +434,10 @@ export abstract class BaseMapScene extends Phaser.Scene {
       moveListCursor: (dy: number) => void
       selectListItem: () => void
       getListSelectedIndex: () => number
+      showDialog: (lines: { speaker?: string; text: string }[], onDone?: () => void) => void
+      advanceDialog: () => void
+      hideDialog: () => void
+      isDialogOpen: () => boolean
       addMessage: (msg: string) => void
       updateHP: (current: number, max: number) => void
       updateFloor: (floor: number) => void
