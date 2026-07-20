@@ -70,6 +70,7 @@ interface LastRun {
   goldBanked: number // 拠点に預けたゴールド
   goldLost: number // 死亡ペナルティ等で失ったゴールド
   floor: number // 到達フロア
+  dungeonId?: string // 対象ダンジョン（エンディング判定等に使用）
   safeGold?: number // 謎の金庫の開封で得たゴールド
   safeCount?: number // 開封した謎の金庫の個数
   itemsLost?: number // 死亡でロストしたアイテム数
@@ -80,6 +81,8 @@ interface MetaState {
   gold: number // 拠点に預けた永続ゴールド（鍛冶で使用）
   lastRun: LastRun | null
   storage: InventoryItem[] // 持ち帰った所持品（装備の強化はここに永続）
+  clearedDungeons: string[] // 踏破済みダンジョンID（物語進捗）
+  seenOpening: boolean // オープニングを表示済みか（初回のみ表示）
 }
 
 // localStorage キー（sessionStorage の現ラン継続とは別レイヤ）
@@ -148,6 +151,8 @@ export const useGameStore = defineStore('game', {
       gold: 0,
       lastRun: null,
       storage: [],
+      clearedDungeons: [],
+      seenOpening: false,
     },
   }),
 
@@ -253,6 +258,8 @@ export const useGameStore = defineStore('game', {
           gold: typeof parsed.gold === 'number' ? parsed.gold : 0,
           lastRun: parsed.lastRun ?? null,
           storage: Array.isArray(parsed.storage) ? parsed.storage : [],
+          clearedDungeons: Array.isArray(parsed.clearedDungeons) ? parsed.clearedDungeons : [],
+          seenOpening: parsed.seenOpening === true,
         }
         return true
       } catch {
@@ -263,6 +270,13 @@ export const useGameStore = defineStore('game', {
 
     setLastRun(info: LastRun) {
       this.meta.lastRun = info
+      this.persistMeta()
+    },
+
+    // オープニングを表示済みにする（初回のみ表示するためのフラグ）
+    markOpeningSeen() {
+      if (this.meta.seenOpening) return
+      this.meta.seenOpening = true
       this.persistMeta()
     },
 
@@ -281,6 +295,7 @@ export const useGameStore = defineStore('game', {
         goldBanked: goldKept,
         goldLost,
         floor: this.dungeon.floor,
+        dungeonId: this.dungeon.dungeonId,
         safeGold: 0,
         safeCount: 0,
         itemsLost: lostItems.length,
@@ -302,11 +317,16 @@ export const useGameStore = defineStore('game', {
       const safes = this.openStrangeSafes() // 金庫を精算して player.gold に加算・inventory から除去
       this.saveBelongings() // 全アイテムを拠点へ
       this.meta.gold = this.player.gold // ゴールドも全額持ち帰り
+      // 踏破は物語進捗として記録（重複排除）
+      if (result === 'cleared' && !this.meta.clearedDungeons.includes(this.dungeon.dungeonId)) {
+        this.meta.clearedDungeons.push(this.dungeon.dungeonId)
+      }
       this.setLastRun({
         result,
         goldBanked: this.player.gold,
         goldLost: 0,
         floor: this.dungeon.floor,
+        dungeonId: this.dungeon.dungeonId,
         safeGold: safes.gold,
         safeCount: safes.count,
         itemsLost: 0,

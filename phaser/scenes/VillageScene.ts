@@ -13,21 +13,12 @@ import {
   type VillageFacility,
   type VillageNpc,
 } from '../../game/village/villageMap'
+import { OPENING, chiefLines, type StoryLine } from '../../game/story'
 import { BaseMapScene } from './BaseMapScene'
 
 interface VillageNav {
   depart: (dungeonId: string) => void
   toTitle: () => void
-}
-
-// 仮の台本（Phase2 で game/story へ移し、物語進捗に連動させる）
-const NPC_DIALOG: Record<string, { speaker: string; text: string }[]> = {
-  chief: [
-    { speaker: '村長', text: '…よく来たな、探索者よ。' },
-    { speaker: '村長', text: 'この村は、地の底へ続く「深淵」の唯一の入口を見張るために築かれた。' },
-    { speaker: '村長', text: '静寂の森、暗黒城、そして深淵。下るほどに、還らぬ者が増えていく。' },
-    { speaker: '村長', text: 'それでも潜るというなら、止めはせぬ。…追って頼みたいこともある。' },
-  ],
 }
 
 /**
@@ -81,8 +72,18 @@ export class VillageScene extends BaseMapScene {
     this.setupTouchInput()
 
     this.scene.launch('UIScene', { gameplayKey: 'VillageScene' })
-    // HUD 初期化（次フレームで UIScene 生成後に反映）
-    this.time.delayedCall(0, () => this.updateVillageHud())
+    // HUD 初期化＋初回オープニング（次フレームで UIScene 生成後に反映）
+    this.time.delayedCall(0, () => {
+      this.updateVillageHud()
+      this.maybePlayOpening()
+    })
+  }
+
+  // 「はじめから」→ 拠点に初めて入ったときだけオープニングを再生する
+  private maybePlayOpening() {
+    if (this.gameStore.meta.seenOpening) return
+    this.gameStore.markOpeningSeen()
+    this.getUiScene().showDialog(OPENING as StoryLine[])
   }
 
   // --- 施設マーカー描画（BaseMapScene.drawScene から呼ばれる） ---
@@ -206,7 +207,11 @@ export class VillageScene extends BaseMapScene {
   }
 
   private talkToNpc(npc: VillageNpc) {
-    const lines = NPC_DIALOG[npc.npcId] ?? [{ speaker: npc.name, text: '…' }]
+    // 村長は物語進捗（踏破済みダンジョン）に応じて台詞が変わる
+    const lines: StoryLine[] =
+      npc.npcId === 'chief'
+        ? chiefLines(this.gameStore.meta.clearedDungeons)
+        : [{ speaker: npc.name, text: '…' }]
     this.getUiScene().showDialog(lines)
   }
 
