@@ -14,6 +14,7 @@ import {
   type VillageNpc,
 } from '../../game/village/villageMap'
 import { OPENING, chiefLines, type StoryLine } from '../../game/story'
+import { QUESTS, availableQuests, getQuest, type Quest } from '../../game/quest'
 import { BaseMapScene } from './BaseMapScene'
 
 interface VillageNav {
@@ -207,12 +208,126 @@ export class VillageScene extends BaseMapScene {
   }
 
   private talkToNpc(npc: VillageNpc) {
-    // 村長は物語進捗（踏破済みダンジョン）に応じて台詞が変わる
-    const lines: StoryLine[] =
-      npc.npcId === 'chief'
-        ? chiefLines(this.gameStore.meta.clearedDungeons)
-        : [{ speaker: npc.name, text: '…' }]
-    this.getUiScene().showDialog(lines)
+    if (npc.npcId === 'chief') {
+      // 村長: 物語進捗に応じた台詞 → 会話後にクエストメニューを開く
+      const lines = chiefLines(this.gameStore.meta.clearedDungeons)
+      this.getUiScene().showDialog(lines, () => this.openQuestMenu())
+      return
+    }
+    this.getUiScene().showDialog([{ speaker: npc.name, text: '…' }])
+  }
+
+  // --- クエスト（村長の依頼） ---
+
+  private questObjectiveText(q: Quest): string {
+    const o = q.objective
+    switch (o.type) {
+      case 'clearDungeon': {
+        const d = o.target ? (DUNGEONS[o.target] as { name: string } | undefined) : undefined
+        return `${d?.name ?? o.target}を踏破`
+      }
+      case 'reachFloor':
+        return `B${o.count}Fに到達`
+      case 'defeatCount':
+        return `一度の潜行で敵を${o.count}体撃破`
+      case 'collectItem': {
+        const name = o.target ? (ITEMS[o.target]?.name ?? o.target) : ''
+        return `${name}を${o.count ?? 1}個持ち帰る`
+      }
+      default:
+        return ''
+    }
+  }
+
+  private questRewardText(q: Quest): string {
+    const parts: string[] = []
+    if (q.reward.gold) parts.push(`${q.reward.gold}G`)
+    if (q.reward.itemId) parts.push(ITEMS[q.reward.itemId]?.name ?? q.reward.itemId)
+    return parts.join('・') || 'なし'
+  }
+
+  // クエストメニューの行と、行→操作の対応を組み立てる
+  private buildQuestRows(): {
+    rows: { label: string; right: string; disabled: boolean }[]
+    actions: { id: string; kind: 'report' | 'accept' | 'active' }[]
+  } {
+    const q = this.gameStore.meta.quests as {
+      active: string[]
+      satisfied: string[]
+      completed: string[]
+    }
+    const cleared = this.gameStore.meta.clearedDungeons as string[]
+    const rows: { label: string; right: string; disabled: boolean }[] = []
+    const actions: { id: string; kind: 'report' | 'accept' | 'active' }[] = []
+
+    // 1) 達成済み（報告して報酬受取）
+    for (const id of q.satisfied) {
+      const quest = getQuest(id)
+      if (!quest) continue
+      rows.push({ label: `★ ${quest.title}`, right: '報酬受取', disabled: false })
+      actions.push({ id, kind: 'report' })
+    }
+    // 2) 受注可能
+    const taken = [...q.active, ...q.satisfied, ...q.completed]
+    for (const quest of availableQuests(cleared, taken)) {
+      rows.push({ label: quest.title, right: '受注', disabled: false })
+      actions.push({ id: quest.id, kind: 'accept' })
+    }
+    // 3) 受注中（進行中・選択不可）
+    for (const id of q.active) {
+      const quest = getQuest(id)
+      if (!quest) continue
+      rows.push({ label: quest.title, right: '進行中', disabled: true })
+      actions.push({ id, kind: 'active' })
+    }
+
+    if (rows.length === 0) {
+      rows.push({ label: '今は依頼がない', right: '', disabled: true })
+      actions.push({ id: '', kind: 'active' })
+    }
+    return { rows, actions }
+  }
+
+  private questActions: { id: string; kind: 'report' | 'accept' | 'active' }[] = []
+
+  private openQuestMenu() {
+    const { rows, actions } = this.buildQuestRows()
+    this.questActions = actions
+    const done = QUESTS.filter((q) =>
+      (this.gameStore.meta.quests.completed as string[]).includes(q.id)
+    ).length
+    this.getUiScene().showListMenu('村長の依頼', `達成 ${done}/${QUESTS.length}`, rows, (rowIndex) =>
+      this.onQuestSelect(rowIndex)
+    )
+  }
+
+  private onQuestSelect(rowIndex: number) {
+    const action = this.questActions[rowIndex]
+    if (!action || action.kind === 'active') return
+    const quest = getQuest(action.id)
+    if (!quest) return
+    const ui = this.getUiScene()
+
+    if (action.kind === 'accept') {
+      this.gameStore.acceptQuest(action.id)
+      ui.addMessage(`「${quest.title}」を受注した（${this.questObjectiveText(quest)}）`)
+    } else if (action.kind === 'report') {
+      const result = this.gameStore.reportQuest(action.id)
+      if (result) {
+        const reward = [result.gold ? `${result.gold}G` : '', result.itemName ?? '']
+          .filter(Boolean)
+          .join('・')
+        ui.addMessage(`「${quest.title}」達成！ 報酬 ${reward} を受け取った`)
+        this.updateVillageHud()
+      }
+    }
+    // メニューとサブタイトルを更新
+    const { rows, actions } = this.buildQuestRows()
+    this.questActions = actions
+    const done = QUESTS.filter((q) =>
+      (this.gameStore.meta.quests.completed as string[]).includes(q.id)
+    ).length
+    ui.refreshListMenu(rows, `達成 ${done}/${QUESTS.length}`)
   }
 
   // --- 施設 ---
