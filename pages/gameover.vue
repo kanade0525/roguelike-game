@@ -1,12 +1,19 @@
 <script setup lang="ts">
   import { computed, onMounted } from 'vue'
   import { useGameStore } from '~/stores/gameStore'
+  import { ENDING } from '~/game/story'
 
   const router = useRouter()
   const gameStore = useGameStore()
 
   const isDead = computed(() => gameStore.gameResult === 'dead')
   const isCleared = computed(() => gameStore.gameResult === 'cleared')
+
+  // 深淵（最終ダンジョン）踏破時のみエンディングを表示する
+  const isEnding = computed(
+    () => isCleared.value && gameStore.meta.lastRun?.dungeonId === 'abyss'
+  )
+  const endingLines = ENDING
 
   const title = computed(() => (isCleared.value ? 'GAME CLEAR' : 'GAME OVER'))
   const subtitle = computed(() => (isCleared.value ? '〜 深淵を制した 〜' : '〜 力尽きた 〜'))
@@ -47,6 +54,13 @@
     <div class="result-area">
       <h1 class="title">{{ title }}</h1>
       <p class="subtitle">{{ subtitle }}</p>
+    </div>
+
+    <div v-if="isEnding" class="ending nes-container is-dark is-rounded">
+      <p v-for="(line, i) in endingLines" :key="i" class="ending-line">
+        <span v-if="line.speaker" class="ending-speaker">{{ line.speaker }}</span>
+        {{ line.text }}
+      </p>
     </div>
 
     <div class="stats nes-container is-dark is-rounded">
@@ -125,6 +139,30 @@
   .subtitle {
     font-size: 0.8rem;
     opacity: 0.7;
+  }
+
+  .ending {
+    width: 100%;
+    max-width: 360px;
+    padding: 1.2rem !important;
+  }
+
+  .ending-line {
+    margin: 0 0 0.7rem;
+    font-size: 0.75rem;
+    line-height: 1.6;
+    opacity: 0.92;
+  }
+
+  .ending-line:last-child {
+    margin-bottom: 0;
+  }
+
+  .ending-speaker {
+    display: block;
+    color: #ffe08a;
+    font-size: 0.7rem;
+    margin-bottom: 0.15rem;
   }
 
   .stats {
