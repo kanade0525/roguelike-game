@@ -35,16 +35,21 @@ export class DialogOverlay {
     this.container.setVisible(false)
     this.container.setDepth(620)
 
-    // 下部の会話パネル（メッセージログ域より少し上・ゲームエリア下寄せ）
+    // 下部の会話パネル（ゲームエリア下部・メッセージログ域 y413 の手前で終える）
+    // 長いセリフ(全角30字前後)が複数行に折り返しても収まる高さを確保する。
+    const px = 12
+    const py = 258
+    const pw = 456
+    const ph = 150
     const panel = scene.add.graphics()
     panel.fillStyle(UI_COLOR.panelBg, 0.96)
-    panel.fillRoundedRect(16, 300, 448, 104, 8)
+    panel.fillRoundedRect(px, py, pw, ph, 8)
     panel.lineStyle(2, UI_COLOR.panelBorder, 1)
-    panel.strokeRoundedRect(16, 300, 448, 104, 8)
+    panel.strokeRoundedRect(px, py, pw, ph, 8)
     this.container.add(panel)
 
     // 話者名（上部の小さなラベル）
-    this.speakerText = scene.add.text(32, 312, '', {
+    this.speakerText = scene.add.text(px + 16, py + 12, '', {
       ...BASE_STYLE,
       fontSize: '13px',
       color: TEXT_COLOR.subtle,
@@ -52,16 +57,18 @@ export class DialogOverlay {
     })
     this.container.add(this.speakerText)
 
-    // 本文（折り返し）
-    this.bodyText = scene.add.text(32, 336, '', {
+    // 本文（折り返し。パネル内幅に収める）
+    this.bodyText = scene.add.text(px + 16, py + 38, '', {
       ...BASE_STYLE,
-      fontSize: '14px',
-      wordWrap: { width: 416 },
+      fontSize: '13px',
+      lineSpacing: 6,
+      // 日本語は空白が無く既定の wordWrap では折り返されないため、文字単位で折り返す
+      wordWrap: { width: pw - 32, useAdvancedWrap: true },
     })
     this.container.add(this.bodyText)
 
-    // 送りヒント
-    this.nextHint = scene.add.text(452, 388, '▼', {
+    // 送りヒント（右下）
+    this.nextHint = scene.add.text(px + pw - 12, py + ph - 10, '▼', {
       ...BASE_STYLE,
       fontSize: '12px',
       color: TEXT_COLOR.dim,
