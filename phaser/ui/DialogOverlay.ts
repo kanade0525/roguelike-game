@@ -35,12 +35,12 @@ export class DialogOverlay {
     this.container.setVisible(false)
     this.container.setDepth(620)
 
-    // 下部の会話パネル（ゲームエリア下部・メッセージログ域 y413 の手前で終える）
-    // 長いセリフ(全角30字前後)が複数行に折り返しても収まる高さを確保する。
+    // 下部の会話パネル（メッセージログ域 y413 の手前で終える）。
+    // セリフは全角30字前後・折り返しても最大3行程度なので、それに合わせた高さにする。
     const px = 12
-    const py = 258
+    const py = 304
     const pw = 456
-    const ph = 150
+    const ph = 98
     const panel = scene.add.graphics()
     panel.fillStyle(UI_COLOR.panelBg, 0.96)
     panel.fillRoundedRect(px, py, pw, ph, 8)
@@ -49,7 +49,7 @@ export class DialogOverlay {
     this.container.add(panel)
 
     // 話者名（上部の小さなラベル）
-    this.speakerText = scene.add.text(px + 16, py + 12, '', {
+    this.speakerText = scene.add.text(px + 16, py + 10, '', {
       ...BASE_STYLE,
       fontSize: '13px',
       color: TEXT_COLOR.subtle,
@@ -58,10 +58,10 @@ export class DialogOverlay {
     this.container.add(this.speakerText)
 
     // 本文（折り返し。パネル内幅に収める）
-    this.bodyText = scene.add.text(px + 16, py + 38, '', {
+    this.bodyText = scene.add.text(px + 16, py + 32, '', {
       ...BASE_STYLE,
       fontSize: '13px',
-      lineSpacing: 6,
+      lineSpacing: 5,
       // 日本語は空白が無く既定の wordWrap では折り返されないため、文字単位で折り返す
       wordWrap: { width: pw - 32, useAdvancedWrap: true },
     })
