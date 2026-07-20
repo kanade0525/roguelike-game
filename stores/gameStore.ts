@@ -9,6 +9,7 @@ import {
   splitItemsOnDeath,
 } from '~/game/systems/EconomySystem'
 import { TILE } from '~/game/data/maps'
+import { getQuest, isObjectiveMet, type RunStats } from '~/game/quest'
 import gameConfig from '~/game/data/gameConfig.json'
 
 interface PlayerState {
@@ -76,6 +77,13 @@ interface LastRun {
   itemsLost?: number // 死亡でロストしたアイテム数
 }
 
+// クエストの進行状態（受注→達成→受領）
+interface QuestState {
+  active: string[] // 受注中（まだ達成条件を満たしていない）
+  satisfied: string[] // 条件達成・報酬未受領（村長へ報告すると受領）
+  completed: string[] // 報酬受領済み
+}
+
 // ラン跨ぎで永続する拠点データ（localStorage 保存）
 interface MetaState {
   gold: number // 拠点に預けた永続ゴールド（鍛冶で使用）
@@ -83,6 +91,7 @@ interface MetaState {
   storage: InventoryItem[] // 持ち帰った所持品（装備の強化はここに永続）
   clearedDungeons: string[] // 踏破済みダンジョンID（物語進捗）
   seenOpening: boolean // オープニングを表示済みか（初回のみ表示）
+  quests: QuestState // クエスト進行状態
 }
 
 // localStorage キー（sessionStorage の現ラン継続とは別レイヤ）
@@ -153,6 +162,7 @@ export const useGameStore = defineStore('game', {
       storage: [],
       clearedDungeons: [],
       seenOpening: false,
+      quests: { active: [], satisfied: [], completed: [] },
     },
   }),
 
@@ -260,6 +270,11 @@ export const useGameStore = defineStore('game', {
           storage: Array.isArray(parsed.storage) ? parsed.storage : [],
           clearedDungeons: Array.isArray(parsed.clearedDungeons) ? parsed.clearedDungeons : [],
           seenOpening: parsed.seenOpening === true,
+          quests: {
+            active: Array.isArray(parsed.quests?.active) ? parsed.quests.active : [],
+            satisfied: Array.isArray(parsed.quests?.satisfied) ? parsed.quests.satisfied : [],
+            completed: Array.isArray(parsed.quests?.completed) ? parsed.quests.completed : [],
+          },
         }
         return true
       } catch {
@@ -278,6 +293,63 @@ export const useGameStore = defineStore('game', {
       if (this.meta.seenOpening) return
       this.meta.seenOpening = true
       this.persistMeta()
+    },
+
+    // --- クエスト（村長の依頼） ---
+
+    // クエストを受注する（available → active）
+    acceptQuest(id: string) {
+      const q = this.meta.quests
+      if (q.active.includes(id) || q.satisfied.includes(id) || q.completed.includes(id)) return
+      q.active.push(id)
+      this.persistMeta()
+    },
+
+    // 受注中クエストの達成判定（生還時に呼ぶ）。満たしたものを active → satisfied へ。
+    evaluateQuests() {
+      const stats: RunStats = {
+        clearedDungeons: this.meta.clearedDungeons,
+        maxFloorReached: this.maxFloorReached,
+        defeatedEnemies: this.defeatedEnemies,
+        inventory: this.inventory.map((e) => ({ itemId: e.itemId, stack: e.stack })),
+      }
+      const remaining: string[] = []
+      for (const id of this.meta.quests.active) {
+        const quest = getQuest(id)
+        if (quest && isObjectiveMet(quest.objective, stats)) {
+          this.meta.quests.satisfied.push(id)
+        } else {
+          remaining.push(id)
+        }
+      }
+      this.meta.quests.active = remaining
+      // persist は呼び出し元（finishSurvivedRun）でまとめて行う
+    },
+
+    // 達成済みクエストを村長へ報告して報酬を受け取る（satisfied → completed）
+    reportQuest(id: string): { gold: number; itemName?: string } | null {
+      const idx = this.meta.quests.satisfied.indexOf(id)
+      if (idx < 0) return null
+      const quest = getQuest(id)
+      if (!quest) return null
+      const gold = quest.reward.gold ?? 0
+      this.meta.gold += gold
+      let itemName: string | undefined
+      if (quest.reward.itemId) {
+        const def = ITEMS[quest.reward.itemId]
+        if (def) {
+          itemName = def.name
+          const existing = this.meta.storage.find(
+            (e) => e.itemId === quest.reward.itemId && !e.equipped && def.stackable
+          )
+          if (existing) existing.stack = (existing.stack ?? 1) + 1
+          else this.meta.storage.push({ itemId: quest.reward.itemId, name: def.name, stack: 1 })
+        }
+      }
+      this.meta.quests.satisfied.splice(idx, 1)
+      this.meta.quests.completed.push(id)
+      this.persistMeta()
+      return { gold, itemName }
     },
 
     // 死亡ペナルティ: 所持ゴールドとアイテムの半分を失い、残り半分を拠点(meta)へ持ち帰る。
@@ -321,6 +393,8 @@ export const useGameStore = defineStore('game', {
       if (result === 'cleared' && !this.meta.clearedDungeons.includes(this.dungeon.dungeonId)) {
         this.meta.clearedDungeons.push(this.dungeon.dungeonId)
       }
+      // 受注中クエストの達成判定（生還時の成果で評価。inventory はまだ保持されている）
+      this.evaluateQuests()
       this.setLastRun({
         result,
         goldBanked: this.player.gold,
