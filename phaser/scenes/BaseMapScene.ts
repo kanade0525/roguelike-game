@@ -29,6 +29,9 @@ export abstract class BaseMapScene extends Phaser.Scene {
   protected mapHeight = 0
   protected map: number[][] = []
 
+  // 地形(床/壁)の色味。シーンごとに変えられる（村=寒色の灰系など）。0xffffff は無着色。
+  protected terrainTint = 0xffffff
+
   // Pinia store
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   protected gameStore: any = null
@@ -233,7 +236,7 @@ export abstract class BaseMapScene extends Phaser.Scene {
     const textureKey = `floor_${((tileX * 7 + tileY * 13) % 8) + 1}`
     const tile = this.add.image(x, y, textureKey)
     tile.setScale(this.tileScale)
-    if (dim) tile.setTint(DIM_TINT)
+    tile.setTint(dim ? DIM_TINT : this.terrainTint)
     this.floorContainer.add(tile)
   }
 
@@ -253,7 +256,7 @@ export abstract class BaseMapScene extends Phaser.Scene {
     const img = this.add.image(x, y, texture)
     img.setOrigin(0, 0)
     img.setScale(this.tileScale)
-    if (dim) img.setTint(DIM_TINT)
+    img.setTint(dim ? DIM_TINT : this.terrainTint)
     this.wallContainer.add(img)
   }
 
