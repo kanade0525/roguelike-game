@@ -56,7 +56,7 @@
 
 実データは [`game/story/index.ts`](../game/story/index.ts) を正とする。以下は原典。
 
-### 7.1 オープニング（初回・村のゲーム画面内で会話ボックス表示・1回のみ）
+### 7.1 オープニング（初回・専用オープニング画面で1回のみ）
 
 > 半年前、あなたの故郷は一夜で淀みに沈んだ。
 > 生き残ったのは、あなた一人。……いや。
@@ -90,9 +90,9 @@
 
 ## 8. 実装メモ
 
-- オープニングは **村のゲーム画面内** で再生する（別画面は作らない）。「はじめから」→ `/village` →
-  `VillageScene.maybePlayOpening()` が UIScene の `DialogOverlay`（会話ボックス）で逐次表示 →
-  `markOpeningSeen()`。`meta.seenOpening` で初回のみ・二重表示を防ぐ。
+- オープニングは **専用画面 `pages/opening.vue`**（暗転・中央テキスト）で再生。「はじめから」→
+  `/opening` → 逐次送り or スキップ → `markOpeningSeen()` → `/village`。`meta.seenOpening` で
+  初回のみ・二重表示を防ぐ（村の `maybePlayOpening` は安全網として残置）。
 - 物語進捗は `meta.clearedDungeons`（踏破済みID配列）で管理。踏破は `finishSurvivedRun('cleared')` で記録。
 - エンディングは踏破リザルト画面（`pages/gameover.vue`）で `lastRun.dungeonId === 'abyss'` のとき表示。
 - 差し替え可能な変数: 失った相手（妹／弟／伴侶／子／相棒）・妹の名・村長の喪失（我が子／伴侶）・結末のトーン。

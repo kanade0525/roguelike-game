@@ -6,12 +6,11 @@
   const router = useRouter()
   const gameStore = useGameStore()
 
-  // はじめから: 永続データ(meta/localStorage)を含め全リセットして拠点の村から開始
-  // （オープニングは村のゲーム画面内で DialogOverlay により自動再生される）
+  // はじめから: 永続データ(meta/localStorage)を含め全リセットし、専用オープニング画面へ
   const startGame = () => {
     gameStore.newGame()
     sessionStorage.removeItem('gameState')
-    router.push('/village')
+    router.push('/opening')
   }
 
   // つづきから: 保存済みの永続データを引き継いで拠点の村から再開
