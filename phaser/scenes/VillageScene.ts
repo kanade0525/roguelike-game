@@ -206,12 +206,12 @@ export class VillageScene extends BaseMapScene {
       return
     }
 
-    // 何も開いていない: B で持ち物確認
+    // 何も開いていない: B でコマンドメニュー（道具・足もと・話す）
     if (action === 'inventory') {
-      this.openVillageInventory()
+      this.openVillageMenu()
       return
     }
-    // A で 隣接NPCと会話 or 足元の施設を開く
+    // A で 隣接NPCと会話 or 足元の施設を開く（メニューを介さないショートカット）
     if (action === 'confirm') {
       const pos = this.gameStore.player.position
       const npc = this.adjacentNpc(pos.x, pos.y)
@@ -222,6 +222,36 @@ export class VillageScene extends BaseMapScene {
       const f = facilityAt(pos.x, pos.y)
       if (f) this.openFacility(f.type)
     }
+  }
+
+  // 村のコマンドメニュー（道具／足もと／話す）。状況に応じて選択不可(グレー)にする。
+  private villageMenu: { enabled: boolean; run: () => void }[] = []
+
+  private openVillageMenu() {
+    const ui = this.getUiScene()
+    const pos = this.gameStore.player.position
+    const facility = facilityAt(pos.x, pos.y)
+    const npc = this.adjacentNpc(pos.x, pos.y)
+    const hasItems = ((this.gameStore.meta.storage as unknown[])?.length ?? 0) > 0
+
+    const rows = [
+      { label: '道具', right: hasItems ? '' : 'なし', disabled: !hasItems },
+      { label: '足もと', right: facility ? facility.label : '—', disabled: !facility },
+      { label: '話す', right: npc ? npc.name : '—', disabled: !npc },
+    ]
+    this.villageMenu = [
+      { enabled: hasItems, run: () => this.openVillageInventory() },
+      { enabled: !!facility, run: () => facility && this.openFacility(facility.type) },
+      { enabled: !!npc, run: () => npc && this.talkToNpc(npc) },
+    ]
+    ui.showListMenu('メニュー', '', rows, (i) => this.onVillageMenuSelect(i))
+  }
+
+  private onVillageMenuSelect(index: number) {
+    const item = this.villageMenu[index]
+    if (!item || !item.enabled) return // グレー項目は無反応
+    this.getUiScene().hideListMenu()
+    item.run()
   }
 
   // 村では持ち帰った持ち物(meta.storage)を閲覧する（使用/装備はしない・確認のみ）
