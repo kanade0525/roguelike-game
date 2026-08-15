@@ -57,9 +57,6 @@ export class VillageScene extends BaseMapScene {
     }
 
     this.setMap(VILLAGE_MAP)
-    // 村は寒色の灰系にしてダンジョン(暖色の茶)と差別化する。
-    // tint(乗算)は明るく出来ないので、明るめの寒色tint＋薄い霜ベール(afterDrawで重ねる)で灰白へ寄せる。
-    this.terrainTint = 0xd4d9e2
     // 拠点入場時はプレイヤーを開始位置へ（store.player.position を BaseMapScene が参照）
     this.gameStore.setPlayerPosition(VILLAGE_PLAYER_START.x, VILLAGE_PLAYER_START.y)
 
@@ -77,11 +74,6 @@ export class VillageScene extends BaseMapScene {
     this.drawScene()
     this.setupInput()
     this.setupTouchInput()
-
-    // 寒村ヴァルテらしい薄い霜(白青)のベールをゲーム画面に重ね、灰白系の寒色に寄せる。
-    // 画面固定・地形やキャラの上／UI(別シーン)の下。HUD(〜44)とコントローラ(466〜)は避ける。
-    const frost = this.add.rectangle(240, 255, 480, 422, 0xe6edf7, 0.16)
-    frost.setDepth(300)
 
     this.scene.launch('UIScene', { gameplayKey: 'VillageScene' })
     // HUD 初期化＋初回オープニング（次フレームで UIScene 生成後に反映）
