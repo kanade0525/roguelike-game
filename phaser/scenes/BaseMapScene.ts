@@ -29,8 +29,10 @@ export abstract class BaseMapScene extends Phaser.Scene {
   protected mapHeight = 0
   protected map: number[][] = []
 
-  // 地形(床/壁)の色味。シーンごとに変えられる（村=寒色の灰系など）。0xffffff は無着色。
+  // 地形(床/壁)の色味。シーンごとに変えられる。0xffffff は無着色。
   protected terrainTint = 0xffffff
+  // 地形テクスチャのキー接尾辞。'' はダンジョン標準、'_village' は加工済みの寒色タイルを使う。
+  protected terrainTextureSuffix = ''
 
   // Pinia store
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -233,7 +235,7 @@ export abstract class BaseMapScene extends Phaser.Scene {
     const x = this.offsetX + screenTileX * this.tileWidth + this.tileWidth / 2
     const y = this.offsetY + screenTileY * this.tileHeight + this.tileHeight / 2
 
-    const textureKey = `floor_${((tileX * 7 + tileY * 13) % 8) + 1}`
+    const textureKey = `floor_${((tileX * 7 + tileY * 13) % 8) + 1}${this.terrainTextureSuffix}`
     const tile = this.add.image(x, y, textureKey)
     tile.setScale(this.tileScale)
     tile.setTint(dim ? DIM_TINT : this.terrainTint)
@@ -253,7 +255,7 @@ export abstract class BaseMapScene extends Phaser.Scene {
       return
     const x = this.offsetX + screenX * this.tileWidth
     const y = this.offsetY + screenY * this.tileHeight
-    const img = this.add.image(x, y, texture)
+    const img = this.add.image(x, y, texture + this.terrainTextureSuffix)
     img.setOrigin(0, 0)
     img.setScale(this.tileScale)
     img.setTint(dim ? DIM_TINT : this.terrainTint)

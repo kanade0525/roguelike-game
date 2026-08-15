@@ -40,6 +40,25 @@ export class VillageScene extends BaseMapScene {
 
   preload() {
     this.loadSharedAssets()
+    // 村用の寒色(灰白)タイル。ダンジョンの茶色タイルを実加工したもの(接尾辞 _village)。
+    for (let i = 1; i <= 8; i++) {
+      this.load.image(`floor_${i}_village`, `/assets/tiles/floor_${i}_village.png`)
+    }
+    const villageWalls = [
+      'wall_mid',
+      'wall_top_mid',
+      'wall_top_left',
+      'wall_top_right',
+      'wall_outer_mid_left',
+      'wall_outer_mid_right',
+      'wall_outer_front_left',
+      'wall_outer_front_right',
+      'wall_outer_top_left',
+      'wall_outer_top_right',
+    ]
+    for (const w of villageWalls) {
+      this.load.image(`${w}_village`, `/assets/tiles/${w}_village.png`)
+    }
     // NPC（女性騎士）スプライト
     // 村長は老賢者(wizzard_m)スプライトを使う（0x72・既存と同画風）
     for (let i = 0; i <= 3; i++) {
@@ -57,6 +76,8 @@ export class VillageScene extends BaseMapScene {
     }
 
     this.setMap(VILLAGE_MAP)
+    // 村は加工済みの寒色(灰白)タイルを使い、暖色ブラウンのダンジョンと差別化する
+    this.terrainTextureSuffix = '_village'
     // 拠点入場時はプレイヤーを開始位置へ（store.player.position を BaseMapScene が参照）
     this.gameStore.setPlayerPosition(VILLAGE_PLAYER_START.x, VILLAGE_PLAYER_START.y)
 
