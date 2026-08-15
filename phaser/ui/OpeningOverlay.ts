@@ -32,14 +32,25 @@ export class OpeningOverlay {
     this.container.setVisible(false)
     this.container.setDepth(900) // HUD/会話ボックスより前面。コントローラは覆う範囲外。
 
-    // 黒幕（ゲームビュー領域のみ）
+    // 黒幕（ゲームビュー領域のみ・画像が無い場合の下地）
     const bg = scene.add.graphics()
     bg.fillStyle(0x000000, 1)
     bg.fillRect(0, 0, VIEW_W, VIEW_H)
-    // 上部にわずかな淀みの色味（雰囲気付け）
-    bg.fillStyle(0x14161e, 0.6)
-    bg.fillRect(0, 0, VIEW_W, 70)
     this.container.add(bg)
+
+    // 背景画像（用意されていれば黒幕の代わりに敷く）
+    if (scene.textures.exists('op_bg')) {
+      const img = scene.add.image(VIEW_W / 2, VIEW_H / 2, 'op_bg')
+      img.setDisplaySize(VIEW_W, VIEW_H) // ビュー領域にフィット（1024x1024 → 480x466）
+      this.container.add(img)
+      // 文字可読性のためのスクリム（全体を軽く暗く＋中央テキスト帯をさらに暗く）
+      const scrim = scene.add.graphics()
+      scrim.fillStyle(0x000000, 0.4)
+      scrim.fillRect(0, 0, VIEW_W, VIEW_H)
+      scrim.fillStyle(0x000000, 0.32)
+      scrim.fillRect(0, VIEW_H / 2 - 92, VIEW_W, 190)
+      this.container.add(scrim)
+    }
 
     // 黒幕をタップで送る（表示中のみ有効。非表示時は入力を無効化しマップ操作を妨げない）
     this.tapZone = scene.add.zone(0, 0, VIEW_W, VIEW_H).setOrigin(0, 0)

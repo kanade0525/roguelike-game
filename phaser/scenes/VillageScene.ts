@@ -44,6 +44,8 @@ export class VillageScene extends BaseMapScene {
     for (let i = 0; i <= 3; i++) {
       this.load.image(`npc_f${i}`, `/assets/tiles/knight_f_idle_anim_f${i}.png`)
     }
+    // オープニング背景（ゲーム画面内の黒幕カットシーンに敷く）
+    this.load.image('op_bg', '/assets/opening/op_bg.jpg')
   }
 
   create() {
