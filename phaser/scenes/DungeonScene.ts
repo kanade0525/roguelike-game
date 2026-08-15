@@ -46,9 +46,23 @@ export class DungeonScene extends BaseMapScene {
     super({ key: 'DungeonScene' })
   }
 
+  // ダンジョンID → 地形タイルの色替え接尾辞（静寂の森=緑, 暗黒城=紫灰, 深淵=赤黒）
+  private terrainSuffixForCurrentDungeon(): string {
+    const store = this.game.registry.get('gameStore')
+    const id: string | undefined = store?.dungeon?.dungeonId
+    const map: Record<string, string> = {
+      silentForest: '_forest',
+      darkCastle: '_castle',
+      abyss: '_abyss',
+    }
+    return (id && map[id]) || ''
+  }
+
   preload() {
     // 共通アセット（床・壁・プレイヤー・階段）
     this.loadSharedAssets()
+    // ダンジョン別の色替え地形タイル
+    this.loadTerrainVariant(this.terrainSuffixForCurrentDungeon())
     // 敵（4フレーム）
     for (let i = 0; i <= 3; i++) {
       this.load.image(`skelet_f${i}`, `/assets/tiles/skelet_idle_anim_f${i}.png`)
@@ -76,6 +90,8 @@ export class DungeonScene extends BaseMapScene {
     this.gameStore = this.game.registry.get('gameStore')
     this.gameLoop = this.game.registry.get('gameLoop')
     this.settings = this.game.registry.get('settingsStore')
+    // ダンジョンごとに地形の色味を変える（描画前に設定）
+    this.terrainTextureSuffix = this.terrainSuffixForCurrentDungeon()
 
     if (!this.gameStore || !this.gameLoop) {
       throw new Error('gameStore or gameLoop not found in registry')

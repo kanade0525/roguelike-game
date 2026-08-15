@@ -117,6 +117,32 @@ export abstract class BaseMapScene extends Phaser.Scene {
     }
   }
 
+  // 地形の壁キー（床は floor_1..8）。色替えバリアントの読み込みに使う。
+  protected static readonly TERRAIN_WALLS = [
+    'wall_mid',
+    'wall_top_mid',
+    'wall_top_left',
+    'wall_top_right',
+    'wall_outer_mid_left',
+    'wall_outer_mid_right',
+    'wall_outer_front_left',
+    'wall_outer_front_right',
+    'wall_outer_top_left',
+    'wall_outer_top_right',
+  ]
+
+  // 色替えした地形タイル(床8+壁10)を suffix 付きキーで読み込む。
+  // 村=_village / 静寂の森=_forest / 暗黒城=_castle / 深淵=_abyss。terrainTextureSuffix と対で使う。
+  protected loadTerrainVariant(suffix: string) {
+    if (!suffix) return
+    for (let i = 1; i <= 8; i++) {
+      this.load.image(`floor_${i}${suffix}`, `/assets/tiles/floor_${i}${suffix}.png`)
+    }
+    for (const w of BaseMapScene.TERRAIN_WALLS) {
+      this.load.image(`${w}${suffix}`, `/assets/tiles/${w}${suffix}.png`)
+    }
+  }
+
   protected createKnightAnimation() {
     if (!this.anims.exists('knight_idle_anim')) {
       this.anims.create({

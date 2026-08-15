@@ -40,25 +40,8 @@ export class VillageScene extends BaseMapScene {
 
   preload() {
     this.loadSharedAssets()
-    // 村用の寒色(灰白)タイル。ダンジョンの茶色タイルを実加工したもの(接尾辞 _village)。
-    for (let i = 1; i <= 8; i++) {
-      this.load.image(`floor_${i}_village`, `/assets/tiles/floor_${i}_village.png`)
-    }
-    const villageWalls = [
-      'wall_mid',
-      'wall_top_mid',
-      'wall_top_left',
-      'wall_top_right',
-      'wall_outer_mid_left',
-      'wall_outer_mid_right',
-      'wall_outer_front_left',
-      'wall_outer_front_right',
-      'wall_outer_top_left',
-      'wall_outer_top_right',
-    ]
-    for (const w of villageWalls) {
-      this.load.image(`${w}_village`, `/assets/tiles/${w}_village.png`)
-    }
+    // 村用の灰白タイル（ダンジョンの茶タイルを実加工したもの）
+    this.loadTerrainVariant('_village')
     // NPC（女性騎士）スプライト
     // 村長は老賢者(wizzard_m)スプライトを使う（0x72・既存と同画風）
     for (let i = 0; i <= 3; i++) {
