@@ -742,7 +742,11 @@ export const useGameStore = defineStore('game', {
     restoreFromSession(): boolean {
       const saved = sessionStorage.getItem('gameState')
       if (!saved) {
+        // 新規ダイブ: 拠点で選んだダンジョン(dungeon)は $reset で消さずに保持する。
+        // ($reset は既定の silentForest に戻すため、暗黒城/深淵が選べなくなるのを防ぐ)
+        const chosenDungeon = { ...this.dungeon }
         this.$reset()
+        this.dungeon = chosenDungeon
         return false
       }
       try {
