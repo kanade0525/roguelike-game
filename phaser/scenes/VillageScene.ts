@@ -148,6 +148,10 @@ export class VillageScene extends BaseMapScene {
   protected override tryMove(dx: number, dy: number) {
     if (this.inputLocked) return
     const ui = this.getUiScene()
+    if (ui.isInventoryOpen()) {
+      ui.moveInventoryCursor(dx, dy)
+      return
+    }
     if (ui.isConfirmOpen()) {
       ui.moveConfirmCursor(dx)
       return
@@ -182,6 +186,11 @@ export class VillageScene extends BaseMapScene {
       if (action === 'confirm') ui.advanceOpening()
       return
     }
+    if (ui.isInventoryOpen()) {
+      // 村では持ち物の確認のみ。B/A で閉じる。
+      if (action === 'inventory' || action === 'confirm') ui.hideInventory()
+      return
+    }
     if (ui.isDialogOpen()) {
       if (action === 'confirm') ui.advanceDialog()
       return
@@ -197,7 +206,12 @@ export class VillageScene extends BaseMapScene {
       return
     }
 
-    // 何も開いていない: A で 隣接NPCと会話 or 足元の施設を開く
+    // 何も開いていない: B で持ち物確認
+    if (action === 'inventory') {
+      this.openVillageInventory()
+      return
+    }
+    // A で 隣接NPCと会話 or 足元の施設を開く
     if (action === 'confirm') {
       const pos = this.gameStore.player.position
       const npc = this.adjacentNpc(pos.x, pos.y)
@@ -208,6 +222,16 @@ export class VillageScene extends BaseMapScene {
       const f = facilityAt(pos.x, pos.y)
       if (f) this.openFacility(f.type)
     }
+  }
+
+  // 村では持ち帰った持ち物(meta.storage)を閲覧する（使用/装備はしない・確認のみ）
+  private openVillageInventory() {
+    const storage = this.gameStore.meta.storage as { itemId: string; name: string }[]
+    if (!storage || storage.length === 0) {
+      this.getUiScene().addMessage('持ち物はない。')
+      return
+    }
+    this.getUiScene().showInventory(storage, true)
   }
 
   // プレイヤーに隣接（8近傍）するNPCを返す

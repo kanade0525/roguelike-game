@@ -335,6 +335,10 @@ export abstract class BaseMapScene extends Phaser.Scene {
         this.handleAction('confirm')
         return
       }
+      if (event.code === 'KeyI') {
+        this.handleAction('inventory')
+        return
+      }
       if (BaseMapScene.MOVE_KEYS.includes(event.code)) {
         this.heldMoveKeys.add(event.code)
         this.pendingMove = this.composeMoveDirection()
@@ -414,7 +418,7 @@ export abstract class BaseMapScene extends Phaser.Scene {
         exploredTiles: string[]
       ) => void
       hideMinimap: () => void
-      showInventory: (inventory: unknown[]) => void
+      showInventory: (inventory: unknown[], readOnly?: boolean) => void
       hideInventory: () => void
       refreshInventory: (inventory: unknown[]) => void
       moveInventoryCursor: (dx: number, dy: number) => void

@@ -25,6 +25,7 @@ export class InventoryOverlay {
   private cursor: Phaser.GameObjects.Text
   private rowTexts: Phaser.GameObjects.Text[] = []
   private descText: Phaser.GameObjects.Text
+  private hintText!: Phaser.GameObjects.Text
   private emptyText: Phaser.GameObjects.Text
   private readonly maxRows = 8
   private readonly rowStartY = 90
@@ -103,19 +104,21 @@ export class InventoryOverlay {
     this.container.add(this.cursor)
 
     // 操作ヒント
-    const hint = scene.add.text(240, 378, 'A:使う/装備  L:捨てる  B:閉じる', {
+    this.hintText = scene.add.text(240, 378, 'A:使う/装備  L:捨てる  B:閉じる', {
       ...BASE_STYLE,
       fontSize: '11px',
       color: TEXT_COLOR.dim,
     })
-    hint.setOrigin(0.5, 0.5)
-    this.container.add(hint)
+    this.hintText.setOrigin(0.5, 0.5)
+    this.container.add(this.hintText)
   }
 
-  show(inventory: InventoryEntry[]) {
+  // readOnly: 拠点での持ち物確認など、使用/装備/破棄をせず閲覧のみのとき true。
+  show(inventory: InventoryEntry[], readOnly = false) {
     this.entries = inventory
     this.cursorIndex = Math.min(this.cursorIndex, Math.max(0, inventory.length - 1))
     this.visible = true
+    this.hintText.setText(readOnly ? 'B:閉じる' : 'A:使う/装備  L:捨てる  B:閉じる')
     this.refresh()
     this.container.setVisible(true)
   }

@@ -62,6 +62,11 @@ export class UIScene extends Phaser.Scene {
       this.statusBar.updateGold(gold)
     }
 
+    // 拠点(村)ではダンジョン用HUD(階層/Lv/HP/満腹)を隠し、ゴールドのみ表示する
+    if (this.gameplayKey === 'VillageScene') {
+      this.statusBar.setVillageMode()
+    }
+
     // 初期メッセージ（ダンジョンのみ）
     if (this.gameplayKey === 'DungeonScene') {
       this.addMessage('ダンジョンに足を踏み入れた！')
@@ -156,8 +161,8 @@ export class UIScene extends Phaser.Scene {
 
   // --- インベントリ ---
 
-  showInventory(inventory: InventoryEntry[]) {
-    this.inventory.show(inventory)
+  showInventory(inventory: InventoryEntry[], readOnly = false) {
+    this.inventory.show(inventory, readOnly)
   }
 
   hideInventory() {
