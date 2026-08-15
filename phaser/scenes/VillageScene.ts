@@ -80,11 +80,12 @@ export class VillageScene extends BaseMapScene {
     })
   }
 
-  // 「はじめから」→ 拠点に初めて入ったときだけオープニングを再生する
+  // 「はじめから」→ 拠点に初めて入ったときだけオープニングを再生する。
+  // ゲーム画面内でビュー領域を黒幕で覆い中央表示（コントローラ・HUDはそのまま）。
   private maybePlayOpening() {
     if (this.gameStore.meta.seenOpening) return
     this.gameStore.markOpeningSeen()
-    this.getUiScene().showDialog(OPENING as StoryLine[])
+    this.getUiScene().showOpening(OPENING as StoryLine[])
   }
 
   // --- 施設マーカー描画（BaseMapScene.drawScene から呼ばれる） ---
@@ -153,6 +154,7 @@ export class VillageScene extends BaseMapScene {
       ui.moveListCursor(dy)
       return
     }
+    if (ui.isOpeningOpen()) return // オープニング中は移動しない（送りは A のみ）
     if (ui.isDialogOpen()) return // 会話中は移動しない（送りは A のみ）
 
     const nx = this.gameStore.player.position.x + dx
@@ -174,6 +176,10 @@ export class VillageScene extends BaseMapScene {
     if (this.inputLocked) return
     const ui = this.getUiScene()
 
+    if (ui.isOpeningOpen()) {
+      if (action === 'confirm') ui.advanceOpening()
+      return
+    }
     if (ui.isDialogOpen()) {
       if (action === 'confirm') ui.advanceDialog()
       return

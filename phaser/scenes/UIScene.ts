@@ -8,6 +8,7 @@ import { MinimapOverlay } from '../ui/MinimapOverlay'
 import { InventoryOverlay, type InventoryEntry } from '../ui/InventoryOverlay'
 import { ListMenuOverlay, type ListRow } from '../ui/ListMenuOverlay'
 import { DialogOverlay, type DialogLine } from '../ui/DialogOverlay'
+import { OpeningOverlay, type OpeningLine } from '../ui/OpeningOverlay'
 
 export class UIScene extends Phaser.Scene {
   private statusBar!: StatusBar
@@ -18,6 +19,7 @@ export class UIScene extends Phaser.Scene {
   private inventory!: InventoryOverlay
   private listMenu!: ListMenuOverlay
   private dialog!: DialogOverlay
+  private opening!: OpeningOverlay
 
   // 入力イベントの送り先（DungeonScene / VillageScene）
   private gameplayKey = 'DungeonScene'
@@ -44,6 +46,7 @@ export class UIScene extends Phaser.Scene {
     this.inventory = new InventoryOverlay(this)
     this.listMenu = new ListMenuOverlay(this)
     this.dialog = new DialogOverlay(this)
+    this.opening = new OpeningOverlay(this)
 
     // HUD をストアの現在値で初期化（最初の1手を待たずに正しい HP/Lv/満腹/ゴールドを表示する）
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -223,6 +226,20 @@ export class UIScene extends Phaser.Scene {
 
   isDialogOpen(): boolean {
     return this.dialog.isOpen()
+  }
+
+  // --- オープニング（ゲームビューを黒幕で覆い中央表示） ---
+
+  showOpening(lines: OpeningLine[], onDone?: () => void) {
+    this.opening.show(lines, onDone)
+  }
+
+  advanceOpening() {
+    this.opening.advance()
+  }
+
+  isOpeningOpen(): boolean {
+    return this.opening.isOpen()
   }
 
   // --- イベント転送（アクティブなゲームプレイシーンへ） ---

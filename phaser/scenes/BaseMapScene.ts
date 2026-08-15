@@ -438,6 +438,9 @@ export abstract class BaseMapScene extends Phaser.Scene {
       advanceDialog: () => void
       hideDialog: () => void
       isDialogOpen: () => boolean
+      showOpening: (lines: { speaker?: string; text: string }[], onDone?: () => void) => void
+      advanceOpening: () => void
+      isOpeningOpen: () => boolean
       addMessage: (msg: string) => void
       updateHP: (current: number, max: number) => void
       updateFloor: (floor: number) => void
