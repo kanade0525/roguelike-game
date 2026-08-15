@@ -40,10 +40,15 @@ export class VillageScene extends BaseMapScene {
 
   preload() {
     this.loadSharedAssets()
+    // 村用の灰白タイル（ダンジョンの茶タイルを実加工したもの）
+    this.loadTerrainVariant('_village')
     // NPC（女性騎士）スプライト
+    // 村長は老賢者(wizzard_m)スプライトを使う（0x72・既存と同画風）
     for (let i = 0; i <= 3; i++) {
-      this.load.image(`npc_f${i}`, `/assets/tiles/knight_f_idle_anim_f${i}.png`)
+      this.load.image(`npc_f${i}`, `/assets/tiles/wizzard_m_idle_anim_f${i}.png`)
     }
+    // オープニング背景（ゲーム画面内の黒幕カットシーンに敷く）
+    this.load.image('op_bg', '/assets/opening/op_bg.jpg')
   }
 
   create() {
@@ -54,6 +59,8 @@ export class VillageScene extends BaseMapScene {
     }
 
     this.setMap(VILLAGE_MAP)
+    // 村は加工済みの寒色(灰白)タイルを使い、暖色ブラウンのダンジョンと差別化する
+    this.terrainTextureSuffix = '_village'
     // 拠点入場時はプレイヤーを開始位置へ（store.player.position を BaseMapScene が参照）
     this.gameStore.setPlayerPosition(VILLAGE_PLAYER_START.x, VILLAGE_PLAYER_START.y)
 
@@ -80,11 +87,12 @@ export class VillageScene extends BaseMapScene {
     })
   }
 
-  // 「はじめから」→ 拠点に初めて入ったときだけオープニングを再生する
+  // 「はじめから」→ 拠点に初めて入ったときだけオープニングを再生する。
+  // ゲーム画面内でビュー領域を黒幕で覆い中央表示（コントローラ・HUDはそのまま）。
   private maybePlayOpening() {
     if (this.gameStore.meta.seenOpening) return
     this.gameStore.markOpeningSeen()
-    this.getUiScene().showDialog(OPENING as StoryLine[])
+    this.getUiScene().showOpening(OPENING as StoryLine[])
   }
 
   // --- 施設マーカー描画（BaseMapScene.drawScene から呼ばれる） ---
@@ -145,6 +153,10 @@ export class VillageScene extends BaseMapScene {
   protected override tryMove(dx: number, dy: number) {
     if (this.inputLocked) return
     const ui = this.getUiScene()
+    if (ui.isInventoryOpen()) {
+      ui.moveInventoryCursor(dx, dy)
+      return
+    }
     if (ui.isConfirmOpen()) {
       ui.moveConfirmCursor(dx)
       return
@@ -153,6 +165,7 @@ export class VillageScene extends BaseMapScene {
       ui.moveListCursor(dy)
       return
     }
+    if (ui.isOpeningOpen()) return // オープニング中は移動しない（送りは A のみ）
     if (ui.isDialogOpen()) return // 会話中は移動しない（送りは A のみ）
 
     const nx = this.gameStore.player.position.x + dx
@@ -174,6 +187,15 @@ export class VillageScene extends BaseMapScene {
     if (this.inputLocked) return
     const ui = this.getUiScene()
 
+    if (ui.isOpeningOpen()) {
+      if (action === 'confirm') ui.advanceOpening()
+      return
+    }
+    if (ui.isInventoryOpen()) {
+      // 村では持ち物の確認のみ。B/A で閉じる。
+      if (action === 'inventory' || action === 'confirm') ui.hideInventory()
+      return
+    }
     if (ui.isDialogOpen()) {
       if (action === 'confirm') ui.advanceDialog()
       return
@@ -189,7 +211,12 @@ export class VillageScene extends BaseMapScene {
       return
     }
 
-    // 何も開いていない: A で 隣接NPCと会話 or 足元の施設を開く
+    // 何も開いていない: B でコマンドメニュー（道具・足もと・話す）
+    if (action === 'inventory') {
+      this.openVillageMenu()
+      return
+    }
+    // A で 隣接NPCと会話 or 足元の施設を開く（メニューを介さないショートカット）
     if (action === 'confirm') {
       const pos = this.gameStore.player.position
       const npc = this.adjacentNpc(pos.x, pos.y)
@@ -200,6 +227,46 @@ export class VillageScene extends BaseMapScene {
       const f = facilityAt(pos.x, pos.y)
       if (f) this.openFacility(f.type)
     }
+  }
+
+  // 村のコマンドメニュー（道具／足もと／話す）。状況に応じて選択不可(グレー)にする。
+  private villageMenu: { enabled: boolean; run: () => void }[] = []
+
+  private openVillageMenu() {
+    const ui = this.getUiScene()
+    const pos = this.gameStore.player.position
+    const facility = facilityAt(pos.x, pos.y)
+    const npc = this.adjacentNpc(pos.x, pos.y)
+    const hasItems = ((this.gameStore.meta.storage as unknown[])?.length ?? 0) > 0
+
+    const rows = [
+      { label: '道具', right: hasItems ? '' : 'なし', disabled: !hasItems },
+      { label: '足もと', right: facility ? facility.label : '—', disabled: !facility },
+      { label: '話す', right: npc ? npc.name : '—', disabled: !npc },
+    ]
+    this.villageMenu = [
+      { enabled: hasItems, run: () => this.openVillageInventory() },
+      { enabled: !!facility, run: () => facility && this.openFacility(facility.type) },
+      { enabled: !!npc, run: () => npc && this.talkToNpc(npc) },
+    ]
+    ui.showListMenu('メニュー', '', rows, (i) => this.onVillageMenuSelect(i))
+  }
+
+  private onVillageMenuSelect(index: number) {
+    const item = this.villageMenu[index]
+    if (!item || !item.enabled) return // グレー項目は無反応
+    this.getUiScene().hideListMenu()
+    item.run()
+  }
+
+  // 村では持ち帰った持ち物(meta.storage)を閲覧する（使用/装備はしない・確認のみ）
+  private openVillageInventory() {
+    const storage = this.gameStore.meta.storage as { itemId: string; name: string }[]
+    if (!storage || storage.length === 0) {
+      this.getUiScene().addMessage('持ち物はない。')
+      return
+    }
+    this.getUiScene().showInventory(storage, true)
   }
 
   // プレイヤーに隣接（8近傍）するNPCを返す

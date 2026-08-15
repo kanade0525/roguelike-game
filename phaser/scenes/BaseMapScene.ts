@@ -29,6 +29,11 @@ export abstract class BaseMapScene extends Phaser.Scene {
   protected mapHeight = 0
   protected map: number[][] = []
 
+  // 地形(床/壁)の色味。シーンごとに変えられる。0xffffff は無着色。
+  protected terrainTint = 0xffffff
+  // 地形テクスチャのキー接尾辞。'' はダンジョン標準、'_village' は加工済みの寒色タイルを使う。
+  protected terrainTextureSuffix = ''
+
   // Pinia store
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   protected gameStore: any = null
@@ -109,6 +114,32 @@ export abstract class BaseMapScene extends Phaser.Scene {
     this.load.image('wall_outer_top_right', '/assets/tiles/wall_outer_top_right.png')
     for (let i = 0; i <= 3; i++) {
       this.load.image(`knight_f${i}`, `/assets/tiles/knight_m_idle_anim_f${i}.png`)
+    }
+  }
+
+  // 地形の壁キー（床は floor_1..8）。色替えバリアントの読み込みに使う。
+  protected static readonly TERRAIN_WALLS = [
+    'wall_mid',
+    'wall_top_mid',
+    'wall_top_left',
+    'wall_top_right',
+    'wall_outer_mid_left',
+    'wall_outer_mid_right',
+    'wall_outer_front_left',
+    'wall_outer_front_right',
+    'wall_outer_top_left',
+    'wall_outer_top_right',
+  ]
+
+  // 色替えした地形タイル(床8+壁10)を suffix 付きキーで読み込む。
+  // 村=_village / 静寂の森=_forest / 暗黒城=_castle / 深淵=_abyss。terrainTextureSuffix と対で使う。
+  protected loadTerrainVariant(suffix: string) {
+    if (!suffix) return
+    for (let i = 1; i <= 8; i++) {
+      this.load.image(`floor_${i}${suffix}`, `/assets/tiles/floor_${i}${suffix}.png`)
+    }
+    for (const w of BaseMapScene.TERRAIN_WALLS) {
+      this.load.image(`${w}${suffix}`, `/assets/tiles/${w}${suffix}.png`)
     }
   }
 
@@ -230,10 +261,10 @@ export abstract class BaseMapScene extends Phaser.Scene {
     const x = this.offsetX + screenTileX * this.tileWidth + this.tileWidth / 2
     const y = this.offsetY + screenTileY * this.tileHeight + this.tileHeight / 2
 
-    const textureKey = `floor_${((tileX * 7 + tileY * 13) % 8) + 1}`
+    const textureKey = `floor_${((tileX * 7 + tileY * 13) % 8) + 1}${this.terrainTextureSuffix}`
     const tile = this.add.image(x, y, textureKey)
     tile.setScale(this.tileScale)
-    if (dim) tile.setTint(DIM_TINT)
+    tile.setTint(dim ? DIM_TINT : this.terrainTint)
     this.floorContainer.add(tile)
   }
 
@@ -250,10 +281,10 @@ export abstract class BaseMapScene extends Phaser.Scene {
       return
     const x = this.offsetX + screenX * this.tileWidth
     const y = this.offsetY + screenY * this.tileHeight
-    const img = this.add.image(x, y, texture)
+    const img = this.add.image(x, y, texture + this.terrainTextureSuffix)
     img.setOrigin(0, 0)
     img.setScale(this.tileScale)
-    if (dim) img.setTint(DIM_TINT)
+    img.setTint(dim ? DIM_TINT : this.terrainTint)
     this.wallContainer.add(img)
   }
 
@@ -335,6 +366,10 @@ export abstract class BaseMapScene extends Phaser.Scene {
         this.handleAction('confirm')
         return
       }
+      if (event.code === 'KeyI') {
+        this.handleAction('inventory')
+        return
+      }
       if (BaseMapScene.MOVE_KEYS.includes(event.code)) {
         this.heldMoveKeys.add(event.code)
         this.pendingMove = this.composeMoveDirection()
@@ -414,7 +449,7 @@ export abstract class BaseMapScene extends Phaser.Scene {
         exploredTiles: string[]
       ) => void
       hideMinimap: () => void
-      showInventory: (inventory: unknown[]) => void
+      showInventory: (inventory: unknown[], readOnly?: boolean) => void
       hideInventory: () => void
       refreshInventory: (inventory: unknown[]) => void
       moveInventoryCursor: (dx: number, dy: number) => void
@@ -438,6 +473,9 @@ export abstract class BaseMapScene extends Phaser.Scene {
       advanceDialog: () => void
       hideDialog: () => void
       isDialogOpen: () => boolean
+      showOpening: (lines: { speaker?: string; text: string }[], onDone?: () => void) => void
+      advanceOpening: () => void
+      isOpeningOpen: () => boolean
       addMessage: (msg: string) => void
       updateHP: (current: number, max: number) => void
       updateFloor: (floor: number) => void

@@ -50,4 +50,13 @@ export class StatusBar {
   updateGold(gold: number) {
     this.goldText.setText(`${gold}G`)
   }
+
+  // 拠点(村)ではダンジョン用の情報(階層/Lv/HP/満腹)を隠し、ゴールドのみ左に表示する
+  setVillageMode() {
+    this.floorText.setVisible(false)
+    this.levelText.setVisible(false)
+    this.hpText.setVisible(false)
+    this.satiationText.setVisible(false)
+    this.goldText.setPosition(16, 16)
+  }
 }

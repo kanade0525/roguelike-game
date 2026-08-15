@@ -7,6 +7,7 @@
   const gameStore = useGameStore()
 
   // はじめから: 永続データ(meta/localStorage)を含め全リセットして拠点の村から開始
+  // オープニングは村のゲーム画面内（コントローラ・HUD付き）で DialogOverlay により自動再生される
   const startGame = () => {
     gameStore.newGame()
     sessionStorage.removeItem('gameState')

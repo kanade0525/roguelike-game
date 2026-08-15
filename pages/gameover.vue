@@ -57,6 +57,7 @@
     </div>
 
     <div v-if="isEnding" class="ending nes-container is-dark is-rounded">
+      <img src="/assets/opening/ending_abyss.jpg" class="ending-art" alt="深淵の主" >
       <p v-for="(line, i) in endingLines" :key="i" class="ending-line">
         <span v-if="line.speaker" class="ending-speaker">{{ line.speaker }}</span>
         {{ line.text }}
@@ -145,6 +146,14 @@
     width: 100%;
     max-width: 360px;
     padding: 1.2rem !important;
+  }
+
+  .ending-art {
+    display: block;
+    width: 100%;
+    border-radius: 4px;
+    margin: 0 0 1rem;
+    image-rendering: pixelated;
   }
 
   .ending-line {
