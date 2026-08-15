@@ -19,12 +19,12 @@ test.describe('タイトル画面', () => {
     await expect(continueBtn).toBeDisabled()
   })
 
-  test('「はじめから」でゲーム画面に遷移する', async ({ page }) => {
+  test('「はじめから」で拠点(村)へ遷移する', async ({ page }) => {
     await page.goto('/')
     // hydration 完了を待ってからクリック
     await page.waitForLoadState('networkidle')
     await page.getByText('はじめから').click()
-    await expect(page).toHaveURL('/game', { timeout: 10000 })
+    await expect(page).toHaveURL('/village', { timeout: 10000 })
   })
 })
 
