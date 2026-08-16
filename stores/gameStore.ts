@@ -10,6 +10,7 @@ import {
 } from '~/game/systems/EconomySystem'
 import { TILE } from '~/game/data/maps'
 import { getQuest, isObjectiveMet, type RunStats } from '~/game/quest'
+import { buyPrice, sellPrice } from '~/game/data/shop'
 import gameConfig from '~/game/data/gameConfig.json'
 
 interface PlayerState {
@@ -419,6 +420,51 @@ export const useGameStore = defineStore('game', {
         this.player.attack += bonus.attack
         this.player.defense += bonus.defense
       }
+    },
+
+    // --- 道具屋（購入/売却） ---
+
+    // 購入: meta.gold を消費して meta.storage へ追加（消耗品は stack マージ）
+    buyItem(itemId: string): { success: boolean; message: string } {
+      const def = ITEMS[itemId]
+      const price = buyPrice(itemId)
+      if (!def || price <= 0) return { success: false, message: '' }
+      if (this.meta.gold < price) {
+        return { success: false, message: `ゴールドが足りない（必要 ${price}G）` }
+      }
+      this.meta.gold -= price
+      const existing = def.stackable
+        ? this.meta.storage.find((e) => e.itemId === itemId && !e.equipped)
+        : undefined
+      if (existing) {
+        existing.stack = (existing.stack ?? 1) + 1
+      } else {
+        const entry: InventoryItem = { itemId, name: def.name }
+        if (def.stackable) entry.stack = 1
+        if (def.equippable) {
+          entry.equipmentData = makeEquipmentData(
+            def,
+            0,
+            gameConfig.equipmentConfig.enhanceBonusPerLevel
+          )
+        }
+        this.meta.storage.push(entry)
+      }
+      this.persistMeta()
+      return { success: true, message: `${def.name}を買った（-${price}G）` }
+    },
+
+    // 売却: meta.storage から1個減らし、売値を meta.gold へ（売値=買値の半額）
+    sellItem(storageIndex: number): { success: boolean; message: string } {
+      const entry = this.meta.storage[storageIndex]
+      if (!entry) return { success: false, message: '' }
+      const def = ITEMS[entry.itemId]
+      const price = sellPrice(entry.itemId)
+      if ((entry.stack ?? 1) > 1) entry.stack = (entry.stack ?? 1) - 1
+      else this.meta.storage.splice(storageIndex, 1)
+      this.meta.gold += price
+      this.persistMeta()
+      return { success: true, message: `${def?.name ?? entry.itemId}を売った（+${price}G）` }
     },
 
     // 装備の強化（鍛冶）。拠点倉庫の装備を対象に meta.gold を消費して enhanceLevel++。

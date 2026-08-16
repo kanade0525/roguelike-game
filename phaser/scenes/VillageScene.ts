@@ -9,12 +9,14 @@ import {
   VILLAGE_FACILITIES,
   VILLAGE_NPCS,
   facilityAt,
+  isFacilityUnlocked,
   npcAt,
   type VillageFacility,
   type VillageNpc,
 } from '../../game/village/villageMap'
 import { OPENING, chiefLines, type StoryLine } from '../../game/story'
 import { QUESTS, availableQuests, getQuest, type Quest } from '../../game/quest'
+import { SHOP_STOCK, buyPrice, sellPrice } from '../../game/data/shop'
 import { BaseMapScene } from './BaseMapScene'
 
 interface VillageNav {
@@ -98,6 +100,7 @@ export class VillageScene extends BaseMapScene {
   // --- 施設マーカー描画（BaseMapScene.drawScene から呼ばれる） ---
   protected override drawEntities(viewStartX: number, viewStartY: number, endX: number, endY: number) {
     for (const f of VILLAGE_FACILITIES) {
+      if (!isFacilityUnlocked(f, this.gameStore.meta.clearedDungeons)) continue // 未解放は非表示
       if (f.x < viewStartX || f.x >= endX || f.y < viewStartY || f.y >= endY) continue
       this.drawFacilityMarker(f, viewStartX, viewStartY)
     }
@@ -179,7 +182,7 @@ export class VillageScene extends BaseMapScene {
     this.drawScene()
 
     // 施設タイルに乗ったら開く
-    const f = facilityAt(nx, ny)
+    const f = this.unlockedFacilityAt(nx, ny)
     if (f) this.openFacility(f.type)
   }
 
@@ -224,7 +227,7 @@ export class VillageScene extends BaseMapScene {
         this.talkToNpc(npc)
         return
       }
-      const f = facilityAt(pos.x, pos.y)
+      const f = this.unlockedFacilityAt(pos.x, pos.y)
       if (f) this.openFacility(f.type)
     }
   }
@@ -235,7 +238,7 @@ export class VillageScene extends BaseMapScene {
   private openVillageMenu() {
     const ui = this.getUiScene()
     const pos = this.gameStore.player.position
-    const facility = facilityAt(pos.x, pos.y)
+    const facility = this.unlockedFacilityAt(pos.x, pos.y)
     const npc = this.adjacentNpc(pos.x, pos.y)
     const hasItems = ((this.gameStore.meta.storage as unknown[])?.length ?? 0) > 0
 
@@ -397,11 +400,92 @@ export class VillageScene extends BaseMapScene {
     ui.refreshListMenu(rows, `達成 ${done}/${QUESTS.length}`)
   }
 
+  // 解放済みの施設のみ返す（未解放は無いものとして扱う）
+  private unlockedFacilityAt(x: number, y: number): VillageFacility | undefined {
+    const f = facilityAt(x, y)
+    if (!f) return undefined
+    return isFacilityUnlocked(f, this.gameStore.meta.clearedDungeons as string[]) ? f : undefined
+  }
+
   // --- 施設 ---
   private openFacility(type: string) {
     if (type === 'blacksmith') this.openBlacksmith()
     else if (type === 'dungeon') this.openDungeonSelect()
+    else if (type === 'shop') this.openShop()
     else if (type === 'exit') this.openExit()
+  }
+
+  // 道具屋: 買う / 売る
+  private shopBuyIds: string[] = []
+  private shopSellIndexMap: number[] = []
+
+  private openShop() {
+    this.getUiScene().showListMenu(
+      '道具屋',
+      `所持金 ${this.gameStore.meta.gold}G`,
+      [
+        { label: '買う', right: '', disabled: false },
+        { label: '売る', right: '', disabled: false },
+      ],
+      (i) => {
+        if (i === 0) this.openShopBuy()
+        else if (i === 1) this.openShopSell()
+      }
+    )
+  }
+
+  private buildShopBuyRows() {
+    const gold = this.gameStore.meta.gold as number
+    this.shopBuyIds = SHOP_STOCK.filter((id) => ITEMS[id])
+    return this.shopBuyIds.map((id) => {
+      const price = buyPrice(id)
+      return { label: ITEMS[id].name, right: `${price}G`, disabled: gold < price }
+    })
+  }
+
+  private openShopBuy() {
+    const ui = this.getUiScene()
+    ui.showListMenu('道具屋 — 買う', `所持金 ${this.gameStore.meta.gold}G`, this.buildShopBuyRows(), (i) => {
+      const id = this.shopBuyIds[i]
+      if (!id) return
+      const result = this.gameStore.buyItem(id)
+      if (result?.message) ui.addMessage(result.message)
+      this.updateVillageHud()
+      ui.refreshListMenu(this.buildShopBuyRows(), `所持金 ${this.gameStore.meta.gold}G`)
+    })
+  }
+
+  private buildShopSellRows() {
+    const storage = this.gameStore.meta.storage as { itemId: string; stack?: number }[]
+    this.shopSellIndexMap = []
+    const rows: { label: string; right: string; disabled: boolean }[] = []
+    storage.forEach((entry, index) => {
+      const def = ITEMS[entry.itemId]
+      if (!def) return
+      const stackText = entry.stack && entry.stack > 1 ? ` x${entry.stack}` : ''
+      rows.push({ label: `${def.name}${stackText}`, right: `${sellPrice(entry.itemId)}G`, disabled: false })
+      this.shopSellIndexMap.push(index)
+    })
+    return rows
+  }
+
+  private openShopSell() {
+    const ui = this.getUiScene()
+    const rows = this.buildShopSellRows()
+    if (rows.length === 0) {
+      ui.addMessage('売れる物が無い。')
+      this.openShop()
+      return
+    }
+    ui.showListMenu('道具屋 — 売る', `所持金 ${this.gameStore.meta.gold}G`, rows, (i) => {
+      const storageIndex = this.shopSellIndexMap[i]
+      if (storageIndex === undefined) return
+      const result = this.gameStore.sellItem(storageIndex)
+      if (result?.message) ui.addMessage(result.message)
+      this.updateVillageHud()
+      const newRows = this.buildShopSellRows()
+      ui.refreshListMenu(newRows, `所持金 ${this.gameStore.meta.gold}G`)
+    })
   }
 
   private buildBlacksmithRows() {

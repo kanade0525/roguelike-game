@@ -1,7 +1,7 @@
 import { TILE, type TileType } from '../data/maps'
 
 // 拠点の施設種別（プレイヤーが乗る/A で対応UIを開く）
-export type VillageFacilityType = 'blacksmith' | 'dungeon' | 'exit'
+export type VillageFacilityType = 'blacksmith' | 'dungeon' | 'exit' | 'shop'
 
 export interface VillageFacility {
   x: number
@@ -9,6 +9,7 @@ export interface VillageFacility {
   type: VillageFacilityType
   label: string
   color: number // マーカー色（仮アセット代わり）
+  requires?: string // 解放に必要な踏破済みダンジョンID（省略なら最初から利用可）
 }
 
 const _ = TILE.FLOOR
@@ -39,8 +40,15 @@ export const VILLAGE_PLAYER_START = { x: 7, y: 6 }
 export const VILLAGE_FACILITIES: VillageFacility[] = [
   { x: 2, y: 2, type: 'blacksmith', label: '鍛冶屋', color: 0xd98a3a },
   { x: 12, y: 2, type: 'dungeon', label: 'ダンジョン', color: 0x8a6bd9 },
+  // 道具屋は静寂の森を踏破すると解放される（拠点progression）
+  { x: 12, y: 10, type: 'shop', label: '道具屋', color: 0x3aa06a, requires: 'silentForest' },
   { x: 7, y: 11, type: 'exit', label: '出口', color: 0x9aa0a6 },
 ]
+
+// 解放済み施設か（requires 未指定、または踏破済みなら true）
+export function isFacilityUnlocked(f: VillageFacility, clearedDungeons: string[]): boolean {
+  return !f.requires || clearedDungeons.includes(f.requires)
+}
 
 export function facilityAt(x: number, y: number): VillageFacility | undefined {
   return VILLAGE_FACILITIES.find((f) => f.x === x && f.y === y)
