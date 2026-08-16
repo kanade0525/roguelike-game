@@ -11,7 +11,6 @@ import F8 from './F8'
 const darkCastle: DungeonDefinition = {
   id: 'darkCastle',
   name: '暗黒城',
-  bgm: '/assets/bgm/dark_castle.mp3',
   floors: [F1, F2, F3, F4, F5, F6, F7, F8],
 }
 

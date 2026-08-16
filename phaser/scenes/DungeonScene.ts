@@ -6,6 +6,13 @@ import gameConfig from '../../game/data/gameConfig.json'
 import type { CombatEvent, ActionResult } from '../../composables/useGameLoop'
 import { BaseMapScene, type TileVisibility } from './BaseMapScene'
 
+// ボス種別 → 大型スプライト（0x72 の big 敵）。最終フロアに大きく描画する。
+const BOSS_SPRITE: Record<string, string> = {
+  forest_lord: 'ogre',
+  castle_lord: 'big_zombie',
+  abyss_lord: 'big_demon',
+}
+
 const ITEM_TINT: Record<string, number> = {
   weapon: 0xffffff,
   armor: 0x66aaff,
@@ -66,6 +73,12 @@ export class DungeonScene extends BaseMapScene {
     // 敵（4フレーム）
     for (let i = 0; i <= 3; i++) {
       this.load.image(`skelet_f${i}`, `/assets/tiles/skelet_idle_anim_f${i}.png`)
+    }
+    // ボス（大型スプライト・4フレーム）
+    for (const sprite of Object.values(BOSS_SPRITE)) {
+      for (let i = 0; i <= 3; i++) {
+        this.load.image(`${sprite}_f${i}`, `/assets/tiles/${sprite}_idle_anim_f${i}.png`)
+      }
     }
     // アイテム
     this.load.image('weapon_sword', '/assets/tiles/weapon_anime_sword.png')
@@ -157,6 +170,22 @@ export class DungeonScene extends BaseMapScene {
           { key: 'skelet_f3' },
         ],
         frameRate: 6,
+        repeat: -1,
+      })
+    }
+    // ボスの待機アニメ
+    for (const sprite of Object.values(BOSS_SPRITE)) {
+      const key = `${sprite}_idle_anim`
+      if (this.anims.exists(key)) continue
+      this.anims.create({
+        key,
+        frames: [
+          { key: `${sprite}_f0` },
+          { key: `${sprite}_f1` },
+          { key: `${sprite}_f2` },
+          { key: `${sprite}_f3` },
+        ],
+        frameRate: 5,
         repeat: -1,
       })
     }
@@ -355,10 +384,12 @@ export class DungeonScene extends BaseMapScene {
       const screenTileY = enemy.y - viewStartY
       const x = this.offsetX + screenTileX * this.tileWidth + this.tileWidth / 2
       const y = this.offsetY + screenTileY * this.tileHeight + this.tileHeight * 0.8
-      const sprite = this.add.sprite(x, y, 'skelet_f0')
+      const bossSprite = BOSS_SPRITE[enemy.type]
+      const sprite = this.add.sprite(x, y, bossSprite ? `${bossSprite}_f0` : 'skelet_f0')
       sprite.setOrigin(0.5, 1.0)
-      sprite.setScale(this.tileScale * 0.6)
-      sprite.play('skelet_idle_anim')
+      // ボスは大型スプライトをさらに大きく描画して威圧感を出す
+      sprite.setScale(this.tileScale * (bossSprite ? 0.9 : 0.6))
+      sprite.play(bossSprite ? `${bossSprite}_idle_anim` : 'skelet_idle_anim')
       this.entityContainer.add(sprite)
     }
   }
@@ -825,6 +856,12 @@ export class DungeonScene extends BaseMapScene {
   private playDungeonBgm() {
     const dungeonId = this.gameStore.dungeon.dungeonId
     const dungeon = getDungeon(dungeonId)
+    // BGM未収録のダンジョンは再生しない（存在しないファイルの読込→デコード失敗を防ぐ）
+    if (!dungeon.bgm) {
+      this.stopBgm()
+      this.currentBgmKey = ''
+      return
+    }
     const bgmKey = `bgm_${dungeonId}`
 
     // 同じBGMが再生中ならスキップ
