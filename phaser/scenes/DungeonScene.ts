@@ -4,6 +4,7 @@ import { getDungeon } from '../../game/dungeon'
 import { ITEMS } from '../../game/data/items'
 import gameConfig from '../../game/data/gameConfig.json'
 import type { CombatEvent, ActionResult } from '../../composables/useGameLoop'
+import { isBossType } from '../../game/entities/Enemy'
 import { BaseMapScene, type TileVisibility } from './BaseMapScene'
 
 // ボス種別 → 大型スプライト（0x72 の big 敵）。最終フロアに大きく描画する。
@@ -273,10 +274,53 @@ export class DungeonScene extends BaseMapScene {
               this.updateUI(result)
               this.playDungeonBgm()
               this.inputLocked = false
+              // ボスフロアに到達したら登場演出
+              if (this.isBossAlive()) this.showBossIntro()
             },
           })
         })
       },
+    })
+  }
+
+  // ボス種別の敵が生存しているか（撃破すると store.enemies から除かれる）
+  private isBossAlive(): boolean {
+    return (this.gameStore.enemies as { type: string }[]).some((e) => isBossType(e.type))
+  }
+
+  // ボスフロア到達時の登場演出（赤フラッシュ＋バナー）
+  private showBossIntro() {
+    const cx = this.screenWidth / 2
+    const cy = (this.gameAreaTop + this.gameAreaBottom) / 2
+    const flash = this.add
+      .rectangle(cx, this.screenHeight / 2, this.screenWidth, this.screenHeight, 0xaa0000, 0)
+      .setDepth(3200)
+    this.tweens.add({
+      targets: flash,
+      alpha: 0.35,
+      duration: 220,
+      yoyo: true,
+      repeat: 1,
+      onComplete: () => flash.destroy(),
+    })
+    const banner = this.add
+      .text(cx, cy, '― ボス出現 ―', {
+        fontSize: '30px',
+        fontFamily: '"DotGothic16", monospace',
+        color: '#ff5555',
+        stroke: '#000000',
+        strokeThickness: 5,
+      })
+      .setOrigin(0.5)
+      .setDepth(3201)
+      .setAlpha(0)
+    this.tweens.add({
+      targets: banner,
+      alpha: 1,
+      duration: 350,
+      yoyo: true,
+      hold: 1000,
+      onComplete: () => banner.destroy(),
     })
   }
 
@@ -413,10 +457,6 @@ export class DungeonScene extends BaseMapScene {
       return
     }
 
-    const h = dx === -1 ? '左' : dx === 1 ? '右' : ''
-    const v = dy === -1 ? '上' : dy === 1 ? '下' : ''
-    const dir = `${h}${v}` || '?'
-    console.log(`[Move] ${dir}`)
     const result: ActionResult | null = this.gameLoop.playerMove(dx, dy)
 
     if (result !== null) {
@@ -430,16 +470,20 @@ export class DungeonScene extends BaseMapScene {
 
       const pos = this.gameStore.player.position
       if (this.map[pos.y][pos.x] === TILE.STAIRS) {
-        this.getUiScene().showConfirm('次の階に移動しますか？', () => {
-          this.goNextFloor()
-        })
+        // ボスフロアはボスを倒すまで先へ進めない
+        if (this.isBossAlive()) {
+          this.updateUI(['ボスが立ちはだかっている。倒さなければ先へ進めない！'])
+        } else {
+          this.getUiScene().showConfirm('次の階に移動しますか？', () => {
+            this.goNextFloor()
+          })
+        }
       }
     }
   }
 
   protected override handleAction(action: string) {
     if (this.inputLocked) return
-    console.log(`[Action] ${action}`)
     const ui = this.getUiScene()
 
     if (ui.isMinimapOpen()) {
