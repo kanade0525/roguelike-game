@@ -1,6 +1,13 @@
 import type { Position } from './Player'
 
-export type EnemyType = 'skeleton' | 'goblin'
+export type EnemyType = 'skeleton' | 'goblin' | 'forest_lord' | 'castle_lord' | 'abyss_lord'
+
+// 各ダンジョンのボス種別（最終フロアに配置）
+export const BOSS_TYPES: EnemyType[] = ['forest_lord', 'castle_lord', 'abyss_lord']
+
+export function isBossType(type: string): boolean {
+  return (BOSS_TYPES as string[]).includes(type)
+}
 export type AIState = 'idle' | 'chase' | 'attack'
 
 export interface EnemyStats {

@@ -31,6 +31,27 @@
       "defense": 3,
       "exp": 20,
       "dodge": 0.08
+    },
+    "forest_lord": {
+      "maxHealth": 110,
+      "attack": 13,
+      "defense": 5,
+      "exp": 120,
+      "dodge": 0.03
+    },
+    "castle_lord": {
+      "maxHealth": 200,
+      "attack": 19,
+      "defense": 8,
+      "exp": 280,
+      "dodge": 0.03
+    },
+    "abyss_lord": {
+      "maxHealth": 360,
+      "attack": 26,
+      "defense": 12,
+      "exp": 600,
+      "dodge": 0.02
     }
   },
   "itemConfig": {

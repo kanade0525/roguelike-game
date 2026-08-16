@@ -29,12 +29,16 @@ describe('floorConfig', () => {
       expect(getFloorDifficulty(5, 'silentForest').isFixedFloor).toBe(true)
     })
 
-    it('全フロアでスケルトンのみ', () => {
-      for (let f = 1; f <= 5; f++) {
+    it('通常フロアはスケルトンのみ、最終フロアはボス(forest_lord)', () => {
+      for (let f = 1; f <= 4; f++) {
         const config = getFloorDifficulty(f, 'silentForest')
         expect(config.enemyTypes.length).toBeGreaterThan(0)
         expect(config.enemyTypes.every((e) => e.type === 'skeleton')).toBe(true)
       }
+      // 最終フロア(5F)はボスフロア
+      const boss = getFloorDifficulty(5, 'silentForest')
+      expect(boss.isBossFloor).toBe(true)
+      expect(boss.enemyTypes.every((e) => e.type === 'forest_lord')).toBe(true)
     })
   })
 

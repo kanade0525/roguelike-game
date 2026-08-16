@@ -23,6 +23,6 @@ export interface FloorConfig {
 export interface DungeonDefinition {
   id: string
   name: string
-  bgm: string
+  bgm?: string // 未収録なら省略可（再生しない）
   floors: FloorConfig[]
 }
