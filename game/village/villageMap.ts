@@ -62,7 +62,7 @@ export interface VillageNpc {
   name: string
 }
 
-export const VILLAGE_NPCS: VillageNpc[] = [{ x: 6, y: 3, npcId: 'chief', name: '村長' }]
+export const VILLAGE_NPCS: VillageNpc[] = [{ x: 6, y: 4, npcId: 'chief', name: '村長' }]
 
 export function npcAt(x: number, y: number): VillageNpc | undefined {
   return VILLAGE_NPCS.find((n) => n.x === x && n.y === y)

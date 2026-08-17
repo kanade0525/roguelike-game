@@ -120,13 +120,17 @@
     margin: 0;
     font-size: clamp(2.6rem, 13vw, 5.5rem);
     line-height: 0.98;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
     color: #f4efe3;
+    font-weight: 700;
+    /* ピクセルフォントを太らせて存在感を出す */
+    -webkit-text-stroke: 2.5px #f4efe3;
+    paint-order: stroke fill;
     text-shadow:
-      0 2px 0 rgba(0, 0, 0, 0.6),
-      0 0 22px rgba(232, 189, 109, 0.35),
-      0 6px 30px rgba(0, 0, 0, 0.8);
+      0 3px 0 rgba(0, 0, 0, 0.65),
+      0 0 24px rgba(232, 189, 109, 0.4),
+      0 6px 30px rgba(0, 0, 0, 0.85);
   }
 
   .tagline {

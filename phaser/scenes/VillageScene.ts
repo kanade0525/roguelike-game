@@ -24,6 +24,14 @@ interface VillageNav {
   toTitle: () => void
 }
 
+// 施設種別 → アイコンのテクスチャキー（鍛冶屋=ハンマー / ダンジョン=階段 / 道具屋=フラスコ / 出口=扉）
+const FACILITY_ICON: Record<string, string> = {
+  blacksmith: 'icon_hammer',
+  dungeon: 'floor_stairs',
+  shop: 'icon_flask',
+  exit: 'icon_door',
+}
+
 /**
  * 拠点(村)の歩けるシーン。ダンジョン(DungeonScene)と同じ BaseMapScene を継承し、
  * 同一のタイル描画・8方向移動・仮想コントローラ・UIScene を流用する。
@@ -51,6 +59,10 @@ export class VillageScene extends BaseMapScene {
     }
     // オープニング背景（ゲーム画面内の黒幕カットシーンに敷く）
     this.load.image('op_bg', '/assets/opening/op_bg.jpg')
+    // 施設アイコン（鍛冶屋=ハンマー / 道具屋=フラスコ / 出口=扉。ダンジョン=階段は共有アセット）
+    this.load.image('icon_hammer', '/assets/tiles/weapon_hammer.png')
+    this.load.image('icon_flask', '/assets/tiles/flask_red.png')
+    this.load.image('icon_door', '/assets/tiles/doors_leaf_closed.png')
   }
 
   create() {
@@ -132,16 +144,25 @@ export class VillageScene extends BaseMapScene {
 
   private drawFacilityMarker(f: VillageFacility, viewStartX: number, viewStartY: number) {
     const cx = this.offsetX + (f.x - viewStartX) * this.tileWidth + this.tileWidth / 2
-    const cy = this.offsetY + (f.y - viewStartY) * this.tileHeight + this.tileHeight / 2
-    const s = this.tileWidth * 0.62
+    const iconY = this.offsetY + (f.y - viewStartY) * this.tileHeight + this.tileHeight * 0.42
+
+    // 施設色のリング付き台座（アイコンを地面から浮かせて視認性を上げる）
+    const r = this.tileWidth * 0.4
     const g = this.add.graphics()
-    g.fillStyle(f.color, 0.9)
-    g.fillRoundedRect(cx - s / 2, cy - s / 2 - this.tileHeight * 0.1, s, s, 6)
-    g.lineStyle(2, 0xffffff, 0.9)
-    g.strokeRoundedRect(cx - s / 2, cy - s / 2 - this.tileHeight * 0.1, s, s, 6)
+    g.fillStyle(0x14161e, 0.72)
+    g.fillCircle(cx, iconY, r)
+    g.lineStyle(2, f.color, 0.95)
+    g.strokeCircle(cx, iconY, r)
     this.entityContainer.add(g)
+
+    // アイコン（種別ごとのスプライトを一定の高さに正規化）
+    const iconKey = FACILITY_ICON[f.type] ?? 'icon_flask'
+    const icon = this.add.image(cx, iconY, iconKey)
+    icon.setScale((this.tileHeight * 0.66) / icon.height)
+    this.entityContainer.add(icon)
+
     const label = this.add
-      .text(cx, cy + this.tileHeight * 0.4, f.label, {
+      .text(cx, iconY + this.tileHeight * 0.5, f.label, {
         fontSize: '11px',
         color: '#ffffff',
         fontFamily: '"DotGothic16", monospace',
