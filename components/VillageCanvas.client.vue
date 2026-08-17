@@ -16,7 +16,8 @@
     depart: (dungeonId: string) => {
       const dungeon = DUNGEONS[dungeonId] ?? DUNGEONS[DEFAULT_DUNGEON_ID]
       gameStore.setDungeon(dungeon.id, dungeon.floors.length)
-      sessionStorage.removeItem('gameState')
+      // 新規ダイブ: 前の中断ランを消して最初から生成する
+      gameStore.clearRun()
       router.push('/game')
     },
     toTitle: () => router.push('/'),

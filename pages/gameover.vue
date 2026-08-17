@@ -37,13 +37,13 @@
   })
 
   const backToVillage = () => {
-    sessionStorage.removeItem('gameState')
+    gameStore.clearRun() // 中断ラン(localStorage)を消す
     gameStore.resetGame() // meta（永続gold）は保持される
     router.push('/village')
   }
 
   const backToTitle = () => {
-    sessionStorage.removeItem('gameState')
+    gameStore.clearRun()
     gameStore.resetGame()
     router.push('/')
   }

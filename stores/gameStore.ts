@@ -99,6 +99,8 @@ interface MetaState {
 
 // localStorage キー（sessionStorage の現ラン継続とは別レイヤ）
 const META_STORAGE_KEY = 'katabasis_meta'
+// 潜行中の現ラン状態。localStorage に置き、ブラウザを閉じても「つづきから」で再開できるようにする。
+const RUN_STORAGE_KEY = 'katabasis_run'
 
 // 装備エントリの実効ボーナス（強化込み）。未装備データは +0 として算出。
 function equipBonusOf(entry: InventoryItem): { attack: number; defense: number } {
@@ -247,11 +249,12 @@ export const useGameStore = defineStore('game', {
       this.meta = preservedMeta
     },
 
-    // 完全な新規開始（「はじめから」）: 永続データ(meta)と localStorage も含め全リセット
+    // 完全な新規開始（「はじめから」）: 永続データ(meta)・中断ランも含め全リセット
     newGame() {
       this.$reset()
       if (typeof localStorage !== 'undefined') {
         localStorage.removeItem(META_STORAGE_KEY)
+        localStorage.removeItem(RUN_STORAGE_KEY)
       }
     },
 
@@ -811,12 +814,15 @@ export const useGameStore = defineStore('game', {
       this.player.satiation = Math.max(0, this.player.satiation - amount)
     },
 
+    // 現ラン状態を localStorage へ保存（潜行中の自動保存）
     saveToSession() {
-      sessionStorage.setItem('gameState', JSON.stringify(this.$state))
+      if (typeof localStorage === 'undefined') return
+      localStorage.setItem(RUN_STORAGE_KEY, JSON.stringify(this.$state))
     },
 
+    // 中断した現ランを復元。ブラウザを閉じても localStorage に残るため「つづきから」で再開できる。
     restoreFromSession(): boolean {
-      const saved = sessionStorage.getItem('gameState')
+      const saved = typeof localStorage !== 'undefined' ? localStorage.getItem(RUN_STORAGE_KEY) : null
       if (!saved) {
         // 新規ダイブ: 拠点で選んだダンジョン(dungeon)は $reset で消さずに保持する。
         // ($reset は既定の silentForest に戻すため、暗黒城/深淵が選べなくなるのを防ぐ)
@@ -831,7 +837,25 @@ export const useGameStore = defineStore('game', {
         return true
       } catch {
         this.$reset()
-        sessionStorage.removeItem('gameState')
+        this.clearRun()
+        return false
+      }
+    },
+
+    // 中断ランの保存を消す（新規開始・ダイブ開始・ラン終了時）
+    clearRun() {
+      if (typeof localStorage === 'undefined') return
+      localStorage.removeItem(RUN_STORAGE_KEY)
+    },
+
+    // 再開可能な中断ラン（潜行中＝gameResult active）があるか
+    hasSuspendedRun(): boolean {
+      if (typeof localStorage === 'undefined') return false
+      const saved = localStorage.getItem(RUN_STORAGE_KEY)
+      if (!saved) return false
+      try {
+        return JSON.parse(saved)?.gameResult === 'active'
+      } catch {
         return false
       }
     },

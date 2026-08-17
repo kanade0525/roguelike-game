@@ -56,6 +56,7 @@
 
     // 復元時にゲーム終了状態ならリザルト/拠点へ直接遷移
     if (gameStore.gameResult === 'escaped') {
+      gameStore.clearRun()
       router.replace('/village')
       return
     }
@@ -74,6 +75,7 @@
       () => gameStore.gameResult,
       (result) => {
         if (result === 'escaped') {
+          gameStore.clearRun()
           router.push('/village')
         } else if (result === 'dead' || result === 'cleared') {
           router.push('/gameover')
