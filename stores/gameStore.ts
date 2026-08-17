@@ -11,6 +11,7 @@ import {
 import { TILE } from '~/game/data/maps'
 import { getQuest, isObjectiveMet, type RunStats } from '~/game/quest'
 import { buyPrice, sellPrice } from '~/game/data/shop'
+import { VILLAGE_CHEST } from '~/game/village/villageMap'
 import gameConfig from '~/game/data/gameConfig.json'
 
 interface PlayerState {
@@ -93,10 +94,13 @@ interface MetaState {
   clearedDungeons: string[] // 踏破済みダンジョンID（物語進捗）
   seenOpening: boolean // オープニングを表示済みか（初回のみ表示）
   quests: QuestState // クエスト進行状態
+  villageChestOpened: boolean // 村の初期宝箱を開封済みか
 }
 
 // localStorage キー（sessionStorage の現ラン継続とは別レイヤ）
 const META_STORAGE_KEY = 'katabasis_meta'
+// 潜行中の現ラン状態。localStorage に置き、ブラウザを閉じても「つづきから」で再開できるようにする。
+const RUN_STORAGE_KEY = 'katabasis_run'
 
 // 装備エントリの実効ボーナス（強化込み）。未装備データは +0 として算出。
 function equipBonusOf(entry: InventoryItem): { attack: number; defense: number } {
@@ -164,6 +168,7 @@ export const useGameStore = defineStore('game', {
       clearedDungeons: [],
       seenOpening: false,
       quests: { active: [], satisfied: [], completed: [] },
+      villageChestOpened: false,
     },
   }),
 
@@ -244,11 +249,12 @@ export const useGameStore = defineStore('game', {
       this.meta = preservedMeta
     },
 
-    // 完全な新規開始（「はじめから」）: 永続データ(meta)と localStorage も含め全リセット
+    // 完全な新規開始（「はじめから」）: 永続データ(meta)・中断ランも含め全リセット
     newGame() {
       this.$reset()
       if (typeof localStorage !== 'undefined') {
         localStorage.removeItem(META_STORAGE_KEY)
+        localStorage.removeItem(RUN_STORAGE_KEY)
       }
     },
 
@@ -276,6 +282,7 @@ export const useGameStore = defineStore('game', {
             satisfied: Array.isArray(parsed.quests?.satisfied) ? parsed.quests.satisfied : [],
             completed: Array.isArray(parsed.quests?.completed) ? parsed.quests.completed : [],
           },
+          villageChestOpened: parsed.villageChestOpened === true,
         }
         return true
       } catch {
@@ -420,6 +427,32 @@ export const useGameStore = defineStore('game', {
         this.player.attack += bonus.attack
         this.player.defense += bonus.defense
       }
+    },
+
+    // 村の初期宝箱を開封（初回のみ）。中身を meta.storage へ入れ、開封済みにする。
+    openVillageChest(): { name: string; count: number }[] | null {
+      if (this.meta.villageChestOpened) return null
+      const added: { name: string; count: number }[] = []
+      for (const c of VILLAGE_CHEST.contents) {
+        const def = ITEMS[c.itemId]
+        if (!def) continue
+        for (let i = 0; i < c.count; i++) {
+          const existing = def.stackable
+            ? this.meta.storage.find((e) => e.itemId === c.itemId && !e.equipped)
+            : undefined
+          if (existing) {
+            existing.stack = (existing.stack ?? 1) + 1
+          } else {
+            const entry: InventoryItem = { itemId: c.itemId, name: def.name }
+            if (def.stackable) entry.stack = 1
+            this.meta.storage.push(entry)
+          }
+        }
+        added.push({ name: def.name, count: c.count })
+      }
+      this.meta.villageChestOpened = true
+      this.persistMeta()
+      return added
     },
 
     // --- 道具屋（購入/売却） ---
@@ -781,12 +814,15 @@ export const useGameStore = defineStore('game', {
       this.player.satiation = Math.max(0, this.player.satiation - amount)
     },
 
+    // 現ラン状態を localStorage へ保存（潜行中の自動保存）
     saveToSession() {
-      sessionStorage.setItem('gameState', JSON.stringify(this.$state))
+      if (typeof localStorage === 'undefined') return
+      localStorage.setItem(RUN_STORAGE_KEY, JSON.stringify(this.$state))
     },
 
+    // 中断した現ランを復元。ブラウザを閉じても localStorage に残るため「つづきから」で再開できる。
     restoreFromSession(): boolean {
-      const saved = sessionStorage.getItem('gameState')
+      const saved = typeof localStorage !== 'undefined' ? localStorage.getItem(RUN_STORAGE_KEY) : null
       if (!saved) {
         // 新規ダイブ: 拠点で選んだダンジョン(dungeon)は $reset で消さずに保持する。
         // ($reset は既定の silentForest に戻すため、暗黒城/深淵が選べなくなるのを防ぐ)
@@ -801,7 +837,25 @@ export const useGameStore = defineStore('game', {
         return true
       } catch {
         this.$reset()
-        sessionStorage.removeItem('gameState')
+        this.clearRun()
+        return false
+      }
+    },
+
+    // 中断ランの保存を消す（新規開始・ダイブ開始・ラン終了時）
+    clearRun() {
+      if (typeof localStorage === 'undefined') return
+      localStorage.removeItem(RUN_STORAGE_KEY)
+    },
+
+    // 再開可能な中断ラン（潜行中＝gameResult active）があるか
+    hasSuspendedRun(): boolean {
+      if (typeof localStorage === 'undefined') return false
+      const saved = localStorage.getItem(RUN_STORAGE_KEY)
+      if (!saved) return false
+      try {
+        return JSON.parse(saved)?.gameResult === 'active'
+      } catch {
         return false
       }
     },

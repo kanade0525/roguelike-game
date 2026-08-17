@@ -6,17 +6,20 @@
   const router = useRouter()
   const gameStore = useGameStore()
 
-  // はじめから: 永続データ(meta/localStorage)を含め全リセットして拠点の村から開始
+  // はじめから: 永続データ(meta)・中断ランを含め全リセットして拠点の村から開始
   // オープニングは村のゲーム画面内で DialogOverlay により自動再生される
   const startGame = () => {
     gameStore.newGame()
-    sessionStorage.removeItem('gameState')
     router.push('/village')
   }
 
-  // つづきから: 保存済みの永続データを引き継いで拠点の村から再開
+  // つづきから: 潜行中の中断ランがあればダンジョンを途中から再開、無ければ拠点へ
   const continueGame = () => {
-    router.push('/village')
+    if (gameStore.hasSuspendedRun()) {
+      router.push('/game')
+    } else {
+      router.push('/village')
+    }
   }
 
   const openSettings = () => {
