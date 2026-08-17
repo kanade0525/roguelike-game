@@ -8,8 +8,10 @@ import {
   VILLAGE_PLAYER_START,
   VILLAGE_FACILITIES,
   VILLAGE_NPCS,
+  VILLAGE_CHEST,
   facilityAt,
   isFacilityUnlocked,
+  isChestAt,
   npcAt,
   type VillageFacility,
   type VillageNpc,
@@ -63,6 +65,8 @@ export class VillageScene extends BaseMapScene {
     this.load.image('icon_hammer', '/assets/tiles/weapon_hammer.png')
     this.load.image('icon_flask', '/assets/tiles/flask_red.png')
     this.load.image('icon_door', '/assets/tiles/doors_leaf_closed.png')
+    // 村の初期宝箱
+    this.load.image('chest_closed', '/assets/tiles/chest_closed.png')
   }
 
   create() {
@@ -119,6 +123,22 @@ export class VillageScene extends BaseMapScene {
     for (const n of VILLAGE_NPCS) {
       if (n.x < viewStartX || n.x >= endX || n.y < viewStartY || n.y >= endY) continue
       this.drawNpc(n, viewStartX, viewStartY)
+    }
+    // 初期宝箱（未開封かつ視界内のみ）
+    const chest = VILLAGE_CHEST
+    if (
+      !this.gameStore.meta.villageChestOpened &&
+      chest.x >= viewStartX &&
+      chest.x < endX &&
+      chest.y >= viewStartY &&
+      chest.y < endY
+    ) {
+      const cx = this.offsetX + (chest.x - viewStartX) * this.tileWidth + this.tileWidth / 2
+      const cy = this.offsetY + (chest.y - viewStartY) * this.tileHeight + this.tileHeight * 0.72
+      const sprite = this.add.image(cx, cy, 'chest_closed')
+      sprite.setOrigin(0.5, 1.0)
+      sprite.setScale((this.tileHeight * 0.62) / sprite.height)
+      this.entityContainer.add(sprite)
     }
   }
 
@@ -204,7 +224,20 @@ export class VillageScene extends BaseMapScene {
 
     // 施設タイルに乗ったら開く
     const f = this.unlockedFacilityAt(nx, ny)
-    if (f) this.openFacility(f.type)
+    if (f) {
+      this.openFacility(f.type)
+    } else if (isChestAt(nx, ny) && !this.gameStore.meta.villageChestOpened) {
+      this.openChest()
+    }
+  }
+
+  // 村の初期宝箱を開ける（初回のみ・パン＋ポーション）
+  private openChest() {
+    const added = this.gameStore.openVillageChest() as { name: string; count: number }[] | null
+    if (!added) return
+    const summary = added.map((a) => `${a.name} x${a.count}`).join('、')
+    this.getUiScene().addMessage(`宝箱を開けた！ ${summary} を手に入れた。`)
+    this.drawScene() // 開封済みの宝箱を消す
   }
 
   protected override handleAction(action: string) {

@@ -11,6 +11,7 @@ import {
 import { TILE } from '~/game/data/maps'
 import { getQuest, isObjectiveMet, type RunStats } from '~/game/quest'
 import { buyPrice, sellPrice } from '~/game/data/shop'
+import { VILLAGE_CHEST } from '~/game/village/villageMap'
 import gameConfig from '~/game/data/gameConfig.json'
 
 interface PlayerState {
@@ -93,6 +94,7 @@ interface MetaState {
   clearedDungeons: string[] // 踏破済みダンジョンID（物語進捗）
   seenOpening: boolean // オープニングを表示済みか（初回のみ表示）
   quests: QuestState // クエスト進行状態
+  villageChestOpened: boolean // 村の初期宝箱を開封済みか
 }
 
 // localStorage キー（sessionStorage の現ラン継続とは別レイヤ）
@@ -164,6 +166,7 @@ export const useGameStore = defineStore('game', {
       clearedDungeons: [],
       seenOpening: false,
       quests: { active: [], satisfied: [], completed: [] },
+      villageChestOpened: false,
     },
   }),
 
@@ -276,6 +279,7 @@ export const useGameStore = defineStore('game', {
             satisfied: Array.isArray(parsed.quests?.satisfied) ? parsed.quests.satisfied : [],
             completed: Array.isArray(parsed.quests?.completed) ? parsed.quests.completed : [],
           },
+          villageChestOpened: parsed.villageChestOpened === true,
         }
         return true
       } catch {
@@ -420,6 +424,32 @@ export const useGameStore = defineStore('game', {
         this.player.attack += bonus.attack
         this.player.defense += bonus.defense
       }
+    },
+
+    // 村の初期宝箱を開封（初回のみ）。中身を meta.storage へ入れ、開封済みにする。
+    openVillageChest(): { name: string; count: number }[] | null {
+      if (this.meta.villageChestOpened) return null
+      const added: { name: string; count: number }[] = []
+      for (const c of VILLAGE_CHEST.contents) {
+        const def = ITEMS[c.itemId]
+        if (!def) continue
+        for (let i = 0; i < c.count; i++) {
+          const existing = def.stackable
+            ? this.meta.storage.find((e) => e.itemId === c.itemId && !e.equipped)
+            : undefined
+          if (existing) {
+            existing.stack = (existing.stack ?? 1) + 1
+          } else {
+            const entry: InventoryItem = { itemId: c.itemId, name: def.name }
+            if (def.stackable) entry.stack = 1
+            this.meta.storage.push(entry)
+          }
+        }
+        added.push({ name: def.name, count: c.count })
+      }
+      this.meta.villageChestOpened = true
+      this.persistMeta()
+      return added
     },
 
     // --- 道具屋（購入/売却） ---
