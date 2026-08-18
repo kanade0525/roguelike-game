@@ -29,6 +29,8 @@ export class ListMenuOverlay {
   private labelTexts: Phaser.GameObjects.Text[] = []
   private rightTexts: Phaser.GameObjects.Text[] = []
   private emptyText: Phaser.GameObjects.Text
+  private scrollIndicator!: Phaser.GameObjects.Text
+  private scrollOffset = 0 // 表示先頭の行 index（maxRows を超える分をスクロール）
   private readonly maxRows = 7
   private readonly rowStartY = 108
   private readonly rowHeight = 30
@@ -100,6 +102,15 @@ export class ListMenuOverlay {
     })
     hint.setOrigin(0.5, 0.5)
     this.container.add(hint)
+
+    // スクロール可能を示すインジケータ（▲/▼）
+    this.scrollIndicator = scene.add.text(438, 380, '', {
+      ...BASE_STYLE,
+      fontSize: '12px',
+      color: TEXT_COLOR.subtle,
+    })
+    this.scrollIndicator.setOrigin(1, 0.5)
+    this.container.add(this.scrollIndicator)
   }
 
   show(title: string, subtitle: string, rows: ListRow[], onSelect: (index: number) => void) {
@@ -107,6 +118,7 @@ export class ListMenuOverlay {
     this.rows = rows
     this.onSelect = onSelect
     this.cursorIndex = 0
+    this.scrollOffset = 0
     this.visible = true
     this.refresh(rows, subtitle)
     this.container.setVisible(true)
@@ -119,8 +131,33 @@ export class ListMenuOverlay {
     this.emptyText.setText(hasRows ? '' : '該当なし')
     this.emptyText.setVisible(!hasRows)
 
+    if (hasRows) {
+      this.cursorIndex = Math.min(this.cursorIndex, this.rows.length - 1)
+      this.clampScroll()
+    } else {
+      this.scrollOffset = 0
+    }
+    this.renderVisibleRows()
+
+    if (hasRows) this.updateCursor()
+    else this.cursor.setVisible(false)
+  }
+
+  // スクロール位置を、カーソルが表示範囲に入るよう調整する
+  private clampScroll() {
+    const len = this.rows.length
+    const maxScroll = Math.max(0, len - this.maxRows)
+    if (this.cursorIndex < this.scrollOffset) this.scrollOffset = this.cursorIndex
+    else if (this.cursorIndex >= this.scrollOffset + this.maxRows) {
+      this.scrollOffset = this.cursorIndex - this.maxRows + 1
+    }
+    this.scrollOffset = Math.max(0, Math.min(this.scrollOffset, maxScroll))
+  }
+
+  // 表示範囲（scrollOffset から maxRows 件）だけ描画する
+  private renderVisibleRows() {
     for (let i = 0; i < this.maxRows; i++) {
-      const row = this.rows[i]
+      const row = this.rows[this.scrollOffset + i]
       const label = this.labelTexts[i]
       const right = this.rightTexts[i]
       if (!row) {
@@ -133,13 +170,9 @@ export class ListMenuOverlay {
       right.setText(row.right ?? '')
       right.setColor(row.disabled ? TEXT_COLOR.dim : TEXT_COLOR.subtle)
     }
-
-    if (hasRows) {
-      this.cursorIndex = Math.min(this.cursorIndex, this.rows.length - 1)
-      this.updateCursor()
-    } else {
-      this.cursor.setVisible(false)
-    }
+    const up = this.scrollOffset > 0
+    const down = this.scrollOffset + this.maxRows < this.rows.length
+    this.scrollIndicator.setText(`${up ? '▲' : ''}${down ? '▼' : ''}`)
   }
 
   hide() {
@@ -155,6 +188,8 @@ export class ListMenuOverlay {
     if (!this.visible || this.rows.length === 0 || dy === 0) return
     const len = this.rows.length
     this.cursorIndex = (this.cursorIndex + dy + len) % len
+    this.clampScroll()
+    this.renderVisibleRows()
     this.updateCursor()
   }
 
@@ -175,7 +210,8 @@ export class ListMenuOverlay {
       return
     }
     this.cursor.setVisible(true)
-    const y = this.rowStartY + this.cursorIndex * this.rowHeight
+    const screenRow = this.cursorIndex - this.scrollOffset
+    const y = this.rowStartY + screenRow * this.rowHeight
     this.cursor.setPosition(this.rowStartX - 20, y)
   }
 }

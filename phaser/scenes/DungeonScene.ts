@@ -456,6 +456,8 @@ export class DungeonScene extends BaseMapScene {
       ui.moveMenuCursor(dx, dy)
       return
     }
+    // ミニマップ表示中は移動しない（handleAction と対称に）
+    if (ui.isMinimapOpen()) return
 
     const result: ActionResult | null = this.gameLoop.playerMove(dx, dy)
 

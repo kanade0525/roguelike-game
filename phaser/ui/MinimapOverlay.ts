@@ -69,7 +69,7 @@ export class MinimapOverlay {
     const title = this.scene.add.text(screenW / 2, offsetY - 24, 'マップ', {
       fontSize: '16px',
       color: '#ffffff',
-      fontFamily: 'DotGothic16',
+      fontFamily: '"DotGothic16", monospace',
     })
     title.setOrigin(0.5, 0.5)
     this.container.add(title)
@@ -148,7 +148,7 @@ export class MinimapOverlay {
       const label = this.scene.add.text(lx + 12, legendY - 2, legend.label, {
         fontSize: '10px',
         color: '#cccccc',
-        fontFamily: 'DotGothic16',
+        fontFamily: '"DotGothic16", monospace',
       })
       this.container.add(label)
       lx += label.width + 20

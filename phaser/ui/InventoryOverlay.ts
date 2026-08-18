@@ -27,6 +27,8 @@ export class InventoryOverlay {
   private descText: Phaser.GameObjects.Text
   private hintText!: Phaser.GameObjects.Text
   private emptyText: Phaser.GameObjects.Text
+  private scrollIndicator!: Phaser.GameObjects.Text
+  private scrollOffset = 0 // 表示先頭の行 index（maxRows を超える分をスクロール）
   private readonly maxRows = 8
   private readonly rowStartY = 90
   private readonly rowHeight = 24
@@ -111,12 +113,22 @@ export class InventoryOverlay {
     })
     this.hintText.setOrigin(0.5, 0.5)
     this.container.add(this.hintText)
+
+    // スクロール可能を示すインジケータ（▲/▼）
+    this.scrollIndicator = scene.add.text(438, 66, '', {
+      ...BASE_STYLE,
+      fontSize: '12px',
+      color: TEXT_COLOR.subtle,
+    })
+    this.scrollIndicator.setOrigin(1, 0.5)
+    this.container.add(this.scrollIndicator)
   }
 
   // readOnly: 拠点での持ち物確認など、使用/装備/破棄をせず閲覧のみのとき true。
   show(inventory: InventoryEntry[], readOnly = false) {
     this.entries = inventory
     this.cursorIndex = Math.min(this.cursorIndex, Math.max(0, inventory.length - 1))
+    this.scrollOffset = 0
     this.visible = true
     this.hintText.setText(readOnly ? 'B:閉じる' : 'A:使う/装備  L:捨てる  B:閉じる')
     this.refresh()
@@ -138,8 +150,38 @@ export class InventoryOverlay {
     const hasItems = items.length > 0
     this.emptyText.setVisible(!hasItems)
 
+    if (hasItems) {
+      this.cursorIndex = Math.min(this.cursorIndex, items.length - 1)
+      this.clampScroll()
+    } else {
+      this.scrollOffset = 0
+    }
+    this.renderVisibleRows()
+
+    if (hasItems) {
+      this.updateCursor()
+      this.updateDescription()
+    } else {
+      this.cursor.setVisible(false)
+      this.descText.setText('')
+    }
+  }
+
+  // スクロール位置を、カーソルが表示範囲に入るよう調整する
+  private clampScroll() {
+    const len = this.entries.length
+    const maxScroll = Math.max(0, len - this.maxRows)
+    if (this.cursorIndex < this.scrollOffset) this.scrollOffset = this.cursorIndex
+    else if (this.cursorIndex >= this.scrollOffset + this.maxRows) {
+      this.scrollOffset = this.cursorIndex - this.maxRows + 1
+    }
+    this.scrollOffset = Math.max(0, Math.min(this.scrollOffset, maxScroll))
+  }
+
+  // 表示範囲（scrollOffset から maxRows 件）だけ描画する
+  private renderVisibleRows() {
     for (let i = 0; i < this.maxRows; i++) {
-      const entry = items[i]
+      const entry = this.entries[this.scrollOffset + i]
       const t = this.rowTexts[i]
       if (!entry) {
         t.setText('')
@@ -153,21 +195,17 @@ export class InventoryOverlay {
       const stackText = entry.stack && entry.stack > 1 ? ` x${entry.stack}` : ''
       t.setText(`${equippedMark}${entry.name}${enhanceText}${stackText}`)
     }
-
-    if (hasItems) {
-      this.cursorIndex = Math.min(this.cursorIndex, items.length - 1)
-      this.updateCursor()
-      this.updateDescription()
-    } else {
-      this.cursor.setVisible(false)
-      this.descText.setText('')
-    }
+    const up = this.scrollOffset > 0
+    const down = this.scrollOffset + this.maxRows < this.entries.length
+    this.scrollIndicator.setText(`${up ? '▲' : ''}${down ? '▼' : ''}`)
   }
 
   moveCursor(_dx: number, dy: number) {
     if (!this.visible || this.entries.length === 0) return
     const len = this.entries.length
     this.cursorIndex = (this.cursorIndex + dy + len) % len
+    this.clampScroll()
+    this.renderVisibleRows()
     this.updateCursor()
     this.updateDescription()
   }
@@ -186,7 +224,8 @@ export class InventoryOverlay {
       return
     }
     this.cursor.setVisible(true)
-    const y = this.rowStartY + this.cursorIndex * this.rowHeight
+    const screenRow = this.cursorIndex - this.scrollOffset
+    const y = this.rowStartY + screenRow * this.rowHeight
     this.cursor.setPosition(this.rowStartX - 18, y)
   }
 
