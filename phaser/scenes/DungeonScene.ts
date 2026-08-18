@@ -529,8 +529,18 @@ export class DungeonScene extends BaseMapScene {
             ui.showConfirm('ダンジョンから脱出しますか？', () => {
               this.gameLoop.escapeDungeon()
             })
-          } else {
-            this.updateUI([`${selected}（未実装）`])
+          } else if (selected === '足元') {
+            const pos = this.gameStore.player.position
+            const foot = this.gameStore.floorItems.find(
+              (i: { x: number; y: number }) => i.x === pos.x && i.y === pos.y
+            )
+            if (this.map[pos.y][pos.x] === TILE.STAIRS) {
+              this.updateUI(['足元には階段がある。'])
+            } else if (foot) {
+              this.updateUI([`足元に ${ITEMS[foot.itemId]?.name ?? foot.itemId} がある。`])
+            } else {
+              this.updateUI(['足元には何もない。'])
+            }
           }
         }
       } else if (action === 'inventory') {
@@ -550,20 +560,20 @@ export class DungeonScene extends BaseMapScene {
         this.playSequencedCombatEffects(result)
         break
       }
-      case 'wait':
-        this.updateUI(['その場で待機した（未実装）'])
+      case 'wait': {
+        const result: ActionResult = this.gameLoop.playerWait()
+        this.drawScene()
+        this.updateUI(result.messages)
+        this.playSequencedCombatEffects(result)
         break
+      }
       case 'menu':
-        this.updateUI(['メニューを開いた（未実装）'])
-        break
       case 'inventory':
         ui.toggleMenu()
         break
+      // L/R(前/次アイテム)は持ち物を開いている時だけカーソル送りに使う。通常時は何もしない。
       case 'prevItem':
-        this.updateUI(['前のアイテム（未実装）'])
-        break
       case 'nextItem':
-        this.updateUI(['次のアイテム（未実装）'])
         break
     }
   }
