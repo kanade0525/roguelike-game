@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import { TILE } from '../../game/data/maps'
+import type { UIScene } from './UIScene'
 
 // 探索済みだが今は見えていないタイルの減光色（乗算tint）
 export const DIM_TINT = 0x555566
@@ -58,8 +59,19 @@ export abstract class BaseMapScene extends Phaser.Scene {
   protected gameAreaTop = 52
   protected gameAreaBottom = 420
 
-  // 演出中の入力ロック
+  // 演出中の入力ロック。複数演出が重なっても早い解除が勝たないよう参照カウントで管理する。
   protected inputLocked = false
+  private inputLockCount = 0
+
+  protected lockInput() {
+    this.inputLockCount++
+    this.inputLocked = true
+  }
+
+  protected unlockInput() {
+    this.inputLockCount = Math.max(0, this.inputLockCount - 1)
+    this.inputLocked = this.inputLockCount > 0
+  }
 
   // キーボード8方向移動: 押下中の移動キー集合と、1フレーム内の移動合成
   private static readonly MOVE_KEYS = [
@@ -428,60 +440,7 @@ export abstract class BaseMapScene extends Phaser.Scene {
   }
 
   // UIScene への型付きアクセス
-  protected getUiScene() {
-    return this.scene.get('UIScene') as unknown as {
-      isConfirmOpen: () => boolean
-      isMenuOpen: () => boolean
-      isMinimapOpen: () => boolean
-      isInventoryOpen: () => boolean
-      showConfirm: (message: string, onYes: () => void) => void
-      hideConfirm: () => void
-      toggleMenu: () => void
-      moveMenuCursor: (dx: number, dy: number) => void
-      selectMenuItem: () => string | null
-      moveConfirmCursor: (dx: number) => void
-      confirmSelect: () => void
-      showMinimap: (
-        map: number[][],
-        player: { x: number; y: number },
-        enemies: { x: number; y: number }[],
-        items: { x: number; y: number }[],
-        exploredTiles: string[]
-      ) => void
-      hideMinimap: () => void
-      showInventory: (inventory: unknown[], readOnly?: boolean) => void
-      hideInventory: () => void
-      refreshInventory: (inventory: unknown[]) => void
-      moveInventoryCursor: (dx: number, dy: number) => void
-      getInventorySelectedIndex: () => number
-      showListMenu: (
-        title: string,
-        subtitle: string,
-        rows: { label: string; right?: string; disabled?: boolean }[],
-        onSelect: (index: number) => void
-      ) => void
-      refreshListMenu: (
-        rows: { label: string; right?: string; disabled?: boolean }[],
-        subtitle?: string
-      ) => void
-      hideListMenu: () => void
-      isListMenuOpen: () => boolean
-      moveListCursor: (dy: number) => void
-      selectListItem: () => void
-      getListSelectedIndex: () => number
-      showDialog: (lines: { speaker?: string; text: string }[], onDone?: () => void) => void
-      advanceDialog: () => void
-      hideDialog: () => void
-      isDialogOpen: () => boolean
-      showOpening: (lines: { speaker?: string; text: string }[], onDone?: () => void) => void
-      advanceOpening: () => void
-      isOpeningOpen: () => boolean
-      addMessage: (msg: string) => void
-      updateHP: (current: number, max: number) => void
-      updateFloor: (floor: number) => void
-      updateLevel: (level: number) => void
-      updateSatiation: (current: number, max: number) => void
-      updateGold: (gold: number) => void
-    }
+  protected getUiScene(): UIScene {
+    return this.scene.get('UIScene') as unknown as UIScene
   }
 }
