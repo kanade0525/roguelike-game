@@ -46,6 +46,9 @@ export interface ActionResult {
 const ENEMY_NAMES: Record<string, string> = {
   skeleton: 'スケルトン',
   goblin: 'ゴブリン',
+  forest_lord: '森の主',
+  castle_lord: '城の主',
+  abyss_lord: '深淵の主',
 }
 
 function getEnemyName(type: string): string {
