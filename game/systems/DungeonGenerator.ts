@@ -2,7 +2,7 @@ import { Map as RotMap } from 'rot-js'
 import { TILE } from '../data/maps'
 import type { TileType } from '../data/maps'
 import { createEnemy } from '../entities/createEnemy'
-import type { EnemyStoreState } from '../entities/Enemy'
+import { isBossType, type EnemyStoreState } from '../entities/Enemy'
 
 export interface RoomInfo {
   x: number
@@ -60,6 +60,61 @@ function getSpawnableTiles(
   return tiles.sort(() => Math.random() - 0.5)
 }
 
+// 階段に最も近い有効な床タイル（ボスを門番として階段付近に置く）
+function findNearStairsSpawn(
+  map: TileType[][],
+  stairsPosition: { x: number; y: number },
+  playerStart: { x: number; y: number },
+  occupied: { x: number; y: number }[]
+): { x: number; y: number } | null {
+  let best: { x: number; y: number } | null = null
+  let bestDist = Infinity
+  for (let y = 0; y < map.length; y++) {
+    for (let x = 0; x < map[0].length; x++) {
+      if (map[y][x] !== TILE.FLOOR) continue
+      if (Math.abs(x - playerStart.x) <= 2 && Math.abs(y - playerStart.y) <= 2) continue
+      if (occupied.some((o) => o.x === x && o.y === y)) continue
+      const d = Math.abs(x - stairsPosition.x) + Math.abs(y - stairsPosition.y)
+      if (d < bestDist) {
+        bestDist = d
+        best = { x, y }
+      }
+    }
+  }
+  return best
+}
+
+// 敵配置（generateFloor / buildFixedFloor 共通）。ボス種別は階段付近に配置する。
+function placeEnemies(
+  map: TileType[][],
+  playerStart: { x: number; y: number },
+  stairsPosition: { x: number; y: number },
+  occupied: { x: number; y: number }[],
+  options: DungeonGeneratorOptions
+): GeneratedFloor['enemies'] {
+  const candidates = getSpawnableTiles(map, playerStart, occupied)
+  const enemies: GeneratedFloor['enemies'] = []
+  let ci = 0
+  for (let i = 0; i < options.enemyCount; i++) {
+    const enemyType = pickWeighted(options.enemyTypes)
+    let pos: { x: number; y: number } | undefined
+    if (isBossType(enemyType.type)) {
+      pos = findNearStairsSpawn(map, stairsPosition, playerStart, occupied) ?? undefined
+    }
+    if (!pos) {
+      while (ci < candidates.length && occupied.some((o) => o.x === candidates[ci].x && o.y === candidates[ci].y)) {
+        ci++
+      }
+      pos = candidates[ci++]
+    }
+    if (!pos) break
+    const enemy = createEnemy(enemyType.type, pos, `enemy-${options.floor}-${i}`)
+    enemies.push(enemy.toStoreState())
+    occupied.push(pos)
+  }
+  return enemies
+}
+
 export function generateFloor(options: DungeonGeneratorOptions): GeneratedFloor {
   // 固定マップが指定されている場合はそれを使用
   if (options.fixedFloor) {
@@ -115,17 +170,9 @@ export function generateFloor(options: DungeonGeneratorOptions): GeneratedFloor 
   }
   map[stairsPosition.y][stairsPosition.x] = TILE.STAIRS
 
-  // 敵を配置（プレイヤー周辺2マス以内を除外）
+  // 敵を配置（プレイヤー周辺2マス以内を除外／ボスは階段付近）
   const occupied: { x: number; y: number }[] = [stairsPosition]
-  const enemyCandidates = getSpawnableTiles(map, playerStart, occupied)
-  const enemies: GeneratedFloor['enemies'] = []
-  for (let i = 0; i < Math.min(options.enemyCount, enemyCandidates.length); i++) {
-    const pos = enemyCandidates[i]
-    const enemyType = pickWeighted(options.enemyTypes)
-    const enemy = createEnemy(enemyType.type, pos, `enemy-${floor}-${i}`)
-    enemies.push(enemy.toStoreState())
-    occupied.push(pos)
-  }
+  const enemies = placeEnemies(map, playerStart, stairsPosition, occupied, options)
 
   // アイテムを配置
   const itemCandidates = getSpawnableTiles(map, playerStart, occupied)
@@ -152,17 +199,9 @@ function buildFixedFloor(
   const playerStart = { ...preset.playerStart }
   const stairsPosition = preset.stairsPosition ? { ...preset.stairsPosition } : { x: 0, y: 0 }
 
-  // 敵・アイテムはoptions経由で配置（FloorConfigのcount/typesに基づく）
+  // 敵・アイテムはoptions経由で配置（FloorConfigのcount/typesに基づく／ボスは階段付近）
   const occupied: { x: number; y: number }[] = [stairsPosition]
-  const enemyCandidates = getSpawnableTiles(map, playerStart, occupied)
-  const enemies: GeneratedFloor['enemies'] = []
-  for (let i = 0; i < Math.min(options.enemyCount, enemyCandidates.length); i++) {
-    const pos = enemyCandidates[i]
-    const enemyType = pickWeighted(options.enemyTypes)
-    const enemy = createEnemy(enemyType.type, pos, `enemy-${options.floor}-${i}`)
-    enemies.push(enemy.toStoreState())
-    occupied.push(pos)
-  }
+  const enemies = placeEnemies(map, playerStart, stairsPosition, occupied, options)
 
   const itemCandidates = getSpawnableTiles(map, playerStart, occupied)
   const items: GeneratedFloor['items'] = []
