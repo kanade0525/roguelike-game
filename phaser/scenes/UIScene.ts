@@ -2,7 +2,7 @@ import Phaser from 'phaser'
 import { StatusBar } from '../ui/StatusBar'
 import { MessageLog } from '../ui/MessageLog'
 import { Controller } from '../ui/Controller'
-import { MenuOverlay } from '../ui/MenuOverlay'
+import { MenuOverlay, type MenuConfig } from '../ui/MenuOverlay'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
 import { MinimapOverlay } from '../ui/MinimapOverlay'
 import { InventoryOverlay, type InventoryEntry } from '../ui/InventoryOverlay'
@@ -101,8 +101,13 @@ export class UIScene extends Phaser.Scene {
 
   // --- メニュー ---
 
-  toggleMenu() {
-    this.menu.toggle()
+  // メインメニューを内容付きで開く（ダンジョン／拠点で同一様式・中身は呼び出し側が用意）
+  showMenu(config: MenuConfig) {
+    this.menu.showMenu(config)
+  }
+
+  hideMenu() {
+    this.menu.hide()
   }
 
   isMenuOpen(): boolean {
@@ -218,7 +223,12 @@ export class UIScene extends Phaser.Scene {
   // --- 会話 ---
 
   showDialog(lines: DialogLine[], onDone?: () => void) {
-    this.dialog.show(lines, onDone)
+    // 会話ボックスとメッセージログが二重に出ないよう、会話中はログを隠す（1つのテキスト枠に統一）
+    this.messageLog.setVisible(false)
+    this.dialog.show(lines, () => {
+      this.messageLog.setVisible(true)
+      onDone?.()
+    })
   }
 
   advanceDialog() {
@@ -236,7 +246,12 @@ export class UIScene extends Phaser.Scene {
   // --- オープニング（ゲームビューを黒幕で覆い中央表示） ---
 
   showOpening(lines: OpeningLine[], onDone?: () => void) {
-    this.opening.show(lines, onDone)
+    // オープニングの黒幕とメッセージログが重ならないよう、上映中はログを隠す
+    this.messageLog.setVisible(false)
+    this.opening.show(lines, () => {
+      this.messageLog.setVisible(true)
+      onDone?.()
+    })
   }
 
   advanceOpening() {

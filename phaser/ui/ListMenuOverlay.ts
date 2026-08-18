@@ -91,7 +91,8 @@ export class ListMenuOverlay {
     this.emptyText.setVisible(false)
     this.container.add(this.emptyText)
 
-    this.cursor = scene.add.text(0, 0, '▶', { ...BASE_STYLE, fontSize: '13px' })
+    // iOS で絵文字(▶︎)になるのを防ぐため異体字セレクタ(U+FE0E)でテキスト表示を強制
+    this.cursor = scene.add.text(0, 0, '▶︎', { ...BASE_STYLE, fontSize: '13px' })
     this.cursor.setOrigin(0.5, 0.5)
     this.container.add(this.cursor)
 

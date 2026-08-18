@@ -20,6 +20,7 @@ import { OPENING, chiefLines, type StoryLine } from '../../game/story'
 import { QUESTS, availableQuests, getQuest, type Quest } from '../../game/quest'
 import { SHOP_STOCK, buyPrice, sellPrice } from '../../game/data/shop'
 import { BaseMapScene } from './BaseMapScene'
+import type { MenuConfig } from '../ui/MenuOverlay'
 
 interface VillageNav {
   depart: (dungeonId: string) => void
@@ -208,6 +209,10 @@ export class VillageScene extends BaseMapScene {
       ui.moveConfirmCursor(dx)
       return
     }
+    if (ui.isMenuOpen()) {
+      ui.moveMenuCursor(dx, dy)
+      return
+    }
     if (ui.isListMenuOpen()) {
       ui.moveListCursor(dy)
       return
@@ -260,6 +265,19 @@ export class VillageScene extends BaseMapScene {
       if (action === 'confirm') ui.advanceDialog()
       return
     }
+    if (ui.isMenuOpen()) {
+      // コマンドメニュー（道具/足もと/話す）: A=決定 B=閉じる
+      if (action === 'confirm') {
+        const selected = ui.selectMenuItem()
+        if (selected) {
+          ui.hideMenu()
+          this.runVillageMenu(selected)
+        }
+      } else if (action === 'inventory') {
+        ui.hideMenu()
+      }
+      return
+    }
     if (ui.isConfirmOpen()) {
       if (action === 'confirm') ui.confirmSelect()
       else if (action === 'inventory') ui.hideConfirm()
@@ -289,34 +307,44 @@ export class VillageScene extends BaseMapScene {
     }
   }
 
-  // 村のコマンドメニュー（道具／足もと／話す）。状況に応じて選択不可(グレー)にする。
-  private villageMenu: { enabled: boolean; run: () => void }[] = []
-
+  // 村のコマンドメニュー（道具／足もと／話す）。ダンジョンと同一様式（2x2グリッド＋ステータス）で開く。
+  // 状況に応じて選択不可(グレー)にする。
   private openVillageMenu() {
-    const ui = this.getUiScene()
-    const pos = this.gameStore.player.position
+    const p = this.gameStore.player
+    const pos = p.position
     const facility = this.unlockedFacilityAt(pos.x, pos.y)
     const npc = this.adjacentNpc(pos.x, pos.y)
     const hasItems = ((this.gameStore.meta.storage as unknown[])?.length ?? 0) > 0
+    const expNeeded = p.level * 30
 
-    const rows = [
-      { label: '道具', right: hasItems ? '' : 'なし', disabled: !hasItems },
-      { label: '足もと', right: facility ? facility.label : '—', disabled: !facility },
-      { label: '話す', right: npc ? npc.name : '—', disabled: !npc },
-    ]
-    this.villageMenu = [
-      { enabled: hasItems, run: () => this.openVillageInventory() },
-      { enabled: !!facility, run: () => facility && this.openFacility(facility.type) },
-      { enabled: !!npc, run: () => npc && this.talkToNpc(npc) },
-    ]
-    ui.showListMenu('メニュー', '', rows, (i) => this.onVillageMenuSelect(i))
+    const config: MenuConfig = {
+      title: '拠点 ヴァルテ',
+      items: [
+        { label: '道具', disabled: !hasItems },
+        { label: '足もと', disabled: !facility },
+        { label: '話す', disabled: !npc },
+      ],
+      stats: [
+        `名前: 冒険者    Lv: ${p.level}     HP: ${p.hp}/${p.maxHp}`,
+        `攻撃: ${p.attack}   防御: ${p.defense}    満腹度: ${p.satiation}/${p.maxSatiation}`,
+        `経験値: ${p.exp}/${expNeeded}          拠点`,
+      ],
+    }
+    this.getUiScene().showMenu(config)
   }
 
-  private onVillageMenuSelect(index: number) {
-    const item = this.villageMenu[index]
-    if (!item || !item.enabled) return // グレー項目は無反応
-    this.getUiScene().hideListMenu()
-    item.run()
+  // グリッドメニューで選ばれたラベルに応じて実行（無効項目は selectMenuItem が null を返すので届かない）
+  private runVillageMenu(label: string) {
+    const pos = this.gameStore.player.position
+    if (label === '道具') {
+      this.openVillageInventory()
+    } else if (label === '足もと') {
+      const facility = this.unlockedFacilityAt(pos.x, pos.y)
+      if (facility) this.openFacility(facility.type)
+    } else if (label === '話す') {
+      const npc = this.adjacentNpc(pos.x, pos.y)
+      if (npc) this.talkToNpc(npc)
+    }
   }
 
   // 村では持ち帰った持ち物(meta.storage)を閲覧する（使用/装備はしない・確認のみ）
