@@ -6,6 +6,9 @@ import { canMoveDiagonally } from '~/game/systems/movement'
 import { generateFloor } from '~/game/systems/DungeonGenerator'
 import { getFloorDifficulty } from '~/game/data/floorConfig'
 import { getDungeon, DEFAULT_DUNGEON_ID } from '~/game/dungeon'
+import { isBossType } from '~/game/entities/Enemy'
+import { BOSS_REWARD } from '~/game/data/bossReward'
+import { ITEMS } from '~/game/data/items'
 import { useDebugMode } from '~/composables/useDebugMode'
 import gameConfig from '~/game/data/gameConfig.json'
 
@@ -210,15 +213,30 @@ export function useGameLoop() {
           const beforeDef = store.player.defense
           store.gainExp(target.exp)
           const leveledUp = store.player.level > beforeLv
-          const gold = rollGoldDrop()
+
+          // ボスは確定報酬（gold＋固定ドロップ）、通常敵はランダム少額ドロップ
+          const boss = isBossType(target.type)
+          const reward = boss ? BOSS_REWARD[target.type] : undefined
+          const gold = reward ? reward.gold : rollGoldDrop()
           if (gold > 0) {
             store.player.gold += gold
+          }
+          if (reward?.itemId) {
+            store.addFloorItem({
+              id: `boss-drop-${target.id}`,
+              itemId: reward.itemId,
+              x: target.x,
+              y: target.y,
+            })
           }
 
           // 撃破ログを1行に統合: 「Xを倒した！ EXP+5  10G」
           const parts = [`${name}を倒した！ EXP+${target.exp}`]
           if (gold > 0) parts.push(`${gold}G`)
           messages.push(parts.join('  '))
+          if (reward?.itemId) {
+            messages.push(`${name}は「${ITEMS[reward.itemId]?.name ?? reward.itemId}」を遺した！`)
+          }
           if (leveledUp) {
             const dHp = store.player.maxHp - beforeMaxHp
             const dAtk = store.player.attack - beforeAtk
