@@ -203,7 +203,7 @@ export class DungeonScene extends BaseMapScene {
   }
 
   private goNextFloor() {
-    this.inputLocked = true
+    this.lockInput()
     this.playSE('se_stairs')
 
     // フェードアウト
@@ -273,7 +273,7 @@ export class DungeonScene extends BaseMapScene {
               floorLabel.destroy()
               this.updateUI(result)
               this.playDungeonBgm()
-              this.inputLocked = false
+              this.unlockInput()
               // ボスフロアに到達したら登場演出
               if (this.isBossAlive()) this.showBossIntro()
             },
@@ -664,7 +664,7 @@ export class DungeonScene extends BaseMapScene {
   private playSequencedCombatEffects(result: ActionResult) {
     if (result.combatEvents.length === 0) return
 
-    this.inputLocked = true
+    this.lockInput()
 
     // プレイヤーの攻撃を即時再生
     this.playCombatEffects(result.playerEvents)
@@ -678,19 +678,19 @@ export class DungeonScene extends BaseMapScene {
           if (this.gameStore.player.hp <= 0 && this.gameStore.gameResult === 'active') {
             this.playDeathSequence()
           } else {
-            this.inputLocked = false
+            this.unlockInput()
           }
         })
       })
     } else {
       this.time.delayedCall(150, () => {
-        this.inputLocked = false
+        this.unlockInput()
       })
     }
   }
 
   private playDeathSequence() {
-    this.inputLocked = true
+    this.lockInput()
     this.stopBgm()
     this.playSE('se_game_over')
     // 死亡ペナルティ: ゴールドとアイテムの半分をロスト（applyDeathPenalty が inventory/gold を処理）
@@ -999,7 +999,7 @@ export class DungeonScene extends BaseMapScene {
   }
 
   private showLevelUpEffect() {
-    this.inputLocked = true
+    this.lockInput()
     this.pauseBgmForEffect()
     this.playSE('se_levelup')
 
@@ -1032,7 +1032,7 @@ export class DungeonScene extends BaseMapScene {
             ease: 'Power2',
             onComplete: () => {
               label.destroy()
-              this.inputLocked = false
+              this.unlockInput()
               this.resumeBgmAfterEffect()
             },
           })

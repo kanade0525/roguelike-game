@@ -51,6 +51,8 @@ export class VillageScene extends BaseMapScene {
   }
 
   preload() {
+    // アイテム/アイコン等が欠けてもクラッシュしないよう、読込エラーは無視する
+    this.load.on('loaderror', () => {})
     this.loadSharedAssets()
     // 村用の灰白タイル（ダンジョンの茶タイルを実加工したもの）
     this.loadTerrainVariant('_village')
@@ -137,7 +139,7 @@ export class VillageScene extends BaseMapScene {
       const cy = this.offsetY + (chest.y - viewStartY) * this.tileHeight + this.tileHeight * 0.72
       const sprite = this.add.image(cx, cy, 'chest_closed')
       sprite.setOrigin(0.5, 1.0)
-      sprite.setScale((this.tileHeight * 0.62) / sprite.height)
+      if (sprite.height > 0) sprite.setScale((this.tileHeight * 0.62) / sprite.height)
       this.entityContainer.add(sprite)
     }
   }
@@ -178,7 +180,8 @@ export class VillageScene extends BaseMapScene {
     // アイコン（種別ごとのスプライトを一定の高さに正規化）
     const iconKey = FACILITY_ICON[f.type] ?? 'icon_flask'
     const icon = this.add.image(cx, iconY, iconKey)
-    icon.setScale((this.tileHeight * 0.66) / icon.height)
+    // テクスチャ欠損(height=0)で NaN スケールにならないようガード
+    if (icon.height > 0) icon.setScale((this.tileHeight * 0.66) / icon.height)
     this.entityContainer.add(icon)
 
     const label = this.add
