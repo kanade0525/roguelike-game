@@ -43,6 +43,7 @@ export class MenuOverlay {
     this.container.setDepth(500)
 
     // 半透明背景（ステータスバー直下〜コントローラー上端: Y44〜466）
+    // 下部の共通テキストボックス(y376〜462)も収まるので、この範囲で均一に覆える
     const overlayY = 44
     const overlayH = 422
     const overlay = scene.add.rectangle(240, overlayY + overlayH / 2, 480, overlayH, 0x000000, 0.6)
