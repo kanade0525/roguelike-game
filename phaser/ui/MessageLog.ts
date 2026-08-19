@@ -9,11 +9,16 @@ const BASE_STYLE: Phaser.Types.GameObjects.Text.TextStyle = {
 }
 
 export class MessageLog {
+  private container: Phaser.GameObjects.Container
   private messageTexts: Phaser.GameObjects.Text[] = []
   private messages: string[] = []
   private maxVisibleMessages = 2
 
   constructor(scene: Phaser.Scene) {
+    // パネル・テキストをまとめて表示切替できるようコンテナに格納する
+    // （会話ボックス／オープニング表示中はログを隠し、テキスト枠の二重表示を防ぐ）
+    this.container = scene.add.container(0, 0)
+
     const panelY = 413
     const panelH = 44
     const bg = scene.add.graphics()
@@ -21,6 +26,7 @@ export class MessageLog {
     bg.fillRoundedRect(8, panelY, 464, panelH, 4)
     bg.lineStyle(2, UI_COLOR.panelBorder, 1)
     bg.strokeRoundedRect(8, panelY, 464, panelH, 4)
+    this.container.add(bg)
 
     for (let i = 0; i < this.maxVisibleMessages; i++) {
       const text = scene.add.text(20, panelY + 4 + i * 16, '', {
@@ -28,6 +34,7 @@ export class MessageLog {
         fontSize: '14px',
       })
       this.messageTexts.push(text)
+      this.container.add(text)
     }
   }
 
@@ -37,6 +44,11 @@ export class MessageLog {
       this.messages.shift()
     }
     this.updateDisplay()
+  }
+
+  // 会話／オープニング表示中はログ枠ごと隠して、テキスト枠が二重に出ないようにする
+  setVisible(visible: boolean) {
+    this.container.setVisible(visible)
   }
 
   private updateDisplay() {

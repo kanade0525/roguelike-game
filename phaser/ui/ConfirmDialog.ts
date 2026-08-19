@@ -80,8 +80,8 @@ export class ConfirmDialog {
       this.hide()
     })
 
-    // カーソル
-    this.cursor = scene.add.text(0, 0, '▶', {
+    // カーソル（iOS で絵文字(▶︎)になるのを防ぐため異体字セレクタ(U+FE0E)でテキスト表示を強制）
+    this.cursor = scene.add.text(0, 0, '▶︎', {
       ...BASE_STYLE,
       fontSize: '14px',
       color: TEXT_COLOR.white,

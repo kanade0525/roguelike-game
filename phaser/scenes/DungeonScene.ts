@@ -6,6 +6,7 @@ import gameConfig from '../../game/data/gameConfig.json'
 import type { CombatEvent, ActionResult } from '../../composables/useGameLoop'
 import { isBossType } from '../../game/entities/Enemy'
 import { BaseMapScene, type TileVisibility } from './BaseMapScene'
+import type { MenuConfig } from '../ui/MenuOverlay'
 
 // ボス種別 → 大型スプライト（0x72 の big 敵）。最終フロアに大きく描画する。
 const BOSS_SPRITE: Record<string, string> = {
@@ -514,7 +515,7 @@ export class DungeonScene extends BaseMapScene {
       if (action === 'confirm') {
         const selected = ui.selectMenuItem()
         if (selected) {
-          ui.toggleMenu()
+          ui.hideMenu()
           if (selected === 'マップ') {
             ui.showMinimap(
               this.gameStore.currentMap,
@@ -544,7 +545,7 @@ export class DungeonScene extends BaseMapScene {
           }
         }
       } else if (action === 'inventory') {
-        ui.toggleMenu()
+        ui.hideMenu()
       }
       return
     }
@@ -569,12 +570,31 @@ export class DungeonScene extends BaseMapScene {
       }
       case 'menu':
       case 'inventory':
-        ui.toggleMenu()
+        // 開いていれば閉じ、閉じていれば内容付きで開く（START/B トグル）
+        if (ui.isMenuOpen()) ui.hideMenu()
+        else ui.showMenu(this.buildMenuConfig())
         break
       // L/R(前/次アイテム)は持ち物を開いている時だけカーソル送りに使う。通常時は何もしない。
       case 'prevItem':
       case 'nextItem':
         break
+    }
+  }
+
+  // ダンジョンのメインメニュー内容（拠点と同一様式のグリッド＋ステータス）
+  private buildMenuConfig(): MenuConfig {
+    const p = this.gameStore.player
+    const d = this.gameStore.dungeon
+    const dungeon = getDungeon(d.dungeonId)
+    const expNeeded = p.level * 30
+    return {
+      title: dungeon.name,
+      items: [{ label: '道具' }, { label: 'マップ' }, { label: '足元' }, { label: '脱出' }],
+      stats: [
+        `名前: 冒険者    Lv: ${p.level}     HP: ${p.hp}/${p.maxHp}`,
+        `攻撃: ${p.attack}   防御: ${p.defense}    満腹度: ${p.satiation}/${p.maxSatiation}`,
+        `経験値: ${p.exp}/${expNeeded}          ${d.floor}F`,
+      ],
     }
   }
 

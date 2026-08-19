@@ -8,16 +8,36 @@ const BASE_STYLE: Phaser.Types.GameObjects.Text.TextStyle = {
   letterSpacing: 2,
 }
 
+// メニュー1項目（最大4件を左上の 2x2 グリッドに配置）
+export interface MenuItemConfig {
+  label: string
+  disabled?: boolean
+}
+
+// メニュー全体の内容。呼び出し側（各シーン）が組み立てて showMenu に渡す。
+export interface MenuConfig {
+  title: string // 右上の名称ボックス（ダンジョン名／拠点名など）
+  items: MenuItemConfig[] // 2x2 グリッド。0=左上 1=右上 2=左下 3=右下
+  stats: string[] // 下部ステータス欄（最大3行）
+}
+
+/**
+ * ゲーム共通のメインメニュー（左上 2x2 グリッド＋右上の名称＋下部ステータス）。
+ * ダンジョン(DungeonScene)と拠点(VillageScene)で同一様式を使い、統一感を保つ。
+ * 表示内容は showMenu(config) で差し替える（ラベル・無効化・ステータスは呼び出し側が用意）。
+ */
 export class MenuOverlay {
   private container: Phaser.GameObjects.Container
   private visible = false
+  private titleText: Phaser.GameObjects.Text
+  private itemTexts: Phaser.GameObjects.Text[] = []
   private statTexts: Phaser.GameObjects.Text[] = []
   private cursor: Phaser.GameObjects.Text
   private cursorIndex = 0
-  private itemPositions: { x: number; y: number }[] = []
-  private itemLabels: string[] = []
+  private items: MenuItemConfig[] = []
+  private readonly itemPositions: { x: number; y: number }[] = []
 
-  constructor(private scene: Phaser.Scene) {
+  constructor(scene: Phaser.Scene) {
     this.container = scene.add.container(0, 0)
     this.container.setVisible(false)
     this.container.setDepth(500)
@@ -28,7 +48,7 @@ export class MenuOverlay {
     const overlay = scene.add.rectangle(240, overlayY + overlayH / 2, 480, overlayH, 0x000000, 0.6)
     this.container.add(overlay)
 
-    // 左上: メニューボタン（道具/マップ/足元/脱出）
+    // 左上: メニュー項目（2x2 グリッド）
     const menuBg = scene.add.graphics()
     menuBg.fillStyle(UI_COLOR.panelBg, 0.95)
     menuBg.fillRoundedRect(8, 56, 170, 76, 6)
@@ -36,35 +56,28 @@ export class MenuOverlay {
     menuBg.strokeRoundedRect(8, 56, 170, 76, 6)
     this.container.add(menuBg)
 
-    const menuLabels = [
-      { text: '道具', col: 0, row: 0 },
-      { text: 'マップ', col: 1, row: 0 },
-      { text: '足元', col: 0, row: 1 },
-      { text: '脱出', col: 1, row: 1 },
-    ]
-
-    const menuStyle = { ...BASE_STYLE, color: TEXT_COLOR.muted }
-
-    this.itemPositions = []
-    this.itemLabels = []
-    menuLabels.forEach((label) => {
-      const x = 36 + label.col * 72
-      const y = 68 + label.row * 28
-      const t = scene.add.text(x, y, label.text, menuStyle)
-      this.container.add(t)
+    // 4つのグリッド位置（0=左上 1=右上 2=左下 3=右下）と空テキストを事前配置
+    for (let i = 0; i < 4; i++) {
+      const col = i % 2
+      const row = Math.floor(i / 2)
+      const x = 36 + col * 72
+      const y = 68 + row * 28
       this.itemPositions.push({ x, y })
-      this.itemLabels.push(label.text)
-    })
+      const t = scene.add.text(x, y, '', { ...BASE_STYLE, color: TEXT_COLOR.muted })
+      this.container.add(t)
+      this.itemTexts.push(t)
+    }
 
     // カーソル
-    this.cursor = scene.add.text(0, 0, '▶', {
+    // カーソルは iOS で絵文字(▶︎)になるのを防ぐため異体字セレクタ(U+FE0E)でテキスト表示を強制
+    this.cursor = scene.add.text(0, 0, '▶︎', {
       ...BASE_STYLE,
       fontSize: '14px',
       color: TEXT_COLOR.white,
     })
     this.container.add(this.cursor)
 
-    // 右上: ダンジョン名
+    // 右上: 名称（ダンジョン名／拠点名）
     const nameBg = scene.add.graphics()
     nameBg.fillStyle(UI_COLOR.panelBg, 0.95)
     nameBg.fillRoundedRect(250, 56, 222, 36, 6)
@@ -72,12 +85,12 @@ export class MenuOverlay {
     nameBg.strokeRoundedRect(250, 56, 222, 36, 6)
     this.container.add(nameBg)
 
-    const nameText = scene.add.text(361, 74, '不思議のダンジョン', {
+    this.titleText = scene.add.text(361, 74, '', {
       ...BASE_STYLE,
       fontStyle: 'bold',
     })
-    nameText.setOrigin(0.5, 0.5)
-    this.container.add(nameText)
+    this.titleText.setOrigin(0.5, 0.5)
+    this.container.add(this.titleText)
 
     // 下部: 詳細ステータス（ゲームエリア内に収める）
     const statBg = scene.add.graphics()
@@ -87,7 +100,6 @@ export class MenuOverlay {
     statBg.strokeRoundedRect(16, 320, 448, 70, 6)
     this.container.add(statBg)
 
-    this.statTexts = []
     for (let i = 0; i < 3; i++) {
       const t = scene.add.text(28, 330 + i * 20, '', { ...BASE_STYLE })
       this.container.add(t)
@@ -104,53 +116,76 @@ export class MenuOverlay {
     this.container.add(hint)
   }
 
-  toggle() {
-    this.visible = !this.visible
-    if (this.visible) {
-      this.cursorIndex = 0
-      this.updateCursor()
-      this.updateStats()
+  // メニューを内容付きで開く（呼び出し側が config を組み立てる）
+  showMenu(config: MenuConfig) {
+    this.items = config.items.slice(0, 4)
+    this.titleText.setText(config.title)
+
+    // 項目描画（無効はグレー、空セルは非表示）
+    for (let i = 0; i < 4; i++) {
+      const item = this.items[i]
+      const t = this.itemTexts[i]
+      if (!item) {
+        t.setText('')
+        continue
+      }
+      t.setText(item.label)
+      t.setColor(item.disabled ? TEXT_COLOR.dim : TEXT_COLOR.muted)
     }
-    this.container.setVisible(this.visible)
+
+    // ステータス描画（最大3行）
+    for (let i = 0; i < 3; i++) {
+      this.statTexts[i].setText(config.stats[i] ?? '')
+    }
+
+    // カーソルは最初の有効項目へ
+    this.cursorIndex = this.items.findIndex((it) => !it.disabled)
+    if (this.cursorIndex < 0) this.cursorIndex = 0
+    this.updateCursor()
+
+    this.visible = true
+    this.container.setVisible(true)
+  }
+
+  hide() {
+    this.visible = false
+    this.container.setVisible(false)
   }
 
   isOpen(): boolean {
     return this.visible
   }
 
+  // 2x2 グリッド移動。空セル／無効項目には乗らない（有効項目のみを行き来する）。
   moveCursor(dx: number, dy: number) {
     if (!this.visible) return
     const col = this.cursorIndex % 2
     const row = Math.floor(this.cursorIndex / 2)
     const newCol = Math.max(0, Math.min(1, col + dx))
     const newRow = Math.max(0, Math.min(1, row + dy))
-    this.cursorIndex = newRow * 2 + newCol
+    const target = newRow * 2 + newCol
+    const item = this.items[target]
+    if (!item || item.disabled) return // 空セル／無効はスキップ
+    this.cursorIndex = target
     this.updateCursor()
   }
 
+  // 現在カーソルの項目ラベルを返す（無効／空なら null）
   selectItem(): string | null {
     if (!this.visible) return null
-    return this.itemLabels[this.cursorIndex] ?? null
+    const item = this.items[this.cursorIndex]
+    if (!item || item.disabled) return null
+    return item.label
   }
 
   private updateCursor() {
     const pos = this.itemPositions[this.cursorIndex]
-    if (pos) {
+    const item = this.items[this.cursorIndex]
+    if (pos && item) {
+      this.cursor.setVisible(true)
       this.cursor.setPosition(pos.x - 14, pos.y)
+    } else {
+      this.cursor.setVisible(false)
     }
-  }
-
-  private updateStats() {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const store = this.scene.game.registry.get('gameStore') as any
-    if (!store) return
-    const p = store.player
-    const d = store.dungeon
-    const expNeeded = p.level * 30
-    this.statTexts[0].setText(`名前: 冒険者    Lv: ${p.level}     HP: ${p.hp}/${p.maxHp}`)
-    this.statTexts[1].setText(
-      `攻撃: ${p.attack}   防御: ${p.defense}    満腹度: ${p.satiation}/${p.maxSatiation}`
-    )
-    this.statTexts[2].setText(`経験値: ${p.exp}/${expNeeded}          ${d.floor}F`)
   }
 }
