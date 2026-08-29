@@ -1,6 +1,7 @@
 import { useGameStore } from '~/stores/gameStore'
 import { TurnManager } from '~/game/systems/TurnManager'
 import { CombatSystem } from '~/game/systems/CombatSystem'
+import { STAMINA_CONFIG, staminaFactor } from '~/game/systems/StaminaSystem'
 import { decideAction } from '~/game/systems/EnemyAI'
 import { canMoveDiagonally } from '~/game/systems/movement'
 import { generateFloor } from '~/game/systems/DungeonGenerator'
@@ -80,6 +81,19 @@ export function useGameLoop() {
     return messages
   }
 
+  // スタミナが閾値を跨いだ時だけ警告を出す
+  function staminaWarning(before: number, after: number): string[] {
+    const messages: string[] = []
+    const lowLine = Math.floor(store.player.maxStamina * 0.3)
+    if (before > lowLine && after <= lowLine && after > 0) {
+      messages.push('息が上がってきた...')
+    }
+    if (before > 0 && after === 0) {
+      messages.push('スタミナ切れだ！ 攻撃がまるで通らない')
+    }
+    return messages
+  }
+
   function enemyAttackPlayer(enemy: {
     type: string
     x: number
@@ -91,7 +105,12 @@ export function useGameLoop() {
     const name = getEnemyName(enemy.type)
     const result = combatSystem.calculateDamage(
       { attack: enemy.attack },
-      { attack: store.player.attack, defense: store.player.defense, dodge: store.player.dodge }
+      {
+        attack: store.player.attack,
+        defense: store.player.defense,
+        dodge: store.player.dodge,
+        guarding: store.player.isDefending,
+      }
     )
 
     if (debug.invincible.value && !result.isDodged) {
@@ -112,7 +131,10 @@ export function useGameLoop() {
       messages.push(`${name}の攻撃をかわした！`)
     } else {
       store.takeDamage(result.damage)
-      if (result.isCritical) {
+      store.consumeStamina(STAMINA_CONFIG.damagePenalty)
+      if (store.player.isDefending) {
+        messages.push(`${name}の攻撃を受け止めた！${result.damage}のダメージ`)
+      } else if (result.isCritical) {
         messages.push(`${name}の痛恨の一撃！${result.damage}のダメージ！`)
       } else {
         messages.push(`${name}から${result.damage}のダメージ！`)
@@ -171,6 +193,9 @@ export function useGameLoop() {
     }
     if (!turnManager.isPlayerTurn) return empty
 
+    // 行動を始めた時点で前ターンの防御は解除される
+    store.setDefending(false)
+
     const messages: string[] = []
     const playerEvents: CombatEvent[] = []
     const { direction, position } = store.player
@@ -182,7 +207,10 @@ export function useGameLoop() {
     if (target) {
       const name = getEnemyName(target.type)
       const result = combatSystem.calculateDamage(
-        { attack: store.player.attack },
+        {
+          attack: store.player.attack,
+          staminaFactor: staminaFactor(store.player.stamina, store.player.maxStamina),
+        },
         { attack: target.attack, defense: target.defense, dodge: target.dodge }
       )
 
@@ -263,6 +291,11 @@ export function useGameLoop() {
       })
     }
 
+    // 攻撃はスタミナを消費する（空振りも同じだけ消費）
+    const staminaBefore = store.player.stamina
+    store.consumeStamina(STAMINA_CONFIG.attackCost)
+    messages.push(...staminaWarning(staminaBefore, store.player.stamina))
+
     // ターン消費
     turnManager.playerAction()
     const enemyTurn = processEnemyTurn()
@@ -278,6 +311,9 @@ export function useGameLoop() {
 
   function playerMove(dx: number, dy: number): ActionResult | null {
     if (!turnManager.isPlayerTurn) return null
+
+    // 行動を始めた時点で前ターンの防御は解除される
+    store.setDefending(false)
 
     const map = store.currentMap
     const messages: string[] = []
@@ -322,6 +358,35 @@ export function useGameLoop() {
       }
     }
 
+    // 歩くとスタミナが回復する
+    store.recoverStamina(STAMINA_CONFIG.moveRecovery)
+
+    turnManager.playerAction()
+    const enemyTurn = processEnemyTurn()
+    messages.push(...enemyTurn.messages)
+    turnManager.enemyAction()
+    turnManager.endTurn()
+    store.endTurn()
+    messages.push(...tickSatiation())
+
+    return {
+      messages,
+      combatEvents: enemyTurn.events,
+      playerEvents: [],
+      enemyEvents: enemyTurn.events,
+    }
+  }
+
+  // その場で身構える。1ターン消費し、そのターンの被ダメージを大きく減らしつつ
+  // スタミナを最も多く回復する。「殴り続ける」より「殴って引く」を有利にするための行動。
+  function playerGuard(): ActionResult {
+    if (!turnManager.isPlayerTurn)
+      return { messages: [], combatEvents: [], playerEvents: [], enemyEvents: [] }
+
+    store.setDefending(true)
+    store.recoverStamina(STAMINA_CONFIG.guardRecovery)
+
+    const messages: string[] = ['身構えた。']
     turnManager.playerAction()
     const enemyTurn = processEnemyTurn()
     messages.push(...enemyTurn.messages)
@@ -341,6 +406,9 @@ export function useGameLoop() {
   function playerWait(): ActionResult {
     if (!turnManager.isPlayerTurn)
       return { messages: [], combatEvents: [], playerEvents: [], enemyEvents: [] }
+
+    store.setDefending(false)
+    store.recoverStamina(STAMINA_CONFIG.moveRecovery)
 
     const messages: string[] = ['その場で待機した。']
     turnManager.playerAction()
@@ -364,6 +432,7 @@ export function useGameLoop() {
     if (!turnManager.isPlayerTurn)
       return { messages: [], combatEvents: [], playerEvents: [], enemyEvents: [] }
 
+    store.setDefending(false)
     turnManager.playerAction()
     const enemyTurn = processEnemyTurn()
     turnManager.enemyAction()
@@ -452,6 +521,7 @@ export function useGameLoop() {
   return {
     playerMove,
     playerAttack,
+    playerGuard,
     playerWait,
     passTurn,
     initFloor,

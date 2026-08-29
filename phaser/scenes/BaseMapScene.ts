@@ -56,7 +56,7 @@ export abstract class BaseMapScene extends Phaser.Scene {
   // 画面サイズ
   protected screenWidth = 0
   protected screenHeight = 0
-  protected gameAreaTop = 52
+  protected gameAreaTop = 68
   protected gameAreaBottom = 420
 
   // 演出中の入力ロック。複数演出が重なっても早い解除が勝たないよう参照カウントで管理する。
@@ -408,6 +408,12 @@ export abstract class BaseMapScene extends Phaser.Scene {
     keyboard.on('keydown', (event: KeyboardEvent) => {
       if (event.code === 'Enter') {
         this.handleAction('confirm')
+        return
+      }
+      if (event.code === 'Space') {
+        // ブラウザの既定スクロールを止めてから防御コマンドへ流す
+        event.preventDefault()
+        this.handleAction('guard')
         return
       }
       if (event.code === 'KeyI') {
