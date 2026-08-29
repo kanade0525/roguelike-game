@@ -117,7 +117,12 @@ export class VillageScene extends BaseMapScene {
   }
 
   // --- 施設マーカー描画（BaseMapScene.drawScene から呼ばれる） ---
-  protected override drawEntities(viewStartX: number, viewStartY: number, endX: number, endY: number) {
+  protected override drawEntities(
+    viewStartX: number,
+    viewStartY: number,
+    endX: number,
+    endY: number
+  ) {
     for (const f of VILLAGE_FACILITIES) {
       if (!isFacilityUnlocked(f, this.gameStore.meta.clearedDungeons)) continue // 未解放は非表示
       if (f.x < viewStartX || f.x >= endX || f.y < viewStartY || f.y >= endY) continue
@@ -220,11 +225,31 @@ export class VillageScene extends BaseMapScene {
     if (ui.isOpeningOpen()) return // オープニング中は移動しない（送りは A のみ）
     if (ui.isDialogOpen()) return // 会話中は移動しない（送りは A のみ）
 
+    // 進めなくても向きは変える（ダンジョンと同じ挙動）
+    this.gameStore.setDirection(dx, dy)
+
     const nx = this.gameStore.player.position.x + dx
     const ny = this.gameStore.player.position.y + dy
-    if (!this.isFloor(nx, ny)) return
-    if (npcAt(nx, ny)) return // NPC は障害物（乗れない）
-    if (dx !== 0 && dy !== 0 && !canMoveDiagonally(this.map, this.gameStore.player.position.x, this.gameStore.player.position.y, dx, dy)) {
+    if (!this.isFloor(nx, ny)) {
+      this.drawScene()
+      return
+    }
+    if (npcAt(nx, ny)) {
+      this.drawScene() // NPC は障害物（乗れない）。向きだけ反映する
+      return
+    }
+    if (
+      dx !== 0 &&
+      dy !== 0 &&
+      !canMoveDiagonally(
+        this.map,
+        this.gameStore.player.position.x,
+        this.gameStore.player.position.y,
+        dx,
+        dy
+      )
+    ) {
+      this.drawScene()
       return
     }
     this.gameStore.setPlayerPosition(nx, ny)
@@ -451,8 +476,11 @@ export class VillageScene extends BaseMapScene {
     const done = QUESTS.filter((q) =>
       (this.gameStore.meta.quests.completed as string[]).includes(q.id)
     ).length
-    this.getUiScene().showListMenu('村長の依頼', `達成 ${done}/${QUESTS.length}`, rows, (rowIndex) =>
-      this.onQuestSelect(rowIndex)
+    this.getUiScene().showListMenu(
+      '村長の依頼',
+      `達成 ${done}/${QUESTS.length}`,
+      rows,
+      (rowIndex) => this.onQuestSelect(rowIndex)
     )
   }
 
@@ -530,14 +558,19 @@ export class VillageScene extends BaseMapScene {
 
   private openShopBuy() {
     const ui = this.getUiScene()
-    ui.showListMenu('道具屋 — 買う', `所持金 ${this.gameStore.meta.gold}G`, this.buildShopBuyRows(), (i) => {
-      const id = this.shopBuyIds[i]
-      if (!id) return
-      const result = this.gameStore.buyItem(id)
-      if (result?.message) ui.addMessage(result.message)
-      this.updateVillageHud()
-      ui.refreshListMenu(this.buildShopBuyRows(), `所持金 ${this.gameStore.meta.gold}G`)
-    })
+    ui.showListMenu(
+      '道具屋 — 買う',
+      `所持金 ${this.gameStore.meta.gold}G`,
+      this.buildShopBuyRows(),
+      (i) => {
+        const id = this.shopBuyIds[i]
+        if (!id) return
+        const result = this.gameStore.buyItem(id)
+        if (result?.message) ui.addMessage(result.message)
+        this.updateVillageHud()
+        ui.refreshListMenu(this.buildShopBuyRows(), `所持金 ${this.gameStore.meta.gold}G`)
+      }
+    )
   }
 
   private buildShopSellRows() {
@@ -548,7 +581,11 @@ export class VillageScene extends BaseMapScene {
       const def = ITEMS[entry.itemId]
       if (!def) return
       const stackText = entry.stack && entry.stack > 1 ? ` x${entry.stack}` : ''
-      rows.push({ label: `${def.name}${stackText}`, right: `${sellPrice(entry.itemId)}G`, disabled: false })
+      rows.push({
+        label: `${def.name}${stackText}`,
+        right: `${sellPrice(entry.itemId)}G`,
+        disabled: false,
+      })
       this.shopSellIndexMap.push(index)
     })
     return rows
@@ -586,7 +623,11 @@ export class VillageScene extends BaseMapScene {
       if (!def?.equippable) return
       const level = entry.equipmentData?.enhanceLevel ?? 0
       const maxed = level >= this.equipCfg.maxEnhanceLevel
-      const cost = computeEnhanceCost(level, this.equipCfg.enhanceCostBase, this.equipCfg.enhanceCostMultiplier)
+      const cost = computeEnhanceCost(
+        level,
+        this.equipCfg.enhanceCostBase,
+        this.equipCfg.enhanceCostMultiplier
+      )
       const affordable = gold >= cost
       rows.push({
         label: `${def.name}${level > 0 ? ` +${level}` : ''}`,
