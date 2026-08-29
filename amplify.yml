@@ -6,7 +6,12 @@ frontend:
         - npm ci
     build:
       commands:
-        - npm run generate
+        # Amplify のビルド環境では Nitro が aws-amplify プリセットを自動選択し、
+        # 出力先が .amplify-hosting/static になる。そのデプロイマニフェスト方式では
+        # 末尾スラッシュ無しのパス(/game)が 404 になり、Amplify 側のSPAリライト規則
+        # (/<*> -> /index.html 404-200)も適用されない。
+        # 従来の静的ホスティング方式に固定して .output/public を配信する。
+        - NITRO_PRESET=static npm run generate
   artifacts:
     baseDirectory: .output/public
     files:
