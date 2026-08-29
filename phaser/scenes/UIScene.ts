@@ -53,6 +53,8 @@ export class UIScene extends Phaser.Scene {
       this.statusBar.updateHP(store.player.hp, store.player.maxHp)
       this.statusBar.updateLevel(store.player.level)
       this.statusBar.updateSatiation(store.player.satiation, store.player.maxSatiation)
+      this.statusBar.updateStamina(store.player.stamina, store.player.maxStamina)
+      this.statusBar.updateDefending(store.player.isDefending)
       this.statusBar.updateFloor(store.dungeon.floor)
       // 拠点は永続ゴールド(meta.gold)、ダンジョンは現ランのゴールド(player.gold)を表示
       const gold =
@@ -60,7 +62,7 @@ export class UIScene extends Phaser.Scene {
       this.statusBar.updateGold(gold)
     }
 
-    // 拠点(村)ではダンジョン用HUD(階層/Lv/HP/満腹)を隠し、ゴールドのみ表示する
+    // 拠点(村)ではダンジョン用HUD(階層/Lv/HP/満腹/スタミナ)を隠し、ゴールドのみ表示する
     if (this.gameplayKey === 'VillageScene') {
       this.statusBar.setVillageMode()
     }
@@ -91,6 +93,14 @@ export class UIScene extends Phaser.Scene {
 
   updateSatiation(current: number, max: number) {
     this.statusBar.updateSatiation(current, max)
+  }
+
+  updateStamina(current: number, max: number) {
+    this.statusBar.updateStamina(current, max)
+  }
+
+  updateDefending(defending: boolean) {
+    this.statusBar.updateDefending(defending)
   }
 
   updateGold(gold: number) {
@@ -190,7 +200,12 @@ export class UIScene extends Phaser.Scene {
 
   // --- リストメニュー（拠点施設: 鍛冶屋・ダンジョン選択） ---
 
-  showListMenu(title: string, subtitle: string, rows: ListRow[], onSelect: (index: number) => void) {
+  showListMenu(
+    title: string,
+    subtitle: string,
+    rows: ListRow[],
+    onSelect: (index: number) => void
+  ) {
     this.listMenu.show(title, subtitle, rows, onSelect)
   }
 

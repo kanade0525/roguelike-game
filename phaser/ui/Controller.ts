@@ -208,15 +208,17 @@ export class Controller {
     btnL.setStrokeStyle(1, UI_COLOR.buttonBorder)
     btnL.setInteractive({ useHandCursor: true })
     this.scene.add
-      .text(15 + btnWidth / 2, y, 'L', {
-        fontSize: '16px',
+      .text(15 + btnWidth / 2, y, 'L 防御', {
+        fontSize: '14px',
+        fontFamily: '"DotGothic16", monospace',
         color: TEXT_COLOR.subtle,
         fontStyle: 'bold',
       })
       .setOrigin(0.5)
 
     this.addButtonFeedback(btnL, UI_COLOR.buttonBg, UI_COLOR.buttonHighlight)
-    btnL.on('pointerdown', () => onAction('prevItem'))
+    // 通常時は防御、持ち物を開いている間は「捨てる」(DungeonScene 側で分岐)
+    btnL.on('pointerdown', () => onAction('guard'))
 
     const rX = 480 - 15 - btnWidth
     const btnR = this.scene.add.rectangle(

@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ITEMS, makeEquipmentData, type EquipmentData } from '~/game/data/items'
 import { useItem as applyUseItem } from '~/game/systems/ItemSystem'
 import { computeVisible } from '~/game/systems/FOVSystem'
+import { clampStamina, STAMINA_CONFIG as staminaConfig } from '~/game/systems/StaminaSystem'
 import {
   computeDeathGoldLoss,
   rollSafeGold,
@@ -21,6 +22,9 @@ interface PlayerState {
   exp: number
   satiation: number
   maxSatiation: number
+  stamina: number
+  maxStamina: number
+  isDefending: boolean // このターン防御中か（次の行動開始で解除）
   attack: number
   defense: number
   dodge: number
@@ -138,6 +142,9 @@ export const useGameStore = defineStore('game', {
       exp: 0,
       satiation: 100,
       maxSatiation: 100,
+      stamina: staminaConfig.max,
+      maxStamina: staminaConfig.max,
+      isDefending: false,
       attack: 10,
       defense: 5,
       dodge: 0.05,
@@ -175,6 +182,7 @@ export const useGameStore = defineStore('game', {
   getters: {
     isPlayerAlive: (state) => state.player.hp > 0,
     hpPercentage: (state) => (state.player.hp / state.player.maxHp) * 100,
+    staminaPercentage: (state) => (state.player.stamina / state.player.maxStamina) * 100,
   },
 
   actions: {
@@ -198,6 +206,21 @@ export const useGameStore = defineStore('game', {
 
     heal(amount: number) {
       this.player.hp = Math.min(this.player.maxHp, this.player.hp + amount)
+    },
+
+    // スタミナを消費する（攻撃・被弾など）
+    consumeStamina(amount: number) {
+      this.player.stamina = clampStamina(this.player.stamina - amount, this.player.maxStamina)
+    },
+
+    // スタミナを回復する（移動・防御など）
+    recoverStamina(amount: number) {
+      this.player.stamina = clampStamina(this.player.stamina + amount, this.player.maxStamina)
+    },
+
+    // 防御状態の切り替え。行動開始時に false、防御コマンドで true にする。
+    setDefending(defending: boolean) {
+      this.player.isDefending = defending
     },
 
     nextFloor() {
@@ -822,7 +845,8 @@ export const useGameStore = defineStore('game', {
 
     // 中断した現ランを復元。ブラウザを閉じても localStorage に残るため「つづきから」で再開できる。
     restoreFromSession(): boolean {
-      const saved = typeof localStorage !== 'undefined' ? localStorage.getItem(RUN_STORAGE_KEY) : null
+      const saved =
+        typeof localStorage !== 'undefined' ? localStorage.getItem(RUN_STORAGE_KEY) : null
       if (!saved) {
         // 新規ダイブ: 拠点で選んだダンジョン(dungeon)は $reset で消さずに保持する。
         // ($reset は既定の silentForest に戻すため、暗黒城/深淵が選べなくなるのを防ぐ)

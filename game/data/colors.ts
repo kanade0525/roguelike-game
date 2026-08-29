@@ -17,6 +17,21 @@ export const TILE_COLOR = {
   item: 0x44cc44,
 } as const
 
+// ステータスゲージ色（数値形式 - Phaser Graphics/Rectangle用）
+// 残量に応じて normal → warn → danger と切り替える共通ルール。
+export const GAUGE_COLOR = {
+  trackBg: 0x0f0f1c,
+  trackBorder: 0x3a3a5e,
+  hp: 0x4ade80,
+  hpWarn: 0xfacc15,
+  hpDanger: 0xf87171,
+  satiation: 0xf59e0b,
+  satiationDanger: 0xf87171,
+  stamina: 0x38bdf8,
+  staminaDanger: 0xf87171,
+  guardBadge: 0x60a5fa,
+} as const
+
 // UI背景色（数値形式）
 export const UI_COLOR = {
   panelBg: 0x1a1a2e,

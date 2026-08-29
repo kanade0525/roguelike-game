@@ -61,7 +61,8 @@ npm run test:e2e  # E2Eテスト実行（Playwright）
 - **game/entities/Enemy.ts**: 敵基底クラス（サブクラス: Skeleton.ts, Goblin.ts）
 - **game/entities/createEnemy.ts**: 敵ファクトリ関数（type文字列→サブクラスインスタンス）
 - **game/systems/TurnManager.ts**: ターン制管理（player → enemy → end）
-- **game/systems/CombatSystem.ts**: ダメージ計算
+- **game/systems/CombatSystem.ts**: ダメージ計算（スタミナ倍率・防御軽減を含む）
+- **game/systems/StaminaSystem.ts**: スタミナ計算（火力倍率・防御軽減率・残量段階）
 - **game/systems/DungeonGenerator.ts**: rot.jsによるマップ自動生成
 - **game/systems/SpawnValidator.ts**: 敵スポーン位置のバリデーション
 - **phaser/scenes/DungeonScene.ts**: ダンジョン描画
@@ -134,19 +135,27 @@ const floor: FloorConfig = {
 
 ### ターン制
 
-1. プレイヤーが行動（移動、攻撃、アイテム使用）
+1. プレイヤーが行動（移動、攻撃、防御、アイテム使用）
 2. 敵が行動
 3. ターン終了
+
+### スタミナ・防御
+
+- スタミナ（0〜100）は攻撃で-20、被弾で-5、移動で+20、防御で+50
+- 攻撃力に直結: `ダメージ = 攻撃力 × max(0.1, スタミナ/最大値)` → 連打すると火力が落ちる
+- 防御は1ターン限りの状態。被ダメージ1/4（防御力を引いた後に乗算・最低1）
+- 数値は `game/data/gameConfig.json` の `staminaConfig` に集約
 
 ### 操作
 
 - 8方向移動（WASD／矢印キー／仮想パッドの斜め）
-- 攻撃: Enterキー（向いている方向に攻撃、空振りも1ターン消費）
-- スマホ: 仮想コントローラー（方向パッド + A/Bボタン）
+- 攻撃: Enterキー／Aボタン（向いている方向に攻撃、空振りも1ターン消費）
+- 防御: Spaceキー／Lボタン（その場で身構える。1ターン消費、被ダメ1/4、スタミナ+50）
+- スマホ: 仮想コントローラー（方向パッド + A/B/L/Rボタン）
 
 ### UI構成
 
-- **上部**: ステータスバー（階層、Lv、HP、満腹度）
+- **上部**: ステータスバー2段（上段=階層・Lv・HPゲージ・ゴールド／下段=満腹ゲージ・スタミナゲージ・防御中バッジ）
 - **中央**: クォータービューダンジョン
 - **下部**: メッセージログ（4行）
 
@@ -204,6 +213,8 @@ Phaserは使わず、純粋なTypeScriptで。
 - 経験値・レベルアップ（gainExp: Lvアップで最大HP・攻撃・防御が上昇）
 - アイテムシステム（使用・装備・インベントリ画面・使用/装備確認ダイアログ）
 - 満腹度システム（ターン経過で減少・food アイテムで回復）
+- スタミナ・防御システム（攻撃で消費し火力が落ちる／防御で被ダメ1/4＋大回復。`game/systems/StaminaSystem`）
+- ステータスバーのゲージ化（HP・満腹・スタミナをプログレスバー表示、残量で色が変化）
 - 死亡・ゲームオーバー処理 + リザルト画面（到達階層・撃破数・タイトルへ導線）
 - ゴールド・装備データモデル拡張（enhanceLevel 等）+ ゴールドのドロップ・拾得・表示
 - SE基盤（attack, enemy_attack, dodge, critical, swing, item_get, item_use, stairs, levelup, game_over, game_clear）+ ダンジョンBGM（静寂の森）

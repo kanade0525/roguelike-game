@@ -564,6 +564,14 @@ export class DungeonScene extends BaseMapScene {
         this.playSequencedCombatEffects(result)
         break
       }
+      case 'guard': {
+        const result: ActionResult = this.gameLoop.playerGuard()
+        this.drawScene()
+        this.updateUI(result.messages)
+        this.playSE('se_dodge')
+        this.playSequencedCombatEffects(result)
+        break
+      }
       case 'wait': {
         const result: ActionResult = this.gameLoop.playerWait()
         this.drawScene()
@@ -596,6 +604,7 @@ export class DungeonScene extends BaseMapScene {
       stats: [
         `名前: 冒険者    Lv: ${p.level}     HP: ${p.hp}/${p.maxHp}`,
         `攻撃: ${p.attack}   防御: ${p.defense}    満腹度: ${p.satiation}/${p.maxSatiation}`,
+        `スタミナ: ${p.stamina}/${p.maxStamina}`,
         `経験値: ${p.exp}/${expNeeded}          ${d.floor}F`,
       ],
     }
@@ -667,7 +676,8 @@ export class DungeonScene extends BaseMapScene {
       return
     }
 
-    if (action === 'prevItem') {
+    // Lボタンは通常時「防御」だが、持ち物を開いている間は「捨てる」として働く
+    if (action === 'prevItem' || action === 'guard') {
       const dropResult = this.gameStore.dropInventoryItem(index)
       if (dropResult.success) {
         this.updateUI([dropResult.message])
@@ -1033,6 +1043,8 @@ export class DungeonScene extends BaseMapScene {
     uiScene.updateFloor(dungeon.floor)
     uiScene.updateLevel(player.level)
     uiScene.updateSatiation(player.satiation, player.maxSatiation)
+    uiScene.updateStamina(player.stamina, player.maxStamina)
+    uiScene.updateDefending(player.isDefending)
     uiScene.updateGold(player.gold ?? 0)
 
     if (player.level > this.lastPlayerLevel) {

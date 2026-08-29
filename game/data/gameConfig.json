@@ -17,6 +17,15 @@
     "fovEnabled": true,
     "initialGold": 0
   },
+  "staminaConfig": {
+    "max": 100,
+    "attackCost": 20,
+    "moveRecovery": 20,
+    "guardRecovery": 50,
+    "damagePenalty": 5,
+    "minDamageFactor": 0.1,
+    "guardDamageRate": 0.25
+  },
   "enemyTypes": {
     "skeleton": {
       "maxHealth": 20,
