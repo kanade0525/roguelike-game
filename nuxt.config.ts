@@ -37,6 +37,17 @@ export default defineNuxtConfig({
   // クライアントサイドのみでPhaserを使用
   ssr: false,
 
+  // Amplify のビルド環境では Nitro のプリセットが aws-amplify に切り替わり、
+  // ローカル(static)で効くリンククローラーが動かず / しか生成されない。
+  // その結果 /game や /village を直接開く・リロードすると 404 になるため、
+  // 生成するルートを明示する。ページを追加したらここにも足すこと。
+  nitro: {
+    prerender: {
+      crawlLinks: true,
+      routes: ['/', '/game', '/village', '/gameover', '/settings'],
+    },
+  },
+
   css: ['~/assets/css/main.css'],
 
   vite: {
