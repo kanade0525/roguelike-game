@@ -17,7 +17,9 @@ export type TileVisibility = 'visible' | 'explored' | 'hidden'
 export abstract class BaseMapScene extends Phaser.Scene {
   // 表示するタイル数（ビューポート）
   protected viewTilesX = 8
-  protected viewTilesY = 6
+  // 縦5タイル。ゲーム領域(74..376)に 5×60px がちょうど収まり、横も 8×60=480 で画面幅ぴったりになる。
+  // 6タイルにすると1タイル50pxまで縮み、左右に余白が出る。
+  protected viewTilesY = 5
 
   // タイルサイズ（16x16を拡大表示）
   protected baseTileSize = 16
@@ -56,8 +58,10 @@ export abstract class BaseMapScene extends Phaser.Scene {
   // 画面サイズ
   protected screenWidth = 0
   protected screenHeight = 0
-  protected gameAreaTop = 68
-  protected gameAreaBottom = 420
+  // ゲーム領域＝ステータスパネル下端とテキストボックス上端の間。
+  // ここを実際に見えている範囲と一致させておく（タイルサイズ計算とマスクの両方で使う）。
+  protected gameAreaTop = 74
+  protected gameAreaBottom = 376
 
   // 演出中の入力ロック。複数演出が重なっても早い解除が勝たないよう参照カウントで管理する。
   protected inputLocked = false
@@ -205,6 +209,25 @@ export abstract class BaseMapScene extends Phaser.Scene {
     this.wallContainer = this.add.container(0, 0)
     this.entityContainer = this.add.container(0, 0)
     this.effectContainer = this.add.container(0, 0)
+    this.applyGameAreaMask()
+  }
+
+  // マップ描画をゲーム領域の矩形でクリップする。
+  // drawScene() はビュー外±2タイルまで描き足すため、これが無いと上下のUIパネルの裏に
+  // マップが回り込み、半透明パネル越しに壁タイルが透けて文字が読めなくなる。
+  private applyGameAreaMask() {
+    const g = this.make.graphics({ x: 0, y: 0 }, false)
+    g.fillStyle(0xffffff, 1)
+    g.fillRect(0, this.gameAreaTop, this.scale.width, this.gameAreaBottom - this.gameAreaTop)
+    const mask = g.createGeometryMask()
+    for (const c of [
+      this.floorContainer,
+      this.wallContainer,
+      this.entityContainer,
+      this.effectContainer,
+    ]) {
+      c.setMask(mask)
+    }
   }
 
   protected setMap(map: number[][]) {
