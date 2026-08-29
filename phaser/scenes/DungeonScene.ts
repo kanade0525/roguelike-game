@@ -604,7 +604,7 @@ export class DungeonScene extends BaseMapScene {
       stats: [
         `名前: 冒険者    Lv: ${p.level}     HP: ${p.hp}/${p.maxHp}`,
         `攻撃: ${p.attack}   防御: ${p.defense}    満腹度: ${p.satiation}/${p.maxSatiation}`,
-        `スタミナ: ${p.stamina}/${p.maxStamina}`,
+        `気力: ${p.stamina}/${p.maxStamina}`,
         `経験値: ${p.exp}/${expNeeded}          ${d.floor}F`,
       ],
     }

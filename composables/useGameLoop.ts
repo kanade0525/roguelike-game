@@ -81,7 +81,7 @@ export function useGameLoop() {
     return messages
   }
 
-  // スタミナが閾値を跨いだ時だけ警告を出す
+  // 気力(スタミナ)が閾値を跨いだ時だけ警告を出す
   function staminaWarning(before: number, after: number): string[] {
     const messages: string[] = []
     const lowLine = Math.floor(store.player.maxStamina * 0.3)
@@ -89,7 +89,7 @@ export function useGameLoop() {
       messages.push('息が上がってきた...')
     }
     if (before > 0 && after === 0) {
-      messages.push('スタミナ切れだ！ 攻撃がまるで通らない')
+      messages.push('気力が尽きた！ 攻撃がまるで通らない')
     }
     return messages
   }
