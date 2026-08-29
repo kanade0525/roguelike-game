@@ -45,6 +45,11 @@ export default defineNuxtConfig({
     prerender: {
       crawlLinks: true,
       routes: ['/', '/game', '/village', '/gameover', '/settings'],
+      // game/index.html ではなく game.html を出力する。
+      // Amplify は拡張子なしのパスに .html を補完して解決するため /game が引ける。
+      // サブフォルダ形式だと末尾スラッシュ付き(/game/)しか解決されず、
+      // Nuxt のルーターが使う /game をリロードすると 404 になる。
+      autoSubfolderIndex: false,
     },
   },
 
