@@ -273,6 +273,9 @@ export class VillageScene extends BaseMapScene {
     this.drawScene() // 開封済みの宝箱を消す
   }
 
+  // 村のステータスパネルはゴールド1行だけなので、その分マップ領域を上に広げる
+  protected override gameAreaTop = 44
+
   protected override handleAction(action: string) {
     if (this.inputLocked) return
     const ui = this.getUiScene()

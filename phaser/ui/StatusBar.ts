@@ -4,7 +4,7 @@ import { GAUGE_COLOR, TEXT_COLOR, UI_COLOR } from '../../game/data/colors'
 // ステータスパネルのレイアウト。
 // 4列グリッド（ラベル / ゲージ / 数値[右揃え] / メタ情報[右揃え]）を3行積む。
 // 列のx座標は全行で共通にすること。個別にずらすと途端に読めなくなる。
-const PANEL = { x: 8, y: 8, w: 464, h: 58 }
+const PANEL = { x: 8, y: 8, w: 464, h: 58, villageH: 28 }
 const COL = {
   label: 16, // ラベル左端
   bar: 58, // ゲージ左端
@@ -53,6 +53,7 @@ class Gauge {
 }
 
 export class StatusBar {
+  private bg: Phaser.GameObjects.Graphics
   private labels: Phaser.GameObjects.Text[] = []
   private gauges: Gauge[] = []
   private values: Phaser.GameObjects.Text[] = []
@@ -63,11 +64,8 @@ export class StatusBar {
   private guardBadge: Phaser.GameObjects.Text
 
   constructor(scene: Phaser.Scene) {
-    const bg = scene.add.graphics()
-    bg.fillStyle(UI_COLOR.panelBg, 0.9)
-    bg.fillRoundedRect(PANEL.x, PANEL.y, PANEL.w, PANEL.h, 4)
-    bg.lineStyle(2, UI_COLOR.panelBorder, 1)
-    bg.strokeRoundedRect(PANEL.x, PANEL.y, PANEL.w, PANEL.h, 4)
+    this.bg = scene.add.graphics()
+    this.drawPanel(PANEL.h)
 
     const labelStyle = { ...BASE_STYLE, color: TEXT_COLOR.subtle }
 
@@ -94,6 +92,15 @@ export class StatusBar {
     this.updateHP(25, 25)
     this.updateSatiation(100, 100)
     this.updateStamina(100, 100)
+  }
+
+  // パネル枠を指定の高さで描き直す（村では1行分に縮める）
+  private drawPanel(height: number) {
+    this.bg.clear()
+    this.bg.fillStyle(UI_COLOR.panelBg, 0.9)
+    this.bg.fillRoundedRect(PANEL.x, PANEL.y, PANEL.w, height, 4)
+    this.bg.lineStyle(2, UI_COLOR.panelBorder, 1)
+    this.bg.strokeRoundedRect(PANEL.x, PANEL.y, PANEL.w, height, 4)
   }
 
   updateHP(current: number, max: number) {
@@ -150,5 +157,7 @@ export class StatusBar {
     this.guardBadge.setVisible(false)
     this.goldText.setOrigin(0, 0)
     this.goldText.setPosition(COL.label, ROW_Y[0])
+    // ゴールド1行しか出ないので、枠も1行分に縮める（空の大きな箱にしない）
+    this.drawPanel(PANEL.villageH)
   }
 }
