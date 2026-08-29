@@ -127,7 +127,22 @@ export abstract class BaseMapScene extends Phaser.Scene {
     for (let i = 0; i <= 3; i++) {
       this.load.image(`knight_f${i}`, `/assets/tiles/knight_m_idle_anim_f${i}.png`)
     }
+    this.loadKnightDirectionSprites()
   }
+
+  // 向き別プレイヤースプライト。前(正面)は knight_f* を流用し、上/左のみ追加読み込みする。
+  // 右向きは左向きの左右反転で描くためファイル不要。
+  // PNG 未追加でも動くよう、読み込み失敗は無視して正面向きにフォールバックする。
+  private loadKnightDirectionSprites() {
+    for (const dir of BaseMapScene.KNIGHT_DIRECTIONS) {
+      for (let i = 0; i <= 3; i++) {
+        this.load.image(`knight_${dir}_f${i}`, `/assets/tiles/knight_m_idle_${dir}_anim_f${i}.png`)
+      }
+    }
+  }
+
+  // 追加読み込みする向き（前=既存 knight_f* を流用、右=left の左右反転）
+  protected static readonly KNIGHT_DIRECTIONS = ['up', 'left']
 
   // 地形の壁キー（床は floor_1..8）。色替えバリアントの読み込みに使う。
   protected static readonly TERRAIN_WALLS = [
@@ -156,19 +171,33 @@ export abstract class BaseMapScene extends Phaser.Scene {
   }
 
   protected createKnightAnimation() {
-    if (!this.anims.exists('knight_idle_anim')) {
-      this.anims.create({
-        key: 'knight_idle_anim',
-        frames: [
-          { key: 'knight_f0' },
-          { key: 'knight_f1' },
-          { key: 'knight_f2' },
-          { key: 'knight_f3' },
-        ],
-        frameRate: 6,
-        repeat: -1,
-      })
+    this.createKnightAnimFor('knight_idle_anim', 'knight_f')
+    for (const dir of BaseMapScene.KNIGHT_DIRECTIONS) {
+      this.createKnightAnimFor(`knight_${dir}_anim`, `knight_${dir}_f`)
     }
+  }
+
+  // 存在するフレームだけでアニメを組む。1枚しか無い向きは静止表示になる。
+  private createKnightAnimFor(animKey: string, texturePrefix: string) {
+    if (this.anims.exists(animKey)) return
+    const frames: Phaser.Types.Animations.AnimationFrame[] = []
+    for (let i = 0; i <= 3; i++) {
+      const key = `${texturePrefix}${i}`
+      if (this.textures.exists(key)) frames.push({ key })
+    }
+    if (frames.length === 0) return
+    this.anims.create({ key: animKey, frames, frameRate: 6, repeat: -1 })
+  }
+
+  // 向き→アニメ。斜めは横向きに丸める（横向き優先）。未追加の向きは正面へフォールバック。
+  private knightAnimFor(dx: number, dy: number): { animKey: string; flipX: boolean } {
+    if (dx !== 0 && this.anims.exists('knight_left_anim')) {
+      return { animKey: 'knight_left_anim', flipX: dx > 0 }
+    }
+    if (dx === 0 && dy < 0 && this.anims.exists('knight_up_anim')) {
+      return { animKey: 'knight_up_anim', flipX: false }
+    }
+    return { animKey: 'knight_idle_anim', flipX: false }
   }
 
   protected createContainers() {
@@ -361,10 +390,13 @@ export abstract class BaseMapScene extends Phaser.Scene {
     const screenTileY = tileY - this.viewStartY
     const x = this.offsetX + screenTileX * this.tileWidth + this.tileWidth / 2
     const y = this.offsetY + screenTileY * this.tileHeight + this.tileHeight * 0.8
+    const dir = this.gameStore.player.direction as { dx: number; dy: number }
+    const { animKey, flipX } = this.knightAnimFor(dir.dx, dir.dy)
     const sprite = this.add.sprite(x, y, 'knight_f0')
     sprite.setOrigin(0.5, 1.0)
     sprite.setScale(this.tileScale * 0.6)
-    sprite.play('knight_idle_anim')
+    sprite.setFlipX(flipX)
+    sprite.play(animKey)
     this.entityContainer.add(sprite)
   }
 

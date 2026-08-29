@@ -1,24 +1,23 @@
 import Phaser from 'phaser'
 import { StatusBar } from '../ui/StatusBar'
-import { MessageLog } from '../ui/MessageLog'
 import { Controller } from '../ui/Controller'
 import { MenuOverlay, type MenuConfig } from '../ui/MenuOverlay'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
 import { MinimapOverlay } from '../ui/MinimapOverlay'
 import { InventoryOverlay, type InventoryEntry } from '../ui/InventoryOverlay'
 import { ListMenuOverlay, type ListRow } from '../ui/ListMenuOverlay'
-import { DialogOverlay, type DialogLine } from '../ui/DialogOverlay'
+import { TextBox, type DialogLine } from '../ui/TextBox'
 import { OpeningOverlay, type OpeningLine } from '../ui/OpeningOverlay'
 
 export class UIScene extends Phaser.Scene {
   private statusBar!: StatusBar
-  private messageLog!: MessageLog
+  // メッセージと会話を1つの枠で扱う共通テキストボックス（別々のボックスを出し分けない）
+  private textBox!: TextBox
   private menu!: MenuOverlay
   private confirm!: ConfirmDialog
   private minimap!: MinimapOverlay
   private inventory!: InventoryOverlay
   private listMenu!: ListMenuOverlay
-  private dialog!: DialogOverlay
   private opening!: OpeningOverlay
 
   // 入力イベントの送り先（DungeonScene / VillageScene）
@@ -34,7 +33,7 @@ export class UIScene extends Phaser.Scene {
 
   create() {
     this.statusBar = new StatusBar(this)
-    this.messageLog = new MessageLog(this)
+    this.textBox = new TextBox(this)
     new Controller(
       this,
       (dx, dy) => this.emitMove(dx, dy),
@@ -45,7 +44,6 @@ export class UIScene extends Phaser.Scene {
     this.minimap = new MinimapOverlay(this)
     this.inventory = new InventoryOverlay(this)
     this.listMenu = new ListMenuOverlay(this)
-    this.dialog = new DialogOverlay(this)
     this.opening = new OpeningOverlay(this)
 
     // HUD をストアの現在値で初期化（最初の1手を待たずに正しい HP/Lv/満腹/ゴールドを表示する）
@@ -76,7 +74,7 @@ export class UIScene extends Phaser.Scene {
   // --- 公開API ---
 
   addMessage(message: string) {
-    this.messageLog.addMessage(message)
+    this.textBox.addMessage(message)
   }
 
   updateHP(current: number, max: number) {
@@ -223,33 +221,25 @@ export class UIScene extends Phaser.Scene {
   // --- 会話 ---
 
   showDialog(lines: DialogLine[], onDone?: () => void) {
-    // 会話ボックスとメッセージログが二重に出ないよう、会話中はログを隠す（1つのテキスト枠に統一）
-    this.messageLog.setVisible(false)
-    this.dialog.show(lines, () => {
-      this.messageLog.setVisible(true)
-      onDone?.()
-    })
+    // メッセージも会話も同じ TextBox で表示する（別々のボックスは持たない）
+    this.textBox.showDialog(lines, onDone)
   }
 
   advanceDialog() {
-    this.dialog.advance()
-  }
-
-  hideDialog() {
-    this.dialog.hide()
+    this.textBox.advance()
   }
 
   isDialogOpen(): boolean {
-    return this.dialog.isOpen()
+    return this.textBox.isDialogOpen()
   }
 
   // --- オープニング（ゲームビューを黒幕で覆い中央表示） ---
 
   showOpening(lines: OpeningLine[], onDone?: () => void) {
-    // オープニングの黒幕とメッセージログが重ならないよう、上映中はログを隠す
-    this.messageLog.setVisible(false)
+    // オープニングの黒幕とテキストボックスが重ならないよう、上映中はボックスを隠す
+    this.textBox.setVisible(false)
     this.opening.show(lines, () => {
-      this.messageLog.setVisible(true)
+      this.textBox.setVisible(true)
       onDone?.()
     })
   }

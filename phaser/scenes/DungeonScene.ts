@@ -482,6 +482,9 @@ export class DungeonScene extends BaseMapScene {
           })
         }
       }
+    } else {
+      // 壁などで進めなかった場合も、向きの変化だけは反映する
+      this.drawScene()
     }
   }
 
@@ -784,13 +787,18 @@ export class DungeonScene extends BaseMapScene {
         duration: 800,
         ease: 'Power2',
         onComplete: () => {
-          const deathText = this.add.text(this.screenWidth / 2, this.screenHeight / 2, '力尽きた...', {
-            fontSize: '28px',
-            fontFamily: '"DotGothic16", monospace',
-            color: '#ff4444',
-            stroke: '#000000',
-            strokeThickness: 4,
-          })
+          const deathText = this.add.text(
+            this.screenWidth / 2,
+            this.screenHeight / 2,
+            '力尽きた...',
+            {
+              fontSize: '28px',
+              fontFamily: '"DotGothic16", monospace',
+              color: '#ff4444',
+              stroke: '#000000',
+              strokeThickness: 4,
+            }
+          )
           deathText.setOrigin(0.5)
           deathText.setDepth(3001)
           deathText.setAlpha(0)
@@ -900,13 +908,18 @@ export class DungeonScene extends BaseMapScene {
     this.stopBgm()
     this.playSE('se_game_clear')
 
-    const clearText = this.add.text(this.screenWidth / 2, this.screenHeight / 2, 'ダンジョン踏破！', {
-      fontSize: '28px',
-      fontFamily: '"DotGothic16", monospace',
-      color: '#ffdd00',
-      stroke: '#000000',
-      strokeThickness: 4,
-    })
+    const clearText = this.add.text(
+      this.screenWidth / 2,
+      this.screenHeight / 2,
+      'ダンジョン踏破！',
+      {
+        fontSize: '28px',
+        fontFamily: '"DotGothic16", monospace',
+        color: '#ffdd00',
+        stroke: '#000000',
+        strokeThickness: 4,
+      }
+    )
     clearText.setOrigin(0.5)
     clearText.setDepth(3001)
     clearText.setAlpha(0)

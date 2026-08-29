@@ -70,8 +70,8 @@ roguelike/
 │   └── GameCanvas.client.vue # Phaser埋め込み
 │
 └── pages/
-    ├── index.vue             # タイトル
-    └── game.vue              # ゲーム画面
+    ├── index.vue                          # タイトル
+    └── game.vue                           # ゲーム画面
 ```
 
 > **未作成ファイル（今後実装予定）:**
@@ -267,13 +267,14 @@ this.load.pack('assets', 'assets/asset-pack.json')
 ```text
 public/assets/
 └── tiles/                              # 全タイル・スプライト
-    ├── floor_1.png 〜 floor_8.png      # 床バリエーション
-    ├── floor_stairs.png                # 階段
-    ├── wall_mid.png 等                 # 壁タイル（前面・側面・上端・角等 多数）
-    ├── knight_m_idle_anim_f0〜f3.png   # プレイヤー待機（男性）
-    ├── knight_m_run_anim_f0〜f3.png    # プレイヤー移動（男性）
-    ├── knight_f_idle_anim_f0〜f3.png   # プレイヤー待機（女性）
-    └── knight_f_run_anim_f0〜f3.png    # プレイヤー移動（女性）
+    ├── floor_1.png 〜 floor_8.png         # 床バリエーション
+    ├── floor_stairs.png                   # 階段
+    ├── wall_mid.png 等                    # 壁タイル（前面・側面・上端・角等 多数）
+    ├── knight_m_idle_anim_f0〜f3.png      # プレイヤー待機（前＝正面向き）
+    ├── knight_m_idle_up_anim_f0〜f3.png   # プレイヤー待機（後ろ＝上向き）
+    ├── knight_m_idle_left_anim_f0〜f3.png # プレイヤー待機（左向き／右は左右反転で描画）
+    ├── knight_m_run_anim_f0〜f3.png       # プレイヤー移動（未使用）
+    └── knight_m_hit_anim_f0.png           # プレイヤー被弾（未使用）
 ```
 
 > **今後追加予定のディレクトリ:** `sprites/`（敵）、`items/`、`ui/`、`audio/`、`fonts/`

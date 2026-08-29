@@ -44,7 +44,8 @@ export class ListMenuOverlay {
     this.container.setVisible(false)
     this.container.setDepth(560)
 
-    const overlay = scene.add.rectangle(240, 230, 480, 360, 0x000000, 0.75)
+    // 下部テキストボックス(y376~462)も含めコントローラー上端まで覆う
+    const overlay = scene.add.rectangle(240, 258, 480, 416, 0x000000, 0.75)
     this.container.add(overlay)
 
     const panel = scene.add.graphics()

@@ -42,8 +42,8 @@ export class InventoryOverlay {
     this.container.setVisible(false)
     this.container.setDepth(550)
 
-    // 半透明背景 (メッセージログ (y=413~457) を隠さないよう、ゲームエリアのみ覆う)
-    const overlay = scene.add.rectangle(240, 230, 480, 360, 0x000000, 0.75)
+    // 半透明背景（下部テキストボックス(y376~462)も含めコントローラー上端まで覆う）
+    const overlay = scene.add.rectangle(240, 258, 480, 416, 0x000000, 0.75)
     this.container.add(overlay)
 
     // パネル (高さ 350、メッセージログ手前で終わる)
