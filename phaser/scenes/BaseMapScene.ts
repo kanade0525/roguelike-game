@@ -145,8 +145,8 @@ export abstract class BaseMapScene extends Phaser.Scene {
     }
   }
 
-  // 追加読み込みする向き（前=既存 knight_f* を流用、右=left の左右反転）
-  protected static readonly KNIGHT_DIRECTIONS = ['up', 'left']
+  // 追加読み込みする向き（下＝既存 knight_f* を流用するためここには含めない）
+  protected static readonly KNIGHT_DIRECTIONS = ['up', 'left', 'right']
 
   // 地形の壁キー（床は floor_1..8）。色替えバリアントの読み込みに使う。
   protected static readonly TERRAIN_WALLS = [
@@ -193,15 +193,13 @@ export abstract class BaseMapScene extends Phaser.Scene {
     this.anims.create({ key: animKey, frames, frameRate: 6, repeat: -1 })
   }
 
-  // 向き→アニメ。斜めは横向きに丸める（横向き優先）。未追加の向きは正面へフォールバック。
-  private knightAnimFor(dx: number, dy: number): { animKey: string; flipX: boolean } {
-    if (dx !== 0 && this.anims.exists('knight_left_anim')) {
-      return { animKey: 'knight_left_anim', flipX: dx > 0 }
-    }
-    if (dx === 0 && dy < 0 && this.anims.exists('knight_up_anim')) {
-      return { animKey: 'knight_up_anim', flipX: false }
-    }
-    return { animKey: 'knight_idle_anim', flipX: false }
+  // 向き→アニメ。左右上下それぞれ専用スプライトを使う（左右反転での流用はしない）。
+  // 斜めは横向きに丸める（横向き優先）。PNG 未追加の向きは正面へフォールバックする。
+  private knightAnimFor(dx: number, dy: number): string {
+    if (dx < 0 && this.anims.exists('knight_left_anim')) return 'knight_left_anim'
+    if (dx > 0 && this.anims.exists('knight_right_anim')) return 'knight_right_anim'
+    if (dx === 0 && dy < 0 && this.anims.exists('knight_up_anim')) return 'knight_up_anim'
+    return 'knight_idle_anim'
   }
 
   protected createContainers() {
@@ -414,11 +412,10 @@ export abstract class BaseMapScene extends Phaser.Scene {
     const x = this.offsetX + screenTileX * this.tileWidth + this.tileWidth / 2
     const y = this.offsetY + screenTileY * this.tileHeight + this.tileHeight * 0.8
     const dir = this.gameStore.player.direction as { dx: number; dy: number }
-    const { animKey, flipX } = this.knightAnimFor(dir.dx, dir.dy)
+    const animKey = this.knightAnimFor(dir.dx, dir.dy)
     const sprite = this.add.sprite(x, y, 'knight_f0')
     sprite.setOrigin(0.5, 1.0)
     sprite.setScale(this.tileScale * 0.6)
-    sprite.setFlipX(flipX)
     sprite.play(animKey)
     this.entityContainer.add(sprite)
   }
